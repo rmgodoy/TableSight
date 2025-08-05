@@ -79,6 +79,10 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         ));
     };
     
+    const handleTokenDelete = (tokenId: string) => {
+        setTokens(tokens.filter(token => token.id !== tokenId));
+    };
+
     return (
         <div className="flex h-dvh w-screen bg-background text-foreground overflow-hidden">
             {/* Left Sidebar */}
@@ -106,7 +110,11 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 </Card>
                 <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
                     <GmToolbar selectedTool={selectedTool} onToolSelect={setSelectedTool} />
-                    <TokenPanel tokens={tokens} onVisibilityChange={handleTokenVisibilityChange} />
+                    <TokenPanel 
+                        tokens={tokens} 
+                        onVisibilityChange={handleTokenVisibilityChange}
+                        onTokenDelete={handleTokenDelete}
+                    />
                 </div>
             </aside>
 
