@@ -71,10 +71,8 @@ export function MapGrid({ showGrid, tokens, onMapClick, selectedTool }: MapGridP
         ))}
       </div>
 
-       {/* Fog of War Layer - simple overlay for now */}
-       <div className="absolute inset-0 bg-black/80 pointer-events-none" style={{
-           clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 20% 20%, 80% 20%, 80% 80%, 20% 80%, 20% 20%)'
-       }}>
+       {/* Fog of War Layer - This will be dynamic in the future */}
+       <div className="absolute inset-0 bg-black/80 pointer-events-none">
        </div>
 
     </div>

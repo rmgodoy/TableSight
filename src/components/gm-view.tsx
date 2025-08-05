@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +34,10 @@ export type Token = {
   visible: boolean;
 };
 
+export type GameState = {
+    tokens: Token[];
+};
+
 
 export default function GmView({ sessionId }: { sessionId: string }) {
     const [playerUrl, setPlayerUrl] = useState('');
@@ -41,6 +45,35 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [selectedTool, setSelectedTool] = useState<Tool>('select');
     const [tokens, setTokens] = useState<Token[]>([]);
     const { toast } = useToast();
+    const storageKey = `tabletop-alchemist-session-${sessionId}`;
+
+
+    const updateGameState = useCallback((newTokens: Token[]) => {
+        const newState: GameState = { tokens: newTokens };
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(newState));
+            setTokens(newTokens);
+        } catch (error) {
+            console.error("Failed to save game state to localStorage", error);
+            toast({
+                title: "Error",
+                description: "Could not save game state. Your browser might be in private mode or storage is full.",
+                variant: "destructive"
+            });
+        }
+    }, [storageKey, toast]);
+    
+    useEffect(() => {
+        try {
+            const savedState = localStorage.getItem(storageKey);
+            if (savedState) {
+                const gameState: GameState = JSON.parse(savedState);
+                setTokens(gameState.tokens || []);
+            }
+        } catch (error) {
+            console.error("Failed to load game state from localStorage", error);
+        }
+    }, [storageKey]);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -60,7 +93,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
     const handleMapClick = (x: number, y: number) => {
         if (selectedTool === 'add-pc') {
-            const newPc = {
+            const newPc: Token = {
                 id: `pc-${Date.now()}`,
                 name: `PC ${tokens.filter(t => t.type === 'PC').length + 1}`,
                 x,
@@ -68,19 +101,31 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 type: 'PC' as const,
                 visible: false,
             };
-            setTokens([...tokens, newPc]);
+            updateGameState([...tokens, newPc]);
         }
-        // We will add 'add-enemy' logic later
+        if (selectedTool === 'add-enemy') {
+            const newEnemy: Token = {
+                id: `enemy-${Date.now()}`,
+                name: `Enemy ${tokens.filter(t => t.type === 'Enemy').length + 1}`,
+                x,
+                y,
+                type: 'Enemy' as const,
+                visible: false,
+            };
+            updateGameState([...tokens, newEnemy]);
+        }
     };
 
     const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => {
-        setTokens(tokens.map(token => 
+        const newTokens = tokens.map(token => 
             token.id === tokenId ? { ...token, visible: isVisible } : token
-        ));
+        );
+        updateGameState(newTokens);
     };
     
     const handleTokenDelete = (tokenId: string) => {
-        setTokens(tokens.filter(token => token.id !== tokenId));
+        const newTokens = tokens.filter(token => token.id !== tokenId);
+        updateGameState(newTokens);
     };
 
     return (
