@@ -25,10 +25,21 @@ import {
 
 export type Tool = 'select' | 'wall' | 'floor' | 'erase' | 'add-pc' | 'add-enemy';
 
+export type Token = {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  type: 'PC' | 'Enemy';
+  visible: boolean;
+};
+
+
 export default function GmView({ sessionId }: { sessionId: string }) {
     const [playerUrl, setPlayerUrl] = useState('');
     const [showGrid, setShowGrid] = useState(true);
     const [selectedTool, setSelectedTool] = useState<Tool>('select');
+    const [tokens, setTokens] = useState<Token[]>([]);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -45,6 +56,27 @@ export default function GmView({ sessionId }: { sessionId: string }) {
               description: "Share this link with your players.",
             });
         }
+    };
+
+    const handleMapClick = (x: number, y: number) => {
+        if (selectedTool === 'add-pc') {
+            const newPc = {
+                id: `pc-${Date.now()}`,
+                name: `PC ${tokens.filter(t => t.type === 'PC').length + 1}`,
+                x,
+                y,
+                type: 'PC' as const,
+                visible: false,
+            };
+            setTokens([...tokens, newPc]);
+        }
+        // We will add 'add-enemy' logic later
+    };
+
+    const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => {
+        setTokens(tokens.map(token => 
+            token.id === tokenId ? { ...token, visible: isVisible } : token
+        ));
     };
     
     return (
@@ -74,14 +106,19 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 </Card>
                 <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
                     <GmToolbar selectedTool={selectedTool} onToolSelect={setSelectedTool} />
-                    <TokenPanel />
+                    <TokenPanel tokens={tokens} onVisibilityChange={handleTokenVisibilityChange} />
                 </div>
             </aside>
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col p-4 gap-4">
                 <div className="flex-1 relative">
-                    <MapGrid showGrid={showGrid} />
+                    <MapGrid 
+                        showGrid={showGrid} 
+                        tokens={tokens}
+                        onMapClick={handleMapClick} 
+                        selectedTool={selectedTool}
+                    />
                 </div>
                 <footer className="h-16 flex items-center justify-center p-2 rounded-lg bg-card border border-border">
                     <div className="flex items-center gap-2">

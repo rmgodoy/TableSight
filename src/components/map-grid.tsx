@@ -1,23 +1,39 @@
 'use client';
 
 import { CircleUserRound, Shield } from 'lucide-react';
+import type { Token, Tool } from './gm-view';
+import { cn } from '@/lib/utils';
 
-// Mock data for tokens. In a real app, this would come from props/state management.
-const mockTokens = [
-  { id: 'pc1', x: 5, y: 5, type: 'PC' },
-  { id: 'enemy1', x: 10, y: 8, type: 'Enemy' },
-  { id: 'pc2', x: 7, y: 12, type: 'PC' },
-];
+interface MapGridProps {
+  showGrid: boolean;
+  tokens: Token[];
+  onMapClick: (x: number, y: number) => void;
+  selectedTool: Tool;
+}
 
-export function MapGrid({ showGrid }: { showGrid: boolean }) {
+
+export function MapGrid({ showGrid, tokens, onMapClick, selectedTool }: MapGridProps) {
   const cellSize = 40; 
 
+  const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / cellSize);
+    const y = Math.floor((e.clientY - rect.top) / cellSize);
+    onMapClick(x, y);
+  };
+
   return (
-    <div className="w-full h-full bg-card/50 rounded-lg shadow-inner flex items-center justify-center relative overflow-auto cursor-crosshair">
+    <div 
+      className={cn(
+        "w-full h-full bg-card/50 rounded-lg shadow-inner flex items-center justify-center relative overflow-auto",
+        (selectedTool === 'add-pc' || selectedTool === 'add-enemy') && "cursor-crosshair"
+      )}
+      onClick={handleGridClick}
+      >
       {/* Grid Lines */}
       {showGrid && (
         <div 
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
           style={{ 
             backgroundSize: `${cellSize}px ${cellSize}px`,
             backgroundImage: `linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)`
@@ -26,13 +42,13 @@ export function MapGrid({ showGrid }: { showGrid: boolean }) {
       )}
       
       {/* Map Content (walls, floors etc would be rendered here) */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 pointer-events-none">
         <div data-ai-hint="dungeon wall" className="absolute bg-foreground/70" style={{ left: 200, top: 200, width: 40, height: 160 }}></div>
       </div>
 
       {/* Tokens Layer */}
-      <div className="absolute inset-0">
-        {mockTokens.map(token => (
+      <div className="absolute inset-0 pointer-events-none">
+        {tokens.map(token => (
           <div 
             key={token.id}
             className="absolute flex items-center justify-center transition-transform duration-200 ease-in-out"
