@@ -128,6 +128,13 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         updateGameState(newTokens);
     };
 
+    const handleTokenMove = (tokenId: string, x: number, y: number) => {
+        const newTokens = tokens.map(token =>
+            token.id === tokenId ? { ...token, x, y } : token
+        );
+        updateGameState(newTokens);
+    };
+
     return (
         <div className="flex h-dvh w-screen bg-background text-foreground overflow-hidden">
             {/* Left Sidebar */}
@@ -171,6 +178,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         tokens={tokens}
                         onMapClick={handleMapClick} 
                         selectedTool={selectedTool}
+                        onTokenMove={handleTokenMove}
                     />
                 </div>
                 <footer className="h-16 flex items-center justify-center p-2 rounded-lg bg-card border border-border">

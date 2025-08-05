@@ -47,6 +47,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
         tokens={visibleTokens} 
         onMapClick={() => {}} 
         selectedTool="select" 
+        isPlayerView={true}
       />
       <div className="absolute top-4 left-4 bg-background/80 text-foreground p-3 rounded-lg flex items-center gap-2 shadow-lg backdrop-blur-sm border border-border">
         <Eye className="text-primary" />
