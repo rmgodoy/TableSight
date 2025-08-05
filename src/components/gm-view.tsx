@@ -23,9 +23,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+export type Tool = 'select' | 'wall' | 'floor' | 'erase' | 'add-pc' | 'add-enemy';
+
 export default function GmView({ sessionId }: { sessionId: string }) {
     const [playerUrl, setPlayerUrl] = useState('');
     const [showGrid, setShowGrid] = useState(true);
+    const [selectedTool, setSelectedTool] = useState<Tool>('select');
     const { toast } = useToast();
 
     useEffect(() => {
@@ -70,7 +73,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     </CardContent>
                 </Card>
                 <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-                    <GmToolbar />
+                    <GmToolbar selectedTool={selectedTool} onToolSelect={setSelectedTool} />
                     <TokenPanel />
                 </div>
             </aside>

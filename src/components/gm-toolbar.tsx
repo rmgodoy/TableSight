@@ -3,8 +3,26 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { MousePointer, Square, Layers, Eraser, CircleUserRound, Shield } from 'lucide-react';
+import type { Tool } from './gm-view';
 
-export function GmToolbar() {
+interface GmToolbarProps {
+    selectedTool: Tool;
+    onToolSelect: (tool: Tool) => void;
+}
+
+export function GmToolbar({ selectedTool, onToolSelect }: GmToolbarProps) {
+    const tools: { id: Tool, label: string, icon: React.ReactNode }[] = [
+        { id: 'select', label: 'Select', icon: <MousePointer /> },
+        { id: 'wall', label: 'Wall', icon: <Square /> },
+        { id: 'floor', label: 'Floor', icon: <Layers /> },
+        { id: 'erase', label: 'Erase', icon: <Eraser /> },
+    ];
+
+    const tokenTools: { id: Tool, label: string, icon: React.ReactNode }[] = [
+        { id: 'add-pc', label: 'Add PC', icon: <CircleUserRound /> },
+        { id: 'add-enemy', label: 'Add Enemy', icon: <Shield /> },
+    ]
+
     return (
         <Card className="w-full">
             <CardHeader>
@@ -14,18 +32,32 @@ export function GmToolbar() {
                 <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-2">Map</h3>
                     <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" className="flex items-center justify-start gap-2"><MousePointer /> Select</Button>
-                        <Button variant="outline" className="flex items-center justify-start gap-2"><Square /> Wall</Button>
-                        <Button variant="outline" className="flex items-center justify-start gap-2"><Layers /> Floor</Button>
-                        <Button variant="outline" className="flex items-center justify-start gap-2"><Eraser /> Erase</Button>
+                        {tools.map(tool => (
+                            <Button 
+                                key={tool.id} 
+                                variant={selectedTool === tool.id ? 'secondary' : 'outline'}
+                                className="flex items-center justify-start gap-2"
+                                onClick={() => onToolSelect(tool.id)}
+                            >
+                                {tool.icon} {tool.label}
+                            </Button>
+                        ))}
                     </div>
                 </div>
                 <Separator />
                 <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-2">Tokens</h3>
                     <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" className="flex items-center justify-start gap-2"><CircleUserRound /> Add PC</Button>
-                        <Button variant="outline" className="flex items-center justify-start gap-2"><Shield /> Add Enemy</Button>
+                        {tokenTools.map(tool => (
+                            <Button
+                                key={tool.id}
+                                variant={selectedTool === tool.id ? 'secondary' : 'outline'}
+                                className="flex items-center justify-start gap-2"
+                                onClick={() => onToolSelect(tool.id)}
+                            >
+                                {tool.icon} {tool.label}
+                            </Button>
+                        ))}
                     </div>
                 </div>
             </CardContent>
