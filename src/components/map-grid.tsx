@@ -43,7 +43,6 @@ export function MapGrid({ showGrid, tokens, onMapClick, selectedTool }: MapGridP
       
       {/* Map Content (walls, floors etc would be rendered here) */}
       <div className="absolute inset-0 pointer-events-none">
-        <div data-ai-hint="dungeon wall" className="absolute bg-foreground/70" style={{ left: 200, top: 200, width: 40, height: 160 }}></div>
       </div>
 
       {/* Tokens Layer */}
