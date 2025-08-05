@@ -1,0 +1,114 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Copy, Grid, Undo, Redo, Home } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
+import { GmToolbar } from '@/components/gm-toolbar';
+import { TokenPanel } from '@/components/token-panel';
+import { MapGrid } from '@/components/map-grid';
+import Link from 'next/link';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
+export default function GmView({ sessionId }: { sessionId: string }) {
+    const [playerUrl, setPlayerUrl] = useState('');
+    const [showGrid, setShowGrid] = useState(true);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setPlayerUrl(`${window.location.origin}/player/${sessionId}`);
+        }
+    }, [sessionId]);
+
+    const copyPlayerUrl = () => {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(playerUrl);
+            toast({
+              title: "Player URL Copied!",
+              description: "Share this link with your players.",
+            });
+        }
+    };
+    
+    return (
+        <div className="flex h-dvh w-screen bg-background text-foreground overflow-hidden">
+            {/* Left Sidebar */}
+            <aside className="w-80 h-full flex flex-col p-4 gap-4 border-r border-border bg-card/50">
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold font-headline text-primary">Tabletop Alchemist</h1>
+                    <Button variant="ghost" size="icon" asChild>
+                        <Link href="/"><Home className="h-4 w-4" /></Link>
+                    </Button>
+                </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Player Link</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground mb-2">Share this URL for the player screen.</p>
+                        <div className="flex items-center gap-2">
+                            <Input readOnly value={playerUrl} className="bg-muted border-none" />
+                            <Button size="icon" variant="outline" onClick={copyPlayerUrl}>
+                                <Copy className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+                <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
+                    <GmToolbar />
+                    <TokenPanel />
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 flex flex-col p-4 gap-4">
+                <div className="flex-1 relative">
+                    <MapGrid showGrid={showGrid} />
+                </div>
+                <footer className="h-16 flex items-center justify-center p-2 rounded-lg bg-card border border-border">
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline"><Undo className="mr-2" /> Undo</Button>
+                        <Button variant="outline">Redo <Redo className="ml-2" /></Button>
+                        <Separator orientation="vertical" className="h-6 mx-4" />
+                        <Button variant="outline" onClick={() => setShowGrid(!showGrid)}><Grid className="mr-2" /> Toggle Grid</Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive">End Session</Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure you want to end the session?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. Your map will be saved, but the session will end.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction asChild>
+                                <Link href="/">End Session</Link>
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+
+                    </div>
+                </footer>
+            </main>
+        </div>
+    );
+}
