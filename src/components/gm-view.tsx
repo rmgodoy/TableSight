@@ -129,7 +129,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 x,
                 y,
                 type: 'PC' as const,
-                visible: false,
+                visible: true,
                 color: '#3b82f6',
                 torch: { enabled: false, radius: 5 },
             };

@@ -259,15 +259,15 @@ export function MapGrid({
         const p2 = path.points[i+1];
         const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
         const offsetX = (strokeWidth / 2) * Math.sin(angle);
-        const offsetY = (strokeWidth / 2) * Math.cos(angle);
+        const offsetY = (strokeWidth / 2) * -Math.cos(angle);
         
         segments.push({
-            a: { x: p1.x - offsetX, y: p1.y + offsetY },
-            b: { x: p2.x - offsetX, y: p2.y + offsetY }
+            a: { x: p1.x - offsetX, y: p1.y - offsetY },
+            b: { x: p2.x - offsetX, y: p2.y - offsetY }
         });
         segments.push({
-            a: { x: p1.x + offsetX, y: p1.y - offsetY },
-            b: { x: p2.x + offsetX, y: p2.y - offsetY }
+            a: { x: p1.x + offsetX, y: p1.y + offsetY },
+            b: { x: p2.x + offsetX, y: p2.y + offsetY }
         });
     }
     return segments;
@@ -349,6 +349,7 @@ export function MapGrid({
               top: token.y * cellSize,
               width: cellSize,
               height: cellSize,
+              opacity: isPlayerView ? (token.visible ? 1 : 0) : 1
             }}
           >
             {renderToken(token)}
