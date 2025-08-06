@@ -401,51 +401,48 @@ export function MapGrid({
       if (!isPlayerView) return [];
       
       const visibilityBoundary = {
-          width: mapDimensions.width / activeZoom,
-          height: mapDimensions.height / activeZoom
+          width: mapDimensions.width,
+          height: mapDimensions.height
       };
       
-      const boundarySegments = [
-          ...wallSegments,
-      ];
+      const transformedWallSegments = wallSegments.map(seg => ({
+        a: {
+            x: seg.a.x * activeZoom + activePan.x,
+            y: seg.a.y * activeZoom + activePan.y,
+        },
+        b: {
+            x: seg.b.x * activeZoom + activePan.x,
+            y: seg.b.y * activeZoom + activePan.y,
+        },
+        width: seg.width * activeZoom,
+      }));
 
       return tokens.filter(t => t.torch.enabled && t.visible).map(token => {
           const lightSource = { 
-              x: token.x * cellSize + cellSize / 2, 
-              y: token.y * cellSize + cellSize / 2 
+              x: (token.x * cellSize + cellSize / 2) * activeZoom + activePan.x, 
+              y: (token.y * cellSize + cellSize / 2) * activeZoom + activePan.y
           };
-          const torchRadiusInPixels = token.torch.radius * cellSize;
-          return calculateVisibilityPolygon(lightSource, boundarySegments, visibilityBoundary, torchRadiusInPixels);
+          const torchRadiusInPixels = token.torch.radius * cellSize * activeZoom;
+          return calculateVisibilityPolygon(lightSource, transformedWallSegments, visibilityBoundary, torchRadiusInPixels);
       });
-  }, [isPlayerView, tokens, wallSegments, mapDimensions, activeZoom, cellSize]);
+  }, [isPlayerView, tokens, wallSegments, mapDimensions, activeZoom, activePan, cellSize]);
 
-  const MapContent = ({ forPlayer, revealed }: { forPlayer: boolean, revealed: boolean }) => {
-    let renderPaths = paths;
-    if (forPlayer) {
-      if (revealed) {
-        // In the light, show all paths
-        renderPaths = paths;
-      } else {
-        // In the fog, only show PC tokens that are visible
-        renderPaths = [];
-      }
-    }
-    
+
+  const MapContent = () => {
     let renderTokens = tokens;
-    if (forPlayer) {
-      if (revealed) {
-        // In the light, show all visible tokens
-        renderTokens = tokens.filter(t => t.visible);
-      } else {
-        // In the fog, only show PC tokens that are visible
-        renderTokens = tokens.filter(t => t.type === 'PC' && t.visible);
-      }
+    if (isPlayerView) {
+      renderTokens = tokens.filter(t => t.visible);
     }
     
     return (
-        <>
+        <div 
+          className='absolute inset-0 origin-top-left'
+          style={{ 
+              transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
+          }}
+        >
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-                {renderPaths.map((path, i) => (
+                {paths.map((path, i) => (
                     <path
                         key={i}
                         d={getSvgPathFromPoints(path.points)}
@@ -456,7 +453,7 @@ export function MapGrid({
                         strokeLinejoin="round"
                     />
                 ))}
-                {!forPlayer && isDrawing && currentPath.length > 0 && (
+                {!isPlayerView && isDrawing && currentPath.length > 0 && (
                     <path
                         d={getSvgPathFromPoints(currentPath)}
                         stroke={brushColor}
@@ -487,7 +484,7 @@ export function MapGrid({
                     </div>
                 ))}
             </div>
-        </>
+        </div>
     );
   };
   
@@ -495,10 +492,8 @@ export function MapGrid({
     <div
       className="absolute inset-0 pointer-events-none"
       style={{
-        width: mapDimensions.width / activeZoom,
-        height: mapDimensions.height / activeZoom,
-        backgroundPosition: `0 0`,
-        backgroundSize: `${cellSize}px ${cellSize}px`,
+        backgroundPosition: `${activePan.x % (cellSize * activeZoom)}px ${activePan.y % (cellSize * activeZoom)}px`,
+        backgroundSize: `${cellSize * activeZoom}px ${cellSize * activeZoom}px`,
         backgroundImage: bright
           ? `linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px)`
           : `linear-gradient(to right, hsl(var(--border) / 0.1) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.1) 1px, transparent 1px)`,
@@ -532,66 +527,43 @@ export function MapGrid({
       onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
       >
-        {!isPlayerView && showGrid && <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-                backgroundPosition: `${activePan.x % (cellSize * activeZoom)}px ${activePan.y % (cellSize * activeZoom)}px`,
-                backgroundSize: `${cellSize * activeZoom}px ${cellSize * activeZoom}px`,
-                backgroundImage: `linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px)`,
-            }}
-        />}
-      
       {isPlayerView ? (
-        <div className="absolute inset-0 overflow-hidden">
+        <>
+            <div className="absolute inset-0 bg-black/90">
+              <GridLayer bright={false}/>
+            </div>
+
             <div 
-                className='absolute inset-0 origin-top-left'
-                style={{ 
-                    transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
+                className="absolute inset-0"
+                style={{
+                  mask: `url(#fog-mask)`,
+                  WebkitMask: 'url(#fog-mask)',
                 }}
             >
-                {/* Base layer (dimmed, always visible) */}
-                <div className='absolute inset-0 bg-black/90' />
-                <GridLayer bright={false} />
-                 <MapContent forPlayer={true} revealed={false} />
-            
-                {/* Revealed layer (bright, masked) */}
-                <div 
-                    className="absolute inset-0"
-                    style={{
-                      mask: `url(#fog-mask)`,
-                      WebkitMask: 'url(#fog-mask)',
-                    }}
-                >
-                  <div className="absolute inset-0 bg-background">
-                     <GridLayer bright={true} />
-                     <MapContent forPlayer={true} revealed={true} />
-                  </div>
-                </div>
+              <div className="absolute inset-0 bg-background">
+                 <GridLayer bright={true} />
+                 <MapContent />
+              </div>
             </div>
             
-            <svg width="0" height="0" style={{ position: 'absolute' }}>
+            <svg width="100%" height="100%" style={{ position: 'absolute', pointerEvents: 'none' }}>
               <defs>
-                <mask id="fog-mask" maskContentUnits="userSpaceOnUse">
+                <mask id="fog-mask">
                   <rect x="0" y="0" width="100%" height="100%" fill="black" />
-                   <g transform={`scale(${activeZoom}) translate(${activePan.x / activeZoom}, ${activePan.y / activeZoom})`}>
-                      {lightPolygons.map((poly, i) => (
-                          poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
-                      ))}
-                   </g>
+                  {lightPolygons.map((poly, i) => (
+                      poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
+                  ))}
                 </mask>
               </defs>
             </svg>
-        </div>
+        </>
       ) : (
-          <div
-            className="absolute inset-0 origin-top-left"
-            style={{
-                transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
-            }}
-          >
-              <MapContent forPlayer={false} revealed={true} />
-          </div>
+          <>
+            {showGrid && <GridLayer bright={true} />}
+            <MapContent />
+          </>
       )}
     </div>
   );
 }
+
