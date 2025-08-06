@@ -144,6 +144,19 @@ export function MapGrid({
     );
   };
 
+  const GridLines = ({ bright } : { bright?: boolean }) => (
+    <div 
+      className={cn(
+        "absolute inset-0 pointer-events-none",
+        bright ? "opacity-100" : "opacity-30"
+      )}
+      style={{ 
+          backgroundSize: `${cellSize}px ${cellSize}px`,
+          backgroundImage: `linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)`
+      }}
+    ></div>
+  );
+
 
   return (
     <div 
@@ -163,16 +176,8 @@ export function MapGrid({
       onMouseLeave={handleMouseUp} // End drawing if mouse leaves canvas
       >
 
-      {/* Grid Lines (always visible) */}
-      {showGrid && (
-          <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{ 
-              backgroundSize: `${cellSize}px ${cellSize}px`,
-              backgroundImage: `linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)`
-          }}
-          ></div>
-      )}
+      {/* Base Grid (always visible) */}
+      {showGrid && (isPlayerView ? <GridLines /> : <GridLines bright />)}
 
       {/* This container holds the elements that will be masked */}
       <div 
@@ -182,6 +187,9 @@ export function MapGrid({
           WebkitMask: isPlayerView ? 'url(#fog-mask)' : 'none',
         }}
         >
+        
+        {/* Bright Grid (for revealed areas) */}
+        {showGrid && isPlayerView && <GridLines bright />}
 
         {/* Drawing Layer */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none">
@@ -210,7 +218,7 @@ export function MapGrid({
 
       </div>
       
-      {/* Tokens Layer (always visible) */}
+      {/* Tokens Layer (always visible, above drawings and grid) */}
       <div className="absolute inset-0">
         {tokens.map(token => (
           <div 
