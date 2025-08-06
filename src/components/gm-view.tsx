@@ -24,12 +24,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-export type Tool = 'select' | 'brush' | 'erase' | 'add-pc' | 'add-enemy';
+export type Tool = 'select' | 'wall' | 'detail' | 'erase' | 'add-pc' | 'add-enemy';
 
 export type Point = { x: number; y: number };
 export type Path = {
     points: Point[];
     color: string;
+    blocksLight: boolean;
 };
 
 export type Token = {
@@ -85,15 +86,17 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             const savedState = localStorage.getItem(storageKey);
             if (savedState) {
                 const gameState: GameState = JSON.parse(savedState);
-                // Backwards compatibility for old states without torch
+                // Backwards compatibility
                 const updatedTokens = (gameState.tokens || []).map(t => ({
                   ...t,
                   torch: t.torch || { enabled: false, radius: 5 }
                 }));
                 const updatedPaths = (gameState.paths || []).map(p => {
-                    // Backwards compatibility for paths without color
                     if (Array.isArray(p)) {
-                        return { points: p, color: '#000000' };
+                        return { points: p, color: '#000000', blocksLight: true };
+                    }
+                    if (typeof p.blocksLight === 'undefined') {
+                        return { ...p, blocksLight: true };
                     }
                     return p;
                 });

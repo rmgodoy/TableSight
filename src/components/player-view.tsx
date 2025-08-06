@@ -15,15 +15,17 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     if (event.key === storageKey && event.newValue) {
       try {
         const newState: GameState = JSON.parse(event.newValue);
-        // Backwards compatibility for old states without torch
+        // Backwards compatibility
         const updatedTokens = (newState.tokens || []).map(t => ({
           ...t,
           torch: t.torch || { enabled: false, radius: 5 }
         }));
         const updatedPaths = (newState.paths || []).map(p => {
-          // Backwards compatibility for paths without color
           if (Array.isArray(p)) {
-              return { points: p, color: '#000000' };
+              return { points: p, color: '#000000', blocksLight: true };
+          }
+           if (typeof p.blocksLight === 'undefined') {
+              return { ...p, blocksLight: true };
           }
           return p;
         });
@@ -41,15 +43,17 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       const savedState = localStorage.getItem(storageKey);
       if (savedState) {
         const gameState: GameState = JSON.parse(savedState);
-         // Backwards compatibility for old states without torch
+        // Backwards compatibility
         const updatedTokens = (gameState.tokens || []).map(t => ({
           ...t,
           torch: t.torch || { enabled: false, radius: 5 }
         }));
         const updatedPaths = (gameState.paths || []).map(p => {
-          // Backwards compatibility for paths without color
           if (Array.isArray(p)) {
-              return { points: p, color: '#000000' };
+              return { points: p, color: '#000000', blocksLight: true };
+          }
+           if (typeof p.blocksLight === 'undefined') {
+              return { ...p, blocksLight: true };
           }
           return p;
         });

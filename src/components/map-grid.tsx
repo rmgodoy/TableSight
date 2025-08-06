@@ -179,7 +179,7 @@ export function MapGrid({
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isPlayerView) return;
 
-    if (selectedTool === 'brush') {
+    if (selectedTool === 'wall' || selectedTool === 'detail') {
       setIsDrawing(true);
       setCurrentPath([getPointFromEvent(e)]);
     } else if (selectedTool === 'erase') {
@@ -193,7 +193,7 @@ export function MapGrid({
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPlayerView || !isDrawing || selectedTool !== 'brush') return;
+    if (isPlayerView || !isDrawing || (selectedTool !== 'wall' && selectedTool !== 'detail')) return;
     setCurrentPath(prevPath => [...prevPath, getPointFromEvent(e)]);
   };
 
@@ -201,7 +201,11 @@ export function MapGrid({
     if (isPlayerView || !isDrawing) return;
     setIsDrawing(false);
     if (currentPath.length > 1) {
-        onNewPath({ points: currentPath, color: brushColor });
+        onNewPath({ 
+            points: currentPath, 
+            color: brushColor,
+            blocksLight: selectedTool === 'wall'
+        });
     }
     setCurrentPath([]);
   };
@@ -283,7 +287,7 @@ export function MapGrid({
     ></div>
   );
 
-  const wallSegments = paths.flatMap(path => {
+  const wallSegments = paths.filter(p => p.blocksLight).flatMap(path => {
     const segments: { a: Point, b: Point }[] = [];
     for (let i = 0; i < path.points.length - 1; i++) {
         segments.push({ a: path.points[i], b: path.points[i+1] });
@@ -299,7 +303,7 @@ export function MapGrid({
         !isPlayerView && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
             'cursor-grab': draggingToken,
-            'cursor-cell': selectedTool === 'brush',
+            'cursor-cell': selectedTool === 'wall' || selectedTool === 'detail',
             'cursor-help': selectedTool === 'erase',
         }
       )}
@@ -310,7 +314,7 @@ export function MapGrid({
       >
 
       {/* Base Grid */}
-      {showGrid && <GridLines bright={!isPlayerView || !isPlayerView} />}
+      {showGrid && <GridLines bright={!isPlayerView} />}
       
       {/* Container for masked elements */}
       <div 

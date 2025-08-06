@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { MousePointer, Brush, CircleUserRound, Shield, Eraser } from 'lucide-react';
+import { MousePointer, Brush, CircleUserRound, Shield, Eraser, PenLine } from 'lucide-react';
 import type { Tool } from './gm-view';
 import { cn } from '@/lib/utils';
 
@@ -23,7 +23,8 @@ const colorPalette = [
 export function GmToolbar({ selectedTool, onToolSelect, brushColor, onBrushColorChange }: GmToolbarProps) {
     const tools: { id: Tool, label: string, icon: React.ReactNode }[] = [
         { id: 'select', label: 'Select', icon: <MousePointer /> },
-        { id: 'brush', label: 'Brush', icon: <Brush /> },
+        { id: 'wall', label: 'Wall', icon: <Brush /> },
+        { id: 'detail', label: 'Detail', icon: <PenLine /> },
         { id: 'erase', label: 'Erase', icon: <Eraser /> },
     ];
 
@@ -53,7 +54,7 @@ export function GmToolbar({ selectedTool, onToolSelect, brushColor, onBrushColor
                         ))}
                     </div>
                 </div>
-                {selectedTool === 'brush' && (
+                {(selectedTool === 'wall' || selectedTool === 'detail') && (
                     <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Brush Color</h3>
                         <div className="grid grid-cols-6 gap-2">
