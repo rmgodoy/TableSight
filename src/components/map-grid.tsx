@@ -180,6 +180,7 @@ export function MapGrid({
   const cellSize = 40; 
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
+  const [ghostPosition, setGhostPosition] = useState<Point | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
@@ -287,11 +288,20 @@ export function MapGrid({
     if (isPlayerView || selectedTool !== 'select' || !onTokenMove) return;
     e.stopPropagation(); 
     setDraggingToken(token);
+    const point = getTransformedPoint(e);
+    setGhostPosition({
+        x: point.x - (cellSize / 2),
+        y: point.y - (cellSize / 2),
+    });
   };
 
   const handleGlobalMouseMove = (e: MouseEvent) => {
     if (!draggingToken || !onTokenMove) return;
-    // We don't update position during drag for performance, only on drop
+    const point = getTransformedPoint(e);
+    setGhostPosition({
+        x: point.x - (cellSize / 2),
+        y: point.y - (cellSize / 2),
+    });
   };
 
   const handleGlobalMouseUp = (e: MouseEvent) => {
@@ -304,6 +314,7 @@ export function MapGrid({
 
     onTokenMove(draggingToken.id, x, y);
     setDraggingToken(null);
+    setGhostPosition(null);
   };
 
   useEffect(() => {
@@ -404,18 +415,6 @@ export function MapGrid({
           width: mapDimensions.width,
           height: mapDimensions.height
       };
-      
-      const transformedWallSegments = wallSegments.map(seg => ({
-        a: {
-            x: seg.a.x * activeZoom + activePan.x,
-            y: seg.a.y * activeZoom + activePan.y,
-        },
-        b: {
-            x: seg.b.x * activeZoom + activePan.x,
-            y: seg.b.y * activeZoom + activePan.y,
-        },
-        width: seg.width * activeZoom,
-      }));
 
       return tokens.filter(t => t.torch.enabled && t.visible).map(token => {
           const lightSource = { 
@@ -423,7 +422,7 @@ export function MapGrid({
               y: (token.y * cellSize + cellSize / 2) * activeZoom + activePan.y
           };
           const torchRadiusInPixels = token.torch.radius * cellSize * activeZoom;
-          return calculateVisibilityPolygon(lightSource, transformedWallSegments, visibilityBoundary, torchRadiusInPixels);
+          return calculateVisibilityPolygon(lightSource, wallSegments, visibilityBoundary, torchRadiusInPixels);
       });
   }, [isPlayerView, tokens, wallSegments, mapDimensions, activeZoom, activePan, cellSize]);
 
@@ -483,6 +482,19 @@ export function MapGrid({
                         {renderToken(token)}
                     </div>
                 ))}
+                {!isPlayerView && draggingToken && ghostPosition && (
+                    <div
+                        className="absolute flex items-center justify-center opacity-50 pointer-events-none"
+                        style={{
+                            left: ghostPosition.x,
+                            top: ghostPosition.y,
+                            width: cellSize,
+                            height: cellSize,
+                        }}
+                    >
+                        {renderToken(draggingToken)}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -546,13 +558,15 @@ export function MapGrid({
               </div>
             </div>
             
-            <svg width="100%" height="100%" style={{ position: 'absolute', pointerEvents: 'none' }}>
+            <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }}>
               <defs>
-                <mask id="fog-mask">
+                <mask id="fog-mask" maskUnits="userSpaceOnUse">
                   <rect x="0" y="0" width="100%" height="100%" fill="black" />
-                  {lightPolygons.map((poly, i) => (
-                      poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
-                  ))}
+                    <g>
+                      {lightPolygons.map((poly, i) => (
+                          poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
+                      ))}
+                    </g>
                 </mask>
               </defs>
             </svg>
@@ -567,3 +581,4 @@ export function MapGrid({
   );
 }
 
+  
