@@ -426,7 +426,7 @@ export function MapGrid({
         // In the light, show all paths
         renderPaths = paths;
       } else {
-        // In the fog, only show walls
+        // In the fog, only show PC tokens that are visible
         renderPaths = [];
       }
     }
@@ -490,6 +490,22 @@ export function MapGrid({
         </>
     );
   };
+  
+  const GridLayer = ({ bright }: { bright: boolean }) => (
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        width: '100%',
+        height: '100%',
+        backgroundPosition: `${activePan.x}px ${activePan.y}px`,
+        backgroundSize: `${cellSize * activeZoom}px ${cellSize * activeZoom}px`,
+        backgroundImage: bright
+          ? `linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px)`
+          : `linear-gradient(to right, hsl(var(--border) / 0.1) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.1) 1px, transparent 1px)`,
+      }}
+    />
+  );
+
 
   return (
     <div 
@@ -516,15 +532,7 @@ export function MapGrid({
       onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
       >
-
-        {showGrid && <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-                backgroundPosition: `${activePan.x}px ${activePan.y}px`,
-                backgroundSize: `${cellSize * activeZoom}px ${cellSize * activeZoom}px`,
-                backgroundImage: `linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px)`
-            }}
-        ></div>}
+        {!isPlayerView && showGrid && <GridLayer bright />}
       
       {isPlayerView ? (
         <>
@@ -536,6 +544,7 @@ export function MapGrid({
                 }}
             >
                 <div className='absolute inset-0 bg-black/90' />
+                <GridLayer bright={false} />
                  <MapContent forPlayer={true} revealed={false} />
             </div>
             
@@ -549,6 +558,7 @@ export function MapGrid({
                 }}
             >
               <div className="absolute inset-0 bg-background">
+                 <GridLayer bright={true} />
                  <MapContent forPlayer={true} revealed={true} />
               </div>
             </div>
@@ -579,5 +589,3 @@ export function MapGrid({
     </div>
   );
 }
-
-    
