@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -225,7 +226,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                               <AlertDialogTitle>Are you sure you want to end the session?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 This action cannot be undone. Your map will be saved, but the session will end.
-                              </Description>
+                              </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
