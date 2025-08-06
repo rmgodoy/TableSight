@@ -271,19 +271,6 @@ export function MapGrid({
                 const r = token.torch.radius * cellSize;
                 return <circle key={`${token.id}-torch`} cx={cx} cy={cy} r={r} fill="white" />;
               })}
-
-              {/* Render walls as black lines to block light inside the mask */}
-              {paths.map((path, i) => (
-                  <path 
-                      key={`${i}-mask`}
-                      d={getSvgPath(path)} 
-                      stroke="black"
-                      strokeWidth="10" // Make walls thick enough to cast shadows
-                      fill="black"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                  />
-              ))}
             </mask>
           </defs>
         </svg>
