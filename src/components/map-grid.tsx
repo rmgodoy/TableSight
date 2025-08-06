@@ -404,14 +404,24 @@ export function MapGrid({
   }, [isPlayerView, tokens, wallSegments, mapDimensions, activeZoom, cellSize]);
 
   const MapContent = ({ forPlayer, revealed }: { forPlayer: boolean, revealed: boolean }) => {
-    const renderPaths = forPlayer 
-      ? paths.filter(p => revealed || p.blocksLight) 
-      : paths;
-
-    const renderTokens = forPlayer 
-      ? tokens.filter(t => revealed || t.type === 'PC') 
-      : tokens;
-
+    let renderPaths = paths;
+    if (forPlayer && !revealed) {
+      // In the fog, don't show any paths
+      renderPaths = [];
+    } else if (forPlayer && revealed) {
+      // In the light, show all paths
+      renderPaths = paths;
+    }
+    
+    let renderTokens = tokens;
+    if (forPlayer && !revealed) {
+      // In the fog, only show PCs
+      renderTokens = tokens.filter(t => t.type === 'PC');
+    } else if (forPlayer && revealed) {
+      // In the light, show all visible tokens
+      renderTokens = tokens.filter(t => t.visible);
+    }
+    
     return (
         <>
             {showGrid && <div
@@ -498,6 +508,7 @@ export function MapGrid({
       
       {isPlayerView ? (
         <>
+            {/* Base layer (dimmed, always visible) */}
             <div 
                 className='absolute inset-0 origin-top-left'
                 style={{ 
@@ -507,6 +518,7 @@ export function MapGrid({
                 <MapContent forPlayer={true} revealed={false} />
             </div>
             
+            {/* Revealed layer (bright, masked) */}
             <div 
                 className="absolute inset-0 origin-top-left"
                 style={{
