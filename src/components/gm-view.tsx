@@ -32,6 +32,8 @@ export type Token = {
   y: number;
   type: 'PC' | 'Enemy';
   visible: boolean;
+  color: string;
+  iconUrl?: string;
 };
 
 export type GameState = {
@@ -100,6 +102,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 y,
                 type: 'PC' as const,
                 visible: false,
+                color: '#3b82f6',
             };
             updateGameState([...tokens, newPc]);
         }
@@ -111,6 +114,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 y,
                 type: 'Enemy' as const,
                 visible: false,
+                color: '#ef4444'
             };
             updateGameState([...tokens, newEnemy]);
         }
@@ -141,6 +145,21 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         );
         updateGameState(newTokens);
     };
+
+    const handleTokenColorChange = (tokenId: string, newColor: string) => {
+        const newTokens = tokens.map(token =>
+            token.id === tokenId ? { ...token, color: newColor } : token
+        );
+        updateGameState(newTokens);
+    };
+
+    const handleTokenIconChange = (tokenId: string, newIconUrl: string) => {
+        const newTokens = tokens.map(token =>
+            token.id === tokenId ? { ...token, iconUrl: newIconUrl } : token
+        );
+        updateGameState(newTokens);
+    };
+
 
     return (
         <div className="flex h-dvh w-screen bg-background text-foreground overflow-hidden">
@@ -174,6 +193,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         onVisibilityChange={handleTokenVisibilityChange}
                         onTokenDelete={handleTokenDelete}
                         onTokenNameChange={handleTokenNameChange}
+                        onTokenColorChange={handleTokenColorChange}
+                        onTokenIconChange={handleTokenIconChange}
                     />
                 </div>
             </aside>
@@ -204,7 +225,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                               <AlertDialogTitle>Are you sure you want to end the session?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 This action cannot be undone. Your map will be saved, but the session will end.
-                              </AlertDialogDescription>
+                              </Description>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>

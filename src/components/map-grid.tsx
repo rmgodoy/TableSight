@@ -24,7 +24,7 @@ export function MapGrid({
 }: MapGridProps) {
   const cellSize = 40; 
   const gridRef = useRef<HTMLDivElement>(null);
-  const [draggingToken, setDraggingToken] = useState<{id: string, type: 'PC' | 'Enemy'} | null>(null);
+  const [draggingToken, setDraggingToken] = useState<Token | null>(null);
   const [dragPosition, setDragPosition] = useState<{x: number, y: number} | null>(null);
 
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -39,7 +39,7 @@ export function MapGrid({
   const handleTokenMouseDown = (e: React.MouseEvent<HTMLDivElement>, token: Token) => {
     if (isPlayerView || selectedTool !== 'select' || !onTokenMove) return;
     e.stopPropagation(); 
-    setDraggingToken({id: token.id, type: token.type});
+    setDraggingToken(token);
     setDragPosition({ x: e.clientX, y: e.clientY });
   };
 
@@ -75,6 +75,29 @@ export function MapGrid({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draggingToken]);
+
+  const renderToken = (token: Token, isPreview = false) => {
+    return (
+       <div
+        className={cn(
+          "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center",
+          isPreview && "scale-110"
+        )}
+        style={{ 
+          backgroundColor: token.color, 
+          backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none'
+        }}
+       >
+         {!token.iconUrl && (
+             token.type === 'PC' ? (
+                 <CircleUserRound className="text-white/80" />
+             ) : (
+                 <Shield className="text-white/80" />
+             )
+         )}
+       </div>
+    );
+  };
 
 
   return (
@@ -116,15 +139,7 @@ export function MapGrid({
               height: cellSize,
             }}
           >
-            {token.type === 'PC' ? (
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center ring-2 ring-primary-foreground shadow-lg pointer-events-none">
-                    <CircleUserRound className="text-primary-foreground" />
-                </div>
-            ) : (
-                <div className="w-8 h-8 rounded-full bg-destructive flex items-center justify-center ring-2 ring-destructive-foreground shadow-lg pointer-events-none">
-                    <Shield className="text-destructive-foreground" />
-                </div>
-            )}
+            {renderToken(token)}
           </div>
         ))}
       </div>
@@ -140,15 +155,7 @@ export function MapGrid({
             height: cellSize,
           }}
         >
-          {draggingToken.type === 'PC' ? (
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center ring-2 ring-primary-foreground shadow-lg scale-110">
-                  <CircleUserRound className="text-primary-foreground" />
-              </div>
-          ) : (
-              <div className="w-8 h-8 rounded-full bg-destructive flex items-center justify-center ring-2 ring-destructive-foreground shadow-lg scale-110">
-                  <Shield className="text-destructive-foreground" />
-              </div>
-          )}
+          {renderToken(draggingToken, true)}
         </div>
       )}
 
