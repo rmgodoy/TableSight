@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -14,7 +15,12 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     if (event.key === storageKey && event.newValue) {
       try {
         const newState: GameState = JSON.parse(event.newValue);
-        setTokens(newState.tokens || []);
+        // Backwards compatibility for old states without torch
+        const updatedTokens = (newState.tokens || []).map(t => ({
+          ...t,
+          torch: t.torch || { enabled: false, radius: 5 }
+        }));
+        setTokens(updatedTokens);
         setPaths(newState.paths || []);
       } catch (error) {
         console.error("Failed to parse game state from localStorage", error);
@@ -28,7 +34,12 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       const savedState = localStorage.getItem(storageKey);
       if (savedState) {
         const gameState: GameState = JSON.parse(savedState);
-        setTokens(gameState.tokens || []);
+         // Backwards compatibility for old states without torch
+        const updatedTokens = (gameState.tokens || []).map(t => ({
+          ...t,
+          torch: t.torch || { enabled: false, radius: 5 }
+        }));
+        setTokens(updatedTokens);
         setPaths(gameState.paths || []);
       }
     } catch (error) {

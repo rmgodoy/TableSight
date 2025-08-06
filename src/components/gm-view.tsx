@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +38,10 @@ export type Token = {
   visible: boolean;
   color: string;
   iconUrl?: string;
+  torch: {
+    enabled: boolean;
+    radius: number;
+  };
 };
 
 export type GameState = {
@@ -77,7 +81,12 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             const savedState = localStorage.getItem(storageKey);
             if (savedState) {
                 const gameState: GameState = JSON.parse(savedState);
-                setTokens(gameState.tokens || []);
+                // Backwards compatibility for old states without torch
+                const updatedTokens = (gameState.tokens || []).map(t => ({
+                  ...t,
+                  torch: t.torch || { enabled: false, radius: 5 }
+                }));
+                setTokens(updatedTokens);
                 setPaths(gameState.paths || []);
             }
         } catch (error) {
@@ -111,6 +120,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 type: 'PC' as const,
                 visible: false,
                 color: '#3b82f6',
+                torch: { enabled: false, radius: 5 },
             };
             updateGameState([...tokens, newPc], paths);
         }
@@ -122,7 +132,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 y,
                 type: 'Enemy' as const,
                 visible: false,
-                color: '#ef4444'
+                color: '#ef4444',
+                torch: { enabled: false, radius: 5 },
             };
             updateGameState([...tokens, newEnemy], paths);
         }
@@ -182,6 +193,19 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         updateGameState(newTokens, paths);
     };
 
+    const handleTokenTorchToggle = (tokenId: string) => {
+        const newTokens = tokens.map(token =>
+            token.id === tokenId ? { ...token, torch: { ...token.torch, enabled: !token.torch.enabled } } : token
+        );
+        updateGameState(newTokens, paths);
+    }
+    
+    const handleTokenTorchRadiusChange = (tokenId: string, radius: number) => {
+        const newTokens = tokens.map(token =>
+            token.id === tokenId ? { ...token, torch: { ...token.torch, radius } } : token
+        );
+        updateGameState(newTokens, paths);
+    }
 
     return (
         <div className="flex h-dvh w-screen bg-background text-foreground overflow-hidden">
@@ -217,6 +241,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         onTokenNameChange={handleTokenNameChange}
                         onTokenColorChange={handleTokenColorChange}
                         onTokenIconChange={handleTokenIconChange}
+                        onTokenTorchToggle={handleTokenTorchToggle}
+                        onTokenTorchRadiusChange={handleTokenTorchRadiusChange}
                     />
                 </div>
             </aside>

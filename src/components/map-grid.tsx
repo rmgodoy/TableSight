@@ -1,3 +1,4 @@
+
 'use client';
 
 import { CircleUserRound, Shield } from 'lucide-react';
@@ -235,10 +236,22 @@ export function MapGrid({
         </div>
       )}
 
-       {/* Fog of War Layer - This will be dynamic in the future */}
+       {/* Fog of War Layer */}
        { isPlayerView &&
-         <div className="absolute inset-0 bg-black/80 pointer-events-none">
-         </div>
+         <svg className="absolute inset-0 w-full h-full pointer-events-none" >
+            <defs>
+                <mask id="fog-mask">
+                    <rect width="100%" height="100%" fill="white" />
+                    {tokens.filter(t => t.torch.enabled).map(token => {
+                        const cx = token.x * cellSize + cellSize / 2;
+                        const cy = token.y * cellSize + cellSize / 2;
+                        const r = token.torch.radius * cellSize;
+                        return <circle key={token.id} cx={cx} cy={cy} r={r} fill="black" />;
+                    })}
+                </mask>
+            </defs>
+            <rect width="100%" height="100%" fill="black" opacity="0.8" mask="url(#fog-mask)" />
+        </svg>
        }
     </div>
   );
