@@ -321,8 +321,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col p-4 gap-4 relative">
-                <div className="flex-1 relative bg-card/50 rounded-lg shadow-inner">
+            <main className="flex-1 flex flex-col p-4 gap-4 relative z-10">
+                <div className="flex-1 relative bg-card/50 rounded-lg shadow-inner overflow-hidden">
                     <MapGrid 
                         showGrid={showGrid} 
                         tokens={tokens}
@@ -382,3 +382,4 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     
 
     
+}
