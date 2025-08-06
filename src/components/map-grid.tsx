@@ -166,8 +166,8 @@ export function MapGrid({
       <div 
         className="absolute inset-0"
         style={{
-            mask: isPlayerView ? "url(#fog-mask)" : "",
-            WebkitMask: isPlayerView ? "url(#fog-mask)" : "",
+          mask: isPlayerView ? 'url(#fog-mask)' : 'none',
+          WebkitMask: isPlayerView ? 'url(#fog-mask)' : 'none',
         }}
         >
 
@@ -247,42 +247,24 @@ export function MapGrid({
         </div>
       )}
 
-       {/* Fog of War Layer */}
-       { isPlayerView &&
-         <svg className="absolute inset-0 w-full h-full pointer-events-none" >
-            <defs>
-                <mask id="fog-mask">
-                    {/* The base of the mask is black; we'll add white circles to reveal areas */}
-                    <rect width="100%" height="100%" fill="black" />
-                    {tokens.filter(t => t.torch.enabled).map(token => {
-                        const cx = token.x * cellSize + cellSize / 2;
-                        const cy = token.y * cellSize + cellSize / 2;
-                        const r = token.torch.radius * cellSize;
-                        return <circle key={token.id} cx={cx} cy={cy} r={r} fill="white" />;
-                    })}
-                </mask>
-            </defs>
-            {/* This black rectangle covers everything that IS NOT revealed by the mask. */}
-            <rect width="100%" height="100%" fill="black" mask="url(#fog-mask-inverted-for-real-this-time)" />
+      {/* We need a separate SVG for the mask definition because some browsers (Safari) have issues with masks and sibling elements */}
+      {isPlayerView && (
+        <svg width="0" height="0" style={{ position: 'absolute' }}>
+          <defs>
+            <mask id="fog-mask">
+              {/* Start with black, which hides everything */}
+              <rect width="100vw" height="100vh" fill="black" />
+              {/* Add white circles for each torch to reveal areas */}
+              {tokens.filter(t => t.torch.enabled).map(token => {
+                const cx = token.x * cellSize + cellSize / 2;
+                const cy = token.y * cellSize + cellSize / 2;
+                const r = token.torch.radius * cellSize;
+                return <circle key={token.id} cx={cx} cy={cy} r={r} fill="white" />;
+              })}
+            </mask>
+          </defs>
         </svg>
-       }
-
-        {/* We need a separate SVG for the mask definition because some browsers (Safari) have issues with masks and sibling elements */}
-        {isPlayerView && (
-            <svg width="0" height="0" style={{ position: 'absolute' }}>
-                <defs>
-                    <mask id="fog-mask">
-                        <rect width="100vw" height="100vh" fill="white" />
-                         {tokens.filter(t => t.torch.enabled).map(token => {
-                            const cx = token.x * cellSize + cellSize / 2;
-                            const cy = token.y * cellSize + cellSize / 2;
-                            const r = token.torch.radius * cellSize;
-                            return <circle key={token.id} cx={cx} cy={cy} r={r} fill="black" />;
-                        })}
-                    </mask>
-                </defs>
-            </svg>
-        )}
+      )}
     </div>
   );
 }
