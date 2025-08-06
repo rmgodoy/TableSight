@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Copy, Grid, Undo, Redo, Home, ZoomIn, ZoomOut, Maximize, Eye, Users } from 'lucide-react';
+import { Copy, Grid, Undo, Redo, Home, ZoomIn, ZoomOut, Maximize, Eye, Users, EyeOff } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { GmToolbar } from '@/components/gm-toolbar';
 import { TokenPanel } from '@/components/token-panel';
@@ -71,6 +71,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [playerZoom, setPlayerZoom] = useState(1);
     const [playerPan, setPlayerPan] = useState({ x: 0, y: 0 });
+    const [showFogOfWar, setShowFogOfWar] = useState(false);
     const { toast } = useToast();
     const storageKey = `tabletop-alchemist-session-${sessionId}`;
 
@@ -338,6 +339,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         pan={pan}
                         onZoomChange={setZoom}
                         onPanChange={setPan}
+                        showFogOfWar={showFogOfWar}
                     />
                 </div>
                 <footer className="relative z-10 h-16 flex items-center justify-center p-2 rounded-lg bg-card border border-border">
@@ -346,6 +348,11 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         <Button variant="outline">Redo <Redo className="ml-2" /></Button>
                         <Separator orientation="vertical" className="h-6 mx-4" />
                         <Button variant="outline" onClick={() => setShowGrid(!showGrid)}><Grid className="mr-2" /> Toggle Grid</Button>
+                         <Button variant="outline" onClick={() => setShowFogOfWar(!showFogOfWar)}>
+                            {showFogOfWar ? <EyeOff className="mr-2" /> : <Eye className="mr-2" />}
+                            Toggle Fog
+                        </Button>
+                        <Separator orientation="vertical" className="h-6 mx-4" />
                         <Button variant="outline" onClick={() => handleZoom(0.1)}><ZoomIn className="mr-2" /> Zoom In</Button>
                         <Button variant="outline" onClick={() => handleZoom(-0.1)}><ZoomOut className="mr-2" /> Zoom Out</Button>
                         <Button variant="outline" onClick={resetView}><Maximize className="mr-2" /> Reset View</Button>

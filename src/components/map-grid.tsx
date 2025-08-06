@@ -22,6 +22,7 @@ interface MapGridProps {
   pan?: { x: number; y: number };
   onZoomChange?: (zoom: number) => void;
   onPanChange?: (pan: { x: number; y: number }) => void;
+  showFogOfWar?: boolean;
 }
 
 function getSvgPathFromPoints(points: Point[]) {
@@ -176,6 +177,7 @@ export function MapGrid({
   pan = { x: 0, y: 0 },
   onZoomChange,
   onPanChange,
+  showFogOfWar = false,
 }: MapGridProps) {
   const cellSize = 40; 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -409,14 +411,14 @@ export function MapGrid({
   }), [paths]);
 
   const lightPolygons = useMemo(() => {
-      if (!isPlayerView) return [];
+      if (!isPlayerView && !showFogOfWar) return [];
       
       const visibilityBoundary = {
           width: mapDimensions.width,
           height: mapDimensions.height
       };
-
-      return tokens.filter(t => t.torch.enabled && t.visible).map(token => {
+      const lightTokens = isPlayerView ? tokens.filter(t => t.visible) : tokens;
+      return lightTokens.filter(t => t.torch.enabled).map(token => {
           const lightSource = { 
               x: (token.x * cellSize + cellSize / 2), 
               y: (token.y * cellSize + cellSize / 2)
@@ -424,7 +426,7 @@ export function MapGrid({
           const torchRadiusInPixels = token.torch.radius * cellSize;
           return calculateVisibilityPolygon(lightSource, wallSegments, visibilityBoundary, torchRadiusInPixels);
       });
-  }, [isPlayerView, tokens, wallSegments, mapDimensions, cellSize]);
+  }, [isPlayerView, showFogOfWar, tokens, wallSegments, mapDimensions, cellSize]);
 
 
   const MapContent = () => {
@@ -575,6 +577,23 @@ export function MapGrid({
           <>
             {showGrid && <GridLayer bright={true} />}
             <MapContent />
+            {showFogOfWar && lightPolygons.length > 0 && (
+              <div className='absolute inset-0 pointer-events-none'>
+                <svg width="100%" height="100%">
+                  <defs>
+                    <mask id="gm-fog-mask">
+                      <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                        <g transform={`scale(${activeZoom}) translate(${activePan.x / activeZoom}, ${activePan.y / activeZoom})`}>
+                          {lightPolygons.map((poly, i) => (
+                              poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="black" />
+                          ))}
+                        </g>
+                    </mask>
+                  </defs>
+                  <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.5)" mask="url(#gm-fog-mask)" />
+                </svg>
+              </div>
+            )}
           </>
       )}
     </div>
