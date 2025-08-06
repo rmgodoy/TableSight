@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Copy, Grid, Undo, Redo, Home } from 'lucide-react';
+import { Copy, Grid, Undo, Redo, Home, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { GmToolbar } from '@/components/gm-toolbar';
 import { TokenPanel } from '@/components/token-panel';
@@ -63,6 +63,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [brushSize, setBrushSize] = useState(10);
     const [tokens, setTokens] = useState<Token[]>([]);
     const [paths, setPaths] = useState<Path[]>([]);
+    const [zoom, setZoom] = useState(1);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
     const { toast } = useToast();
     const storageKey = `tabletop-alchemist-session-${sessionId}`;
 
@@ -226,6 +228,15 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         updateGameState(newTokens, paths);
     }
 
+    const handleZoom = (delta: number) => {
+        setZoom(prevZoom => Math.max(0.1, Math.min(5, prevZoom + delta)));
+    }
+
+    const resetView = () => {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+    }
+
     return (
         <div className="flex h-dvh w-screen bg-background text-foreground overflow-hidden">
             {/* Left Sidebar */}
@@ -275,7 +286,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col p-4 gap-4">
-                <div className="flex-1 relative">
+                <div className="flex-1 relative overflow-hidden bg-card/50 rounded-lg shadow-inner">
                     <MapGrid 
                         showGrid={showGrid} 
                         tokens={tokens}
@@ -287,6 +298,10 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         onTokenMove={handleTokenMove}
                         brushColor={brushColor}
                         brushSize={brushSize}
+                        zoom={zoom}
+                        pan={pan}
+                        onZoomChange={setZoom}
+                        onPanChange={setPan}
                     />
                 </div>
                 <footer className="h-16 flex items-center justify-center p-2 rounded-lg bg-card border border-border">
@@ -295,6 +310,10 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         <Button variant="outline">Redo <Redo className="ml-2" /></Button>
                         <Separator orientation="vertical" className="h-6 mx-4" />
                         <Button variant="outline" onClick={() => setShowGrid(!showGrid)}><Grid className="mr-2" /> Toggle Grid</Button>
+                        <Button variant="outline" onClick={() => handleZoom(0.1)}><ZoomIn className="mr-2" /> Zoom In</Button>
+                        <Button variant="outline" onClick={() => handleZoom(-0.1)}><ZoomOut className="mr-2" /> Zoom Out</Button>
+                        <Button variant="outline" onClick={resetView}><Maximize className="mr-2" /> Reset View</Button>
+                        <Separator orientation="vertical" className="h-6 mx-4" />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="destructive">End Session</Button>

@@ -18,6 +18,10 @@ interface MapGridProps {
   isPlayerView?: boolean;
   brushColor?: string;
   brushSize?: number;
+  zoom?: number;
+  pan?: { x: number; y: number };
+  onZoomChange?: (zoom: number) => void;
+  onPanChange?: (pan: { x: number; y: number }) => void;
 }
 
 function getSvgPathFromPoints(points: Point[]) {
@@ -96,7 +100,6 @@ function calculateVisibilityPolygon(
 
         let closestIntersection: Point | null = null;
         let minDistance = Infinity;
-        let segmentWidth = 0;
 
         for (const segment of segments) {
             const intersection = getIntersection(lightSource, rayEnd, segment.a, segment.b);
@@ -105,7 +108,6 @@ function calculateVisibilityPolygon(
                 if (distance < minDistance) {
                     minDistance = distance;
                     closestIntersection = intersection;
-                    segmentWidth = segment.width;
                 }
             }
         }
@@ -114,7 +116,7 @@ function calculateVisibilityPolygon(
 
         if (closestIntersection) {
             // Heuristic to account for wall thickness: move the intersection point away from the light source
-            const pushAwayDist = segmentWidth / 2;
+            const pushAwayDist = segments.find(s => s.a === closestIntersection || s.b === closestIntersection)?.width / 2 || 0;
             minDistance += pushAwayDist;
         }
 
@@ -155,14 +157,20 @@ export function MapGrid({
   isPlayerView = false,
   brushColor = '#000000',
   brushSize = 10,
+  zoom = 1,
+  pan = { x: 0, y: 0 },
+  onZoomChange,
+  onPanChange,
 }: MapGridProps) {
   const cellSize = 40; 
+  const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
-  const [dragPosition, setDragPosition] = useState<{x: number, y: number} | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (gridRef.current) {
@@ -183,38 +191,64 @@ export function MapGrid({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const getPointFromEvent = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
-    if (!gridRef.current) return { x: 0, y: 0 };
-    const rect = gridRef.current.getBoundingClientRect();
+  const getTransformedPoint = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
+    if (!containerRef.current) return { x: 0, y: 0 };
+    const rect = containerRef.current.getBoundingClientRect();
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: (e.clientX - rect.left - pan.x) / zoom,
+      y: (e.clientY - rect.top - pan.y) / zoom,
     };
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isPlayerView) return;
+    
+    if (e.button === 0 && e.altKey) { // For MacOS trackpad pan
+        setIsPanning(true);
+        panStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+        return;
+    }
+    
+    const point = getTransformedPoint(e);
 
     if (selectedTool === 'wall' || selectedTool === 'detail') {
       setIsDrawing(true);
-      setCurrentPath([getPointFromEvent(e)]);
+      setCurrentPath([point]);
     } else if (selectedTool === 'erase') {
-        onErase(getPointFromEvent(e));
+        onErase(point);
     } else if (selectedTool === 'add-pc' || selectedTool === 'add-enemy') {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const gridX = Math.floor((e.clientX - rect.left) / cellSize);
-        const gridY = Math.floor((e.clientY - rect.top) / cellSize);
+        const gridX = Math.floor(point.x / cellSize);
+        const gridY = Math.floor(point.y / cellSize);
         onMapClick(gridX, gridY);
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPlayerView || !isDrawing || (selectedTool !== 'wall' && selectedTool !== 'detail')) return;
-    setCurrentPath(prevPath => [...prevPath, getPointFromEvent(e)]);
+    if (isPlayerView) return;
+     if (isPanning && onPanChange) {
+      onPanChange({
+        x: e.clientX - panStartRef.current.x,
+        y: e.clientY - panStartRef.current.y
+      });
+      return;
+    }
+
+    if (!isDrawing || (selectedTool !== 'wall' && selectedTool !== 'detail')) return;
+    setCurrentPath(prevPath => [...prevPath, getTransformedPoint(e)]);
   };
 
   const handleMouseUp = () => {
-    if (isPlayerView || !isDrawing) return;
+    if (isPlayerView) {
+      setIsPanning(false);
+      return;
+    };
+    
+    if(isPanning) {
+        setIsPanning(false);
+        return;
+    }
+
+    if (!isDrawing) return;
     setIsDrawing(false);
     if (currentPath.length > 1) {
         onNewPath({ 
@@ -231,25 +265,23 @@ export function MapGrid({
     if (isPlayerView || selectedTool !== 'select' || !onTokenMove) return;
     e.stopPropagation(); 
     setDraggingToken(token);
-    setDragPosition({ x: e.clientX, y: e.clientY });
   };
 
   const handleGlobalMouseMove = (e: MouseEvent) => {
-    if (!draggingToken || !gridRef.current || !onTokenMove) return;
-    setDragPosition({ x: e.clientX, y: e.clientY });
+    if (!draggingToken || !onTokenMove) return;
+    // We don't update position during drag for performance, only on drop
   };
 
   const handleGlobalMouseUp = (e: MouseEvent) => {
-    if (!draggingToken || !gridRef.current || !onTokenMove) return;
+    if (!draggingToken || !onTokenMove) return;
 
-    const rect = gridRef.current.getBoundingClientRect();
+    const point = getTransformedPoint(e);
     // Snap to grid
-    const x = Math.floor((e.clientX - rect.left) / cellSize);
-    const y = Math.floor((e.clientY - rect.top) / cellSize);
+    const x = Math.floor(point.x / cellSize);
+    const y = Math.floor(point.y / cellSize);
 
     onTokenMove(draggingToken.id, x, y);
     setDraggingToken(null);
-    setDragPosition(null);
   };
 
   useEffect(() => {
@@ -266,14 +298,47 @@ export function MapGrid({
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draggingToken]);
+  }, [draggingToken, pan, zoom]);
 
-  const renderToken = (token: Token, isPreview = false) => {
+  useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if(e.key === ' ' && !isPanning) {
+            e.preventDefault();
+            setIsPanning(true);
+            if(containerRef.current) {
+                // This is a bit of a hack to get the initial mouse position
+                // We don't have the event here, so we assume (0,0) and adjust on first move
+                panStartRef.current = { x: 0 - pan.x, y: 0 - pan.y };
+            }
+        }
+      };
+      const handleKeyUp = (e: KeyboardEvent) => {
+          if(e.key === ' ') {
+              setIsPanning(false);
+          }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+
+      return () => {
+          window.removeEventListener('keydown', handleKeyDown);
+          window.removeEventListener('keyup', handleKeyUp);
+      }
+  }, [isPanning, pan.x, pan.y]);
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+      if (onZoomChange) {
+          const delta = e.deltaY > 0 ? -0.1 : 0.1;
+          onZoomChange(Math.max(0.1, Math.min(5, zoom + delta)));
+      }
+  }
+
+  const renderToken = (token: Token) => {
     return (
        <div
         className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center",
-          isPreview && "scale-110"
+          "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center"
         )}
         style={{ 
           backgroundColor: token.color, 
@@ -316,12 +381,14 @@ export function MapGrid({
 
   return (
     <div 
-      ref={gridRef}
+      ref={containerRef}
       className={cn(
-        "w-full h-full bg-card/50 rounded-lg shadow-inner flex items-center justify-center relative overflow-hidden",
-        !isPlayerView && {
+        "w-full h-full relative overflow-hidden",
+        isPanning && "cursor-grabbing",
+        !isPlayerView && !isPanning && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
-            'cursor-grab': draggingToken,
+            'cursor-grab': selectedTool === 'select' && !draggingToken,
+            'cursor-grabbing': selectedTool === 'select' && draggingToken,
             'cursor-cell': selectedTool === 'wall' || selectedTool === 'detail',
             'cursor-help': selectedTool === 'erase',
         }
@@ -329,90 +396,80 @@ export function MapGrid({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp} // End drawing if mouse leaves canvas
+      onMouseLeave={handleMouseUp} // End drawing/panning if mouse leaves
+      onWheel={handleWheel}
       >
-
-      {/* Base Grid */}
-      {showGrid && <GridLines bright={!isPlayerView} />}
-      
-      {/* Container for masked elements */}
       <div 
-        className="absolute inset-0"
-        style={{
-          mask: isPlayerView ? 'url(#fog-mask)' : 'none',
-          WebkitMask: isPlayerView ? 'url(#fog-mask)' : 'none',
-        }}
-        >
+        ref={gridRef}
+        className="absolute inset-0 origin-top-left"
+        style={{ transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)` }}
+      >
+        {/* Base Grid */}
+        {showGrid && <GridLines bright={!isPlayerView} />}
         
-        {/* Bright Grid (for revealed areas in player view) */}
-        {showGrid && isPlayerView && <GridLines bright />}
+        {/* Container for masked elements */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            mask: isPlayerView ? 'url(#fog-mask)' : 'none',
+            WebkitMask: isPlayerView ? 'url(#fog-mask)' : 'none',
+          }}
+          >
+          
+          {/* Bright Grid (for revealed areas in player view) */}
+          {showGrid && isPlayerView && <GridLines bright />}
 
-        {/* Drawing Layer */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            {paths.map((path, i) => (
-                <path 
-                    key={i} 
-                    d={getSvgPathFromPoints(path.points)} 
-                    stroke={path.color}
-                    strokeWidth={path.width}
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                />
-            ))}
-            {isDrawing && currentPath.length > 0 && (
-                <path 
-                    d={getSvgPathFromPoints(currentPath)} 
-                    stroke={brushColor}
-                    strokeWidth={brushSize}
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                />
-            )}
-        </svg>
+          {/* Drawing Layer */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+              {paths.map((path, i) => (
+                  <path 
+                      key={i} 
+                      d={getSvgPathFromPoints(path.points)} 
+                      stroke={path.color}
+                      strokeWidth={path.width}
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                  />
+              ))}
+              {isDrawing && currentPath.length > 0 && (
+                  <path 
+                      d={getSvgPathFromPoints(currentPath)} 
+                      stroke={brushColor}
+                      strokeWidth={brushSize}
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                  />
+              )}
+          </svg>
 
+        </div>
+        
+        {/* Tokens Layer (always visible, above drawings and grid) */}
+        <div className="absolute inset-0">
+          {tokens.map(token => (
+            <div 
+              key={token.id}
+              onMouseDown={(e) => handleTokenMouseDown(e, token)}
+              className={cn(
+                  "absolute flex items-center justify-center transition-opacity duration-100 ease-in-out",
+                  draggingToken?.id === token.id && "opacity-50"
+              )}
+              style={{
+                left: token.x * cellSize,
+                top: token.y * cellSize,
+                width: cellSize,
+                height: cellSize,
+                opacity: isPlayerView ? (token.visible ? 1 : 0) : 1
+              }}
+            >
+              {renderToken(token)}
+            </div>
+          ))}
+        </div>
       </div>
       
-      {/* Tokens Layer (always visible, above drawings and grid) */}
-      <div className="absolute inset-0">
-        {tokens.map(token => (
-          <div 
-            key={token.id}
-            onMouseDown={(e) => handleTokenMouseDown(e, token)}
-            className={cn(
-                "absolute flex items-center justify-center transition-opacity duration-100 ease-in-out",
-                selectedTool === 'select' && !isPlayerView && "cursor-grab",
-                draggingToken?.id === token.id && "opacity-50"
-            )}
-            style={{
-              left: token.x * cellSize,
-              top: token.y * cellSize,
-              width: cellSize,
-              height: cellSize,
-              opacity: isPlayerView ? (token.visible ? 1 : 0) : 1
-            }}
-          >
-            {renderToken(token)}
-          </div>
-        ))}
-      </div>
-
-       {/* Floating token for drag preview */}
-       {!isPlayerView && draggingToken && dragPosition && gridRef.current && (
-        <div
-          className="absolute flex items-center justify-center pointer-events-none z-20"
-          style={{
-            left: dragPosition.x - gridRef.current.getBoundingClientRect().left - (cellSize / 2),
-            top: dragPosition.y - gridRef.current.getBoundingClientRect().top - (cellSize / 2),
-            width: cellSize,
-            height: cellSize,
-          }}
-        >
-          {renderToken(draggingToken, true)}
-        </div>
-      )}
-
       {/* SVG mask for player view fog of war */}
       {isPlayerView && (
         <svg width="0" height="0" style={{ position: 'absolute' }}>
@@ -430,7 +487,7 @@ export function MapGrid({
                 const torchRadiusInPixels = token.torch.radius * cellSize;
                 
                 const boundarySegments = [
-                    ...wallSegments,
+                    ...wallSegments.filter(s => s.width > 0), // Filter out zero-width segments for performance
                     // Add map boundaries as segments
                     { a: { x: 0, y: 0 }, b: { x: mapDimensions.width, y: 0 }, width: 0 },
                     { a: { x: mapDimensions.width, y: 0 }, b: { x: mapDimensions.width, y: mapDimensions.height }, width: 0 },
@@ -451,8 +508,3 @@ export function MapGrid({
     </div>
   );
 }
-    
-
-    
-
-
