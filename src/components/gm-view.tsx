@@ -30,6 +30,7 @@ export type Point = { x: number; y: number };
 export type Path = {
     points: Point[];
     color: string;
+    width: number;
     blocksLight: boolean;
 };
 
@@ -59,6 +60,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [showGrid, setShowGrid] = useState(true);
     const [selectedTool, setSelectedTool] = useState<Tool>('select');
     const [brushColor, setBrushColor] = useState('#000000');
+    const [brushSize, setBrushSize] = useState(10);
     const [tokens, setTokens] = useState<Token[]>([]);
     const [paths, setPaths] = useState<Path[]>([]);
     const { toast } = useToast();
@@ -93,10 +95,13 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 }));
                 const updatedPaths = (gameState.paths || []).map(p => {
                     if (Array.isArray(p)) {
-                        return { points: p, color: '#000000', blocksLight: true };
+                        return { points: p, color: '#000000', width: 10, blocksLight: true };
                     }
                     if (typeof p.blocksLight === 'undefined') {
                         return { ...p, blocksLight: true };
+                    }
+                    if (typeof p.width === 'undefined') {
+                        return { ...p, width: 10 };
                     }
                     return p;
                 });
@@ -252,6 +257,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         onToolSelect={setSelectedTool}
                         brushColor={brushColor}
                         onBrushColorChange={setBrushColor}
+                        brushSize={brushSize}
+                        onBrushSizeChange={setBrushSize}
                     />
                     <TokenPanel 
                         tokens={tokens} 
@@ -279,6 +286,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         selectedTool={selectedTool}
                         onTokenMove={handleTokenMove}
                         brushColor={brushColor}
+                        brushSize={brushSize}
                     />
                 </div>
                 <footer className="h-16 flex items-center justify-center p-2 rounded-lg bg-card border border-border">

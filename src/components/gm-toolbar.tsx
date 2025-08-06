@@ -6,12 +6,16 @@ import { Separator } from '@/components/ui/separator';
 import { MousePointer, Brush, CircleUserRound, Shield, Eraser, PenLine } from 'lucide-react';
 import type { Tool } from './gm-view';
 import { cn } from '@/lib/utils';
+import { Slider } from './ui/slider';
+import { Label } from './ui/label';
 
 interface GmToolbarProps {
     selectedTool: Tool;
     onToolSelect: (tool: Tool) => void;
     brushColor: string;
     onBrushColorChange: (color: string) => void;
+    brushSize: number;
+    onBrushSizeChange: (size: number) => void;
 }
 
 const colorPalette = [
@@ -20,7 +24,14 @@ const colorPalette = [
     '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'
 ];
 
-export function GmToolbar({ selectedTool, onToolSelect, brushColor, onBrushColorChange }: GmToolbarProps) {
+export function GmToolbar({ 
+    selectedTool, 
+    onToolSelect, 
+    brushColor, 
+    onBrushColorChange,
+    brushSize,
+    onBrushSizeChange
+}: GmToolbarProps) {
     const tools: { id: Tool, label: string, icon: React.ReactNode }[] = [
         { id: 'select', label: 'Select', icon: <MousePointer /> },
         { id: 'wall', label: 'Wall', icon: <Brush /> },
@@ -55,22 +66,38 @@ export function GmToolbar({ selectedTool, onToolSelect, brushColor, onBrushColor
                     </div>
                 </div>
                 {(selectedTool === 'wall' || selectedTool === 'detail') && (
-                    <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-2">Brush Color</h3>
-                        <div className="grid grid-cols-6 gap-2">
-                            {colorPalette.map(color => (
-                                <button
-                                    key={color}
-                                    type="button"
-                                    className={cn(
-                                        "w-full h-8 rounded-md border-2 transition-all",
-                                        brushColor === color ? 'border-primary' : 'border-transparent hover:border-muted-foreground/50'
-                                    )}
-                                    style={{ backgroundColor: color }}
-                                    onClick={() => onBrushColorChange(color)}
-                                    aria-label={`Select color ${color}`}
+                    <div className='space-y-4'>
+                        <div>
+                            <Label className="text-sm font-medium text-muted-foreground mb-2">Brush Color</Label>
+                            <div className="grid grid-cols-6 gap-2 pt-2">
+                                {colorPalette.map(color => (
+                                    <button
+                                        key={color}
+                                        type="button"
+                                        className={cn(
+                                            "w-full h-8 rounded-md border-2 transition-all",
+                                            brushColor === color ? 'border-primary' : 'border-transparent hover:border-muted-foreground/50'
+                                        )}
+                                        style={{ backgroundColor: color }}
+                                        onClick={() => onBrushColorChange(color)}
+                                        aria-label={`Select color ${color}`}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                         <div>
+                            <Label htmlFor='brush-size-slider' className="text-sm font-medium text-muted-foreground">Brush Size</Label>
+                            <div className='flex items-center gap-2 pt-2'>
+                                <Slider
+                                    id="brush-size-slider"
+                                    min={2}
+                                    max={50}
+                                    step={1}
+                                    value={[brushSize]}
+                                    onValueChange={(value) => onBrushSizeChange(value[0])}
                                 />
-                            ))}
+                                <span className='text-sm font-bold w-8 text-center'>{brushSize}</span>
+                            </div>
                         </div>
                     </div>
                 )}

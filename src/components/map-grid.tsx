@@ -17,6 +17,7 @@ interface MapGridProps {
   onTokenMove?: (tokenId: string, x: number, y: number) => void;
   isPlayerView?: boolean;
   brushColor?: string;
+  brushSize?: number;
 }
 
 function getSvgPathFromPoints(points: Point[]) {
@@ -138,6 +139,7 @@ export function MapGrid({
   onTokenMove,
   isPlayerView = false,
   brushColor = '#000000',
+  brushSize = 10,
 }: MapGridProps) {
   const cellSize = 40; 
   const gridRef = useRef<HTMLDivElement>(null);
@@ -146,7 +148,6 @@ export function MapGrid({
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
-  const strokeWidth = 10; 
 
   useEffect(() => {
     if (gridRef.current) {
@@ -204,6 +205,7 @@ export function MapGrid({
         onNewPath({ 
             points: currentPath, 
             color: brushColor,
+            width: brushSize,
             blocksLight: selectedTool === 'wall'
         });
     }
@@ -335,7 +337,7 @@ export function MapGrid({
                     key={i} 
                     d={getSvgPathFromPoints(path.points)} 
                     stroke={path.color}
-                    strokeWidth={strokeWidth}
+                    strokeWidth={path.width}
                     fill="none"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -345,7 +347,7 @@ export function MapGrid({
                 <path 
                     d={getSvgPathFromPoints(currentPath)} 
                     stroke={brushColor}
-                    strokeWidth={strokeWidth}
+                    strokeWidth={brushSize}
                     fill="none"
                     strokeLinecap="round"
                     strokeLinejoin="round"

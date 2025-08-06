@@ -22,10 +22,13 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
         }));
         const updatedPaths = (newState.paths || []).map(p => {
           if (Array.isArray(p)) {
-              return { points: p, color: '#000000', blocksLight: true };
+              return { points: p, color: '#000000', width: 10, blocksLight: true };
           }
            if (typeof p.blocksLight === 'undefined') {
               return { ...p, blocksLight: true };
+          }
+          if (typeof p.width === 'undefined') {
+              return { ...p, width: 10 };
           }
           return p;
         });
@@ -50,10 +53,13 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
         }));
         const updatedPaths = (gameState.paths || []).map(p => {
           if (Array.isArray(p)) {
-              return { points: p, color: '#000000', blocksLight: true };
+              return { points: p, color: '#000000', width: 10, blocksLight: true };
           }
            if (typeof p.blocksLight === 'undefined') {
               return { ...p, blocksLight: true };
+          }
+          if (typeof p.width === 'undefined') {
+              return { ...p, width: 10 };
           }
           return p;
         });
