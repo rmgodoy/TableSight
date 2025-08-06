@@ -24,7 +24,41 @@ function getSvgPathFromPoints(points: Point[]) {
   return `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
 }
 
-// Helper function to calculate the visibility polygon
+function getIntersection(ray_p1: Point, ray_p2: Point, seg_p1: Point, seg_p2: Point): Point | null {
+    const r_px = ray_p1.x;
+    const r_py = ray_p1.y;
+    const r_dx = ray_p2.x - ray_p1.x;
+    const r_dy = ray_p2.y - ray_p1.y;
+
+    const s_px = seg_p1.x;
+    const s_py = seg_p1.y;
+    const s_dx = seg_p2.x - seg_p1.x;
+    const s_dy = seg_p2.y - seg_p1.y;
+
+    const r_mag = Math.sqrt(r_dx * r_dx + r_dy * r_dy);
+    const s_mag = Math.sqrt(s_dx * s_dx + s_dy * s_dy);
+
+    if (r_dx / r_mag === s_dx / s_mag && r_dy / r_mag === s_dy / s_mag) {
+        // PARALLEL
+        return null;
+    }
+
+    const T2 = (r_dx * (s_py - r_py) + r_dy * (r_px - s_px)) / (s_dx * r_dy - s_dy * r_dx);
+    const T1 = (s_px + s_dx * T2 - r_px) / r_dx;
+
+    // Epsilon to handle floating point issues
+    const epsilon = 1e-6;
+
+    if (T1 >= 0 && (T2 >= -epsilon && T2 <= 1 + epsilon)) {
+        return {
+            x: r_px + r_dx * T1,
+            y: r_py + r_dy * T1
+        };
+    }
+
+    return null;
+}
+
 function calculateVisibilityPolygon(lightSource: Point, segments: { a: Point, b: Point }[], mapBounds: { width: number, height: number }): Point[] {
     const allPoints: Point[] = [];
     for (const segment of segments) {
@@ -52,12 +86,13 @@ function calculateVisibilityPolygon(lightSource: Point, segments: { a: Point, b:
     for (const angle of uniqueAngles) {
         const dx = Math.cos(angle);
         const dy = Math.sin(angle);
+        const rayEnd = { x: lightSource.x + dx, y: lightSource.y + dy };
 
         let closestIntersection: Point | null = null;
         let minDistance = Infinity;
 
         for (const segment of segments) {
-            const intersection = getIntersection(lightSource, { x: lightSource.x + dx, y: lightSource.y + dy }, segment.a, segment.b);
+            const intersection = getIntersection(lightSource, rayEnd, segment.a, segment.b);
             if (intersection) {
                 const distance = Math.hypot(intersection.x - lightSource.x, intersection.y - lightSource.y);
                 if (distance < minDistance) {
@@ -81,21 +116,6 @@ function calculateVisibilityPolygon(lightSource: Point, segments: { a: Point, b:
 }
 
 
-function getIntersection(a1: Point, a2: Point, b1: Point, b2: Point): Point | null {
-    const d = (a2.x - a1.x) * (b2.y - b1.y) - (a2.y - a1.y) * (b2.x - b1.x);
-    if (d === 0) return null;
-    const t = ((b1.x - a1.x) * (b2.y - b1.y) - (b1.y - a1.y) * (b2.x - b1.x)) / d;
-    const u = -((a2.x - a1.x) * (b1.y - a1.y) - (a2.y - a1.y) * (b1.x - a1.x)) / d;
-    if (t >= 0 && u >= 0 && u <= 1) {
-        return {
-            x: a1.x + t * (a2.x - a1.x),
-            y: a1.y + t * (a2.y - a1.y),
-        };
-    }
-    return null;
-}
-
-
 export function MapGrid({ 
   showGrid, 
   tokens, 
@@ -115,7 +135,7 @@ export function MapGrid({
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
-  const strokeWidth = 10; // Make walls thicker to help with visibility calculation
+  const strokeWidth = 10; 
 
   useEffect(() => {
     if (gridRef.current) {
@@ -279,7 +299,7 @@ export function MapGrid({
       >
 
       {/* Base Grid */}
-      {showGrid && <GridLines bright={!isPlayerView && !isPlayerView} />}
+      {showGrid && <GridLines bright={!isPlayerView || !isPlayerView} />}
       
       {/* Container for masked elements */}
       <div 
@@ -374,7 +394,16 @@ export function MapGrid({
                     y: token.y * cellSize + cellSize / 2 
                 };
                 
-                const visibilityPolygon = calculateVisibilityPolygon(lightSource, wallSegments, mapDimensions);
+                const boundarySegments = [
+                    ...wallSegments,
+                    // Add map boundaries as segments
+                    { a: { x: 0, y: 0 }, b: { x: mapDimensions.width, y: 0 } },
+                    { a: { x: mapDimensions.width, y: 0 }, b: { x: mapDimensions.width, y: mapDimensions.height } },
+                    { a: { x: mapDimensions.width, y: mapDimensions.height }, b: { x: 0, y: mapDimensions.height } },
+                    { a: { x: 0, y: mapDimensions.height }, b: { x: 0, y: 0 } },
+                ];
+
+                const visibilityPolygon = calculateVisibilityPolygon(lightSource, boundarySegments, mapDimensions);
                 
                 if (visibilityPolygon.length === 0) return null;
 
