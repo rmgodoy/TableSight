@@ -540,8 +540,8 @@ export function MapGrid({
                 className='absolute inset-0 origin-top-left'
                 style={{ 
                     transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
-                    width: mapDimensions.width / activeZoom,
-                    height: mapDimensions.height / activeZoom,
+                    width: mapDimensions.width,
+                    height: mapDimensions.height,
                 }}
             >
                 {/* Base layer (dimmed, always visible) */}
@@ -566,11 +566,11 @@ export function MapGrid({
             
             <svg width="0" height="0" style={{ position: 'absolute' }}>
               <defs>
-                <mask id="fog-mask" maskContentUnits="objectBoundingBox">
-                  <rect x="0" y="0" width="1" height="1" fill="black" />
-                   <g transform={`scale(${1/mapDimensions.width}, ${1/mapDimensions.height})`}>
+                <mask id="fog-mask" maskContentUnits="userSpaceOnUse">
+                  <rect x="0" y="0" width="100%" height="100%" fill="black" />
+                   <g transform={`translate(${activePan.x}, ${activePan.y}) scale(${activeZoom})`}>
                       {lightPolygons.map((poly, i) => (
-                          poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" transform={`translate(${activePan.x}, ${activePan.y}) scale(${activeZoom})`} />
+                          poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
                       ))}
                    </g>
                 </mask>
