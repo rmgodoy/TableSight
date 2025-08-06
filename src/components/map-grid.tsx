@@ -497,7 +497,7 @@ export function MapGrid({
       style={{
         width: '100%',
         height: '100%',
-        backgroundPosition: `${activePan.x}px ${activePan.y}px`,
+        backgroundPosition: `${activePan.x % (cellSize * activeZoom)}px ${activePan.y % (cellSize * activeZoom)}px`,
         backgroundSize: `${cellSize * activeZoom}px ${cellSize * activeZoom}px`,
         backgroundImage: bright
           ? `linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px)`
@@ -566,11 +566,11 @@ export function MapGrid({
             
             <svg width="0" height="0" style={{ position: 'absolute' }}>
               <defs>
-                <mask id="fog-mask">
-                  <rect x="0" y="0" width="100%" height="100%" fill="black" />
-                   <g transform={`scale(${activeZoom}) translate(${activePan.x / activeZoom}, ${activePan.y / activeZoom})`}>
+                <mask id="fog-mask" maskContentUnits="objectBoundingBox">
+                  <rect x="0" y="0" width="1" height="1" fill="black" />
+                   <g transform={`scale(${1/mapDimensions.width}, ${1/mapDimensions.height})`}>
                       {lightPolygons.map((poly, i) => (
-                          poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
+                          poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x * activeZoom + activePan.x} ${p.y * activeZoom + activePan.y}`).join(' L ')} Z`} fill="white" />
                       ))}
                    </g>
                 </mask>
