@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Upload, Palette, Torch, Minus, Plus } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Minus, Plus } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -92,17 +92,6 @@ export function TokenPanel({
                                             </PopoverContent>
                                         </Popover>
 
-                                        <Button variant="ghost" size="icon" onClick={() => hiddenFileInputs.current[token.id]?.click()}>
-                                            <Upload className="h-4 w-4" />
-                                        </Button>
-                                        <input
-                                            ref={el => hiddenFileInputs.current[token.id] = el}
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={(e) => handleIconUpload(token.id, e)}
-                                        />
-
                                         <Button 
                                             variant="ghost" 
                                             size="icon"
@@ -124,7 +113,7 @@ export function TokenPanel({
                                 </div>
                                 <div className="flex items-center justify-between pl-10 pr-1">
                                     <div className="flex items-center gap-2">
-                                        <Torch className="h-4 w-4 text-muted-foreground" />
+                                        <Flame className="h-4 w-4 text-muted-foreground" />
                                         <Label htmlFor={`torch-switch-${token.id}`} className="text-sm text-muted-foreground">
                                             Torch
                                         </Label>
