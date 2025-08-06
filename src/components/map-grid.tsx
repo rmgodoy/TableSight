@@ -512,7 +512,7 @@ export function MapGrid({
       ref={containerRef}
       className={cn(
         "w-full h-full relative",
-        "bg-background",
+        isPlayerView ? "bg-transparent" : "bg-background",
         !isPlayerView && (isPanning ? "cursor-grabbing" : "cursor-grab"),
         !isPlayerView && !isPanning && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
