@@ -22,8 +22,6 @@ interface MapGridProps {
   pan?: { x: number; y: number };
   onZoomChange?: (zoom: number) => void;
   onPanChange?: (pan: { x: number; y: number }) => void;
-  playerZoom?: number;
-  playerPan?: { x: number, y: number };
 }
 
 function getSvgPathFromPoints(points: Point[]) {
@@ -89,9 +87,16 @@ function calculateVisibilityPolygon(
     }, [] as Point[]);
 
     const uniqueAngles: number[] = [];
+    // Add rays for corners
     for (const point of uniquePoints) {
         const angle = Math.atan2(point.y - lightSource.y, point.x - lightSource.x);
         uniqueAngles.push(angle, angle - 1e-5, angle + 1e-5);
+    }
+
+    // Add filler rays for a circular shape
+    const FILLER_ANGLE_STEP = 8; // in degrees
+    for (let i = 0; i < 360; i += FILLER_ANGLE_STEP) {
+      uniqueAngles.push((i * Math.PI) / 180);
     }
     
     const intersects: Point[] = [];
@@ -164,8 +169,6 @@ export function MapGrid({
   pan = { x: 0, y: 0 },
   onZoomChange,
   onPanChange,
-  playerZoom,
-  playerPan,
 }: MapGridProps) {
   const cellSize = 40; 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -175,9 +178,19 @@ export function MapGrid({
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0 });
-  
-  const activeZoom = isPlayerView ? (playerZoom ?? 1) : zoom;
-  const activePan = isPlayerView ? (playerPan ?? { x: 0, y: 0 }) : pan;
+  const [activePan, setActivePan] = useState(pan);
+  const [activeZoom, setActiveZoom] = useState(zoom);
+
+  useEffect(() => {
+    if(isPlayerView) {
+        const playerState = JSON.parse(localStorage.getItem(`tabletop-alchemist-session-${(window.location.pathname).split('/')[2]}`) || '{}');
+        setActivePan(playerState.playerPan || {x: 0, y: 0});
+        setActiveZoom(playerState.playerZoom || 1);
+    } else {
+        setActivePan(pan);
+        setActiveZoom(zoom);
+    }
+  }, [isPlayerView, pan, zoom])
 
   useEffect(() => {
     const updateMapDimensions = () => {
@@ -236,10 +249,15 @@ export function MapGrid({
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
      if (isPanning && onPanChange) {
-      onPanChange({
+      const newPan = {
         x: e.clientX - panStartRef.current.x,
         y: e.clientY - panStartRef.current.y
-      });
+      };
+      if (isPlayerView) {
+        setActivePan(newPan);
+      } else {
+        onPanChange(newPan);
+      }
       return;
     }
     if (isPlayerView) return;
@@ -337,15 +355,24 @@ export function MapGrid({
           const mouseX = e.clientX - rect.left;
           const mouseY = e.clientY - rect.top;
           
-          const newZoom = Math.max(0.1, Math.min(5, zoom + delta));
+          const newZoom = Math.max(0.1, Math.min(5, activeZoom + delta));
           
           if(onPanChange) {
-            const newPanX = mouseX - (mouseX - pan.x) * (newZoom / zoom);
-            const newPanY = mouseY - (mouseY - pan.y) * (newZoom / zoom);
-            onPanChange({x: newPanX, y: newPanY});
+            const newPanX = mouseX - (mouseX - activePan.x) * (newZoom / activeZoom);
+            const newPanY = mouseY - (mouseY - activePan.y) * (newZoom / activeZoom);
+            const newPan = {x: newPanX, y: newPanY};
+            if(isPlayerView) {
+                setActivePan(newPan);
+            } else {
+                onPanChange(newPan);
+            }
           }
           
-          onZoomChange(newZoom);
+          if(isPlayerView) {
+            setActiveZoom(newZoom);
+          } else {
+            onZoomChange(newZoom);
+          }
       }
   }
 
@@ -414,9 +441,9 @@ export function MapGrid({
     }
     
     let renderTokens = tokens;
-    if (forPlayer && !revealed) {
-      // In the fog, only show PCs
-      renderTokens = tokens.filter(t => t.type === 'PC');
+    if(forPlayer && !revealed) {
+        // In the fog, only show PC tokens
+        renderTokens = tokens.filter(t => t.type === 'PC');
     } else if (forPlayer && revealed) {
       // In the light, show all visible tokens
       renderTokens = tokens.filter(t => t.visible);
@@ -442,6 +469,9 @@ export function MapGrid({
                         fill="none"
                         strokeLinecap="round"
                         strokeLinejoin="round"
+                        style={{
+                            opacity: forPlayer ? (revealed ? 1 : 0) : 1
+                        }}
                     />
                 ))}
                 {!forPlayer && isDrawing && currentPath.length > 0 && (
@@ -469,7 +499,7 @@ export function MapGrid({
                             top: token.y * cellSize,
                             width: cellSize,
                             height: cellSize,
-                            opacity: isPlayerView ? (token.visible ? 1 : 0) : 1
+                            opacity: (forPlayer && !revealed) ? 0 : (token.visible ? 1 : 0)
                         }}
                     >
                         {renderToken(token)}
