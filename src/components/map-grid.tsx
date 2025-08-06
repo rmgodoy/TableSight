@@ -442,30 +442,28 @@ export function MapGrid({
                   />
               )}
           </svg>
-
-        </div>
-        
-        {/* Tokens Layer (always visible, above drawings and grid) */}
-        <div className="absolute inset-0">
-          {tokens.map(token => (
-            <div 
-              key={token.id}
-              onMouseDown={(e) => handleTokenMouseDown(e, token)}
-              className={cn(
-                  "absolute flex items-center justify-center transition-opacity duration-100 ease-in-out",
-                  draggingToken?.id === token.id && "opacity-50"
-              )}
-              style={{
-                left: token.x * cellSize,
-                top: token.y * cellSize,
-                width: cellSize,
-                height: cellSize,
-                opacity: isPlayerView ? (token.visible ? 1 : 0) : 1
-              }}
-            >
-              {renderToken(token)}
+           {/* Tokens Layer */}
+            <div className="absolute inset-0">
+            {tokens.map(token => (
+                <div 
+                key={token.id}
+                onMouseDown={(e) => handleTokenMouseDown(e, token)}
+                className={cn(
+                    "absolute flex items-center justify-center transition-opacity duration-100 ease-in-out",
+                    draggingToken?.id === token.id && "opacity-50"
+                )}
+                style={{
+                    left: token.x * cellSize,
+                    top: token.y * cellSize,
+                    width: cellSize,
+                    height: cellSize,
+                    opacity: isPlayerView ? (token.visible ? 1 : 0) : 1
+                }}
+                >
+                {renderToken(token)}
+                </div>
+            ))}
             </div>
-          ))}
         </div>
       </div>
       
@@ -526,3 +524,5 @@ export function MapGrid({
     </div>
   );
 }
+
+    
