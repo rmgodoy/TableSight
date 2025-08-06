@@ -418,13 +418,13 @@ export function MapGrid({
 
       return tokens.filter(t => t.torch.enabled && t.visible).map(token => {
           const lightSource = { 
-              x: (token.x * cellSize + cellSize / 2) * activeZoom + activePan.x, 
-              y: (token.y * cellSize + cellSize / 2) * activeZoom + activePan.y
+              x: (token.x * cellSize + cellSize / 2), 
+              y: (token.y * cellSize + cellSize / 2)
           };
-          const torchRadiusInPixels = token.torch.radius * cellSize * activeZoom;
+          const torchRadiusInPixels = token.torch.radius * cellSize;
           return calculateVisibilityPolygon(lightSource, wallSegments, visibilityBoundary, torchRadiusInPixels);
       });
-  }, [isPlayerView, tokens, wallSegments, mapDimensions, activeZoom, activePan, cellSize]);
+  }, [isPlayerView, tokens, wallSegments, mapDimensions, cellSize]);
 
 
   const MapContent = () => {
@@ -507,8 +507,8 @@ export function MapGrid({
         backgroundPosition: `${activePan.x % (cellSize * activeZoom)}px ${activePan.y % (cellSize * activeZoom)}px`,
         backgroundSize: `${cellSize * activeZoom}px ${cellSize * activeZoom}px`,
         backgroundImage: bright
-          ? `linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px)`
-          : `linear-gradient(to right, hsl(var(--border) / 0.1) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.1) 1px, transparent 1px)`,
+          ? `linear-gradient(to right, hsl(var(--border) / 0.5) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.5) 1px, transparent 1px)`
+          : `linear-gradient(to right, hsl(var(--border) / 0.2) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.2) 1px, transparent 1px)`,
       }}
     />
   );
@@ -560,9 +560,9 @@ export function MapGrid({
             
             <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }}>
               <defs>
-                <mask id="fog-mask" maskUnits="userSpaceOnUse">
+                <mask id="fog-mask" maskContentUnits="userSpaceOnUse">
                   <rect x="0" y="0" width="100%" height="100%" fill="black" />
-                    <g>
+                    <g transform={`scale(${activeZoom}) translate(${activePan.x / activeZoom}, ${activePan.y / activeZoom})`}>
                       {lightPolygons.map((poly, i) => (
                           poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
                       ))}
@@ -582,3 +582,5 @@ export function MapGrid({
 }
 
   
+
+    
