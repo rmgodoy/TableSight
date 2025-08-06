@@ -2,13 +2,12 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { Slider } from './ui/slider';
 
 interface TokenPanelProps {
     tokens: Token[];
@@ -119,14 +118,16 @@ export function TokenPanel({
                                     
                                     {token.torch.enabled && (
                                     <div className="flex items-center gap-2">
-                                        <Slider
+                                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => onTokenTorchRadiusChange(token.id, Math.max(1, token.torch.radius - 1))}><Minus/></Button>
+                                        <Input
+                                            type="number"
                                             min={1}
                                             max={999}
-                                            step={1}
-                                            value={[token.torch.radius]}
-                                            onValueChange={(value) => onTokenTorchRadiusChange(token.id, value[0])}
+                                            value={token.torch.radius}
+                                            onChange={(e) => onTokenTorchRadiusChange(token.id, parseInt(e.target.value, 10) || 1)}
+                                            className="h-8 w-16 text-center"
                                         />
-                                        <span className='text-sm font-bold w-10 text-center'>{token.torch.radius}</span>
+                                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => onTokenTorchRadiusChange(token.id, token.torch.radius + 1)}><Plus/></Button>
                                     </div>
                                     )}
                                 </div>
