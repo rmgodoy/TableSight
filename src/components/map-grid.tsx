@@ -49,7 +49,7 @@ function getIntersection(ray_p1: Point, ray_p2: Point, seg_p1: Point, seg_p2: Po
     // Epsilon to handle floating point issues
     const epsilon = 1e-6;
 
-    if (T1 >= 0 && (T2 >= -epsilon && T2 <= 1 + epsilon)) {
+    if (T1 >= -epsilon && (T2 >= -epsilon && T2 <= 1 + epsilon)) {
         return {
             x: r_px + r_dx * T1,
             y: r_py + r_dy * T1
@@ -59,7 +59,7 @@ function getIntersection(ray_p1: Point, ray_p2: Point, seg_p1: Point, seg_p2: Po
     return null;
 }
 
-function calculateVisibilityPolygon(lightSource: Point, segments: { a: Point, b: Point }[], mapBounds: { width: number, height: number }): Point[] {
+function calculateVisibilityPolygon(lightSource: Point, segments: { a: Point, b: Point }[], mapBounds: { width: number, height: number }, radius: number): Point[] {
     const allPoints: Point[] = [];
     for (const segment of segments) {
         allPoints.push(segment.a, segment.b);
@@ -101,9 +101,20 @@ function calculateVisibilityPolygon(lightSource: Point, segments: { a: Point, b:
                 }
             }
         }
-        if (closestIntersection) {
-            intersects.push(closestIntersection);
+        
+        let intersectPoint = closestIntersection;
+        let rayDistance = minDistance;
+
+        if (!intersectPoint || rayDistance > radius) {
+            rayDistance = radius;
+            intersectPoint = {
+                x: lightSource.x + dx * radius,
+                y: lightSource.y + dy * radius,
+            };
         }
+
+        intersects.push(intersectPoint);
+
     }
 
     intersects.sort((a, b) => {
@@ -393,6 +404,7 @@ export function MapGrid({
                     x: token.x * cellSize + cellSize / 2, 
                     y: token.y * cellSize + cellSize / 2 
                 };
+                const torchRadiusInPixels = token.torch.radius * cellSize;
                 
                 const boundarySegments = [
                     ...wallSegments,
@@ -403,7 +415,7 @@ export function MapGrid({
                     { a: { x: 0, y: mapDimensions.height }, b: { x: 0, y: 0 } },
                 ];
 
-                const visibilityPolygon = calculateVisibilityPolygon(lightSource, boundarySegments, mapDimensions);
+                const visibilityPolygon = calculateVisibilityPolygon(lightSource, boundarySegments, mapDimensions, torchRadiusInPixels);
                 
                 if (visibilityPolygon.length === 0) return null;
 
