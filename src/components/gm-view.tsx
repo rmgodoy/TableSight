@@ -52,6 +52,8 @@ export type Token = {
 export type GameState = {
     tokens: Token[];
     paths: Path[];
+    zoom?: number;
+    pan?: { x: number, y: number };
 };
 
 
@@ -69,12 +71,10 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const storageKey = `tabletop-alchemist-session-${sessionId}`;
 
 
-    const updateGameState = useCallback((newTokens: Token[], newPaths: Path[]) => {
-        const newState: GameState = { tokens: newTokens, paths: newPaths };
+    const updateGameState = useCallback(() => {
+        const newState: GameState = { tokens, paths, zoom, pan };
         try {
             localStorage.setItem(storageKey, JSON.stringify(newState));
-            setTokens(newTokens);
-            setPaths(newPaths);
         } catch (error) {
             console.error("Failed to save game state to localStorage", error);
             toast({
@@ -83,8 +83,18 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 variant: "destructive"
             });
         }
-    }, [storageKey, toast]);
+    }, [storageKey, toast, tokens, paths, zoom, pan]);
     
+    // This effect synchronizes the local state to localStorage.
+    // It's debounced to avoid excessive writes.
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            updateGameState();
+        }, 500); // Debounce time in ms
+        return () => clearTimeout(handler);
+    }, [tokens, paths, zoom, pan, updateGameState]);
+
+
     useEffect(() => {
         try {
             const savedState = localStorage.getItem(storageKey);
@@ -109,6 +119,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 });
                 setTokens(updatedTokens);
                 setPaths(updatedPaths);
+                if (gameState.zoom) setZoom(gameState.zoom);
+                if (gameState.pan) setPan(gameState.pan);
             }
         } catch (error) {
             console.error("Failed to load game state from localStorage", error);
@@ -143,7 +155,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 color: '#3b82f6',
                 torch: { enabled: false, radius: 5 },
             };
-            updateGameState([...tokens, newPc], paths);
+            setTokens(current => [...current, newPc]);
         }
         if (selectedTool === 'add-enemy') {
             const newEnemy: Token = {
@@ -156,76 +168,67 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 color: '#ef4444',
                 torch: { enabled: false, radius: 5 },
             };
-            updateGameState([...tokens, newEnemy], paths);
+            setTokens(current => [...current, newEnemy]);
         }
     };
 
     const handleNewPath = (path: Path) => {
-        updateGameState(tokens, [...paths, path]);
+        setPaths(current => [...current, path]);
     };
 
     const handleErase = (point: Point) => {
         // A simple erase implementation: remove paths that are close to the erase point.
         const eraseRadius = 20; // in pixels
-        const newPaths = paths.filter(path => 
+        setPaths(currentPaths => currentPaths.filter(path => 
             !path.points.some(p => Math.sqrt(Math.pow(p.x - point.x, 2) + Math.pow(p.y - point.y, 2)) < eraseRadius)
-        );
-        updateGameState(tokens, newPaths);
+        ));
     };
 
 
     const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => {
-        const newTokens = tokens.map(token => 
+        setTokens(current => current.map(token => 
             token.id === tokenId ? { ...token, visible: isVisible } : token
-        );
-        updateGameState(newTokens, paths);
+        ));
     };
     
     const handleTokenDelete = (tokenId: string) => {
-        const newTokens = tokens.filter(token => token.id !== tokenId);
-        updateGameState(newTokens, paths);
+        setTokens(current => current.filter(token => token.id !== tokenId));
     };
 
     const handleTokenMove = (tokenId: string, x: number, y: number) => {
-        const newTokens = tokens.map(token =>
+        setTokens(current => current.map(token =>
             token.id === tokenId ? { ...token, x, y } : token
-        );
-        updateGameState(newTokens, paths);
+        ));
     };
 
     const handleTokenNameChange = (tokenId: string, newName: string) => {
-        const newTokens = tokens.map(token =>
+        setTokens(current => current.map(token =>
             token.id === tokenId ? { ...token, name: newName } : token
-        );
-        updateGameState(newTokens, paths);
+        ));
     };
 
     const handleTokenColorChange = (tokenId: string, newColor: string) => {
-        const newTokens = tokens.map(token =>
+        setTokens(current => current.map(token =>
             token.id === tokenId ? { ...token, color: newColor } : token
-        );
-        updateGameState(newTokens, paths);
+        ));
     };
 
     const handleTokenIconChange = (tokenId: string, newIconUrl: string) => {
-        const newTokens = tokens.map(token =>
+        setTokens(current => current.map(token =>
             token.id === tokenId ? { ...token, iconUrl: newIconUrl } : token
-        );
-        updateGameState(newTokens, paths);
+        ));
     };
 
     const handleTokenTorchToggle = (tokenId: string) => {
-        const newTokens = tokens.map(token =>
+        setTokens(current => current.map(token =>
             token.id === tokenId ? { ...token, torch: { ...token.torch, enabled: !token.torch.enabled } } : token
-        );
-        updateGameState(newTokens, paths);
+        ));
     }
     
     const handleTokenTorchRadiusChange = (tokenId: string, radius: number) => {
-        const newTokens = tokens.map(token =>
+        setTokens(current => current.map(token =>
             token.id === tokenId ? { ...token, torch: { ...token.torch, radius } } : token
-        );
-        updateGameState(newTokens, paths);
+        ));
     }
 
     const handleZoom = (delta: number) => {

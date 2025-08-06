@@ -100,6 +100,7 @@ function calculateVisibilityPolygon(
 
         let closestIntersection: Point | null = null;
         let minDistance = Infinity;
+        let intersectionWidth = 0;
 
         for (const segment of segments) {
             const intersection = getIntersection(lightSource, rayEnd, segment.a, segment.b);
@@ -108,6 +109,7 @@ function calculateVisibilityPolygon(
                 if (distance < minDistance) {
                     minDistance = distance;
                     closestIntersection = intersection;
+                    intersectionWidth = segment.width;
                 }
             }
         }
@@ -115,8 +117,7 @@ function calculateVisibilityPolygon(
         let intersectPoint: Point;
 
         if (closestIntersection) {
-            // Heuristic to account for wall thickness: move the intersection point away from the light source
-            const pushAwayDist = segments.find(s => s.a === closestIntersection || s.b === closestIntersection)?.width / 2 || 0;
+            const pushAwayDist = intersectionWidth / 2;
             minDistance += pushAwayDist;
         }
 
@@ -164,7 +165,6 @@ export function MapGrid({
 }: MapGridProps) {
   const cellSize = 40; 
   const containerRef = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
@@ -173,22 +173,18 @@ export function MapGrid({
   const panStartRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    if (gridRef.current) {
-        setMapDimensions({
-            width: gridRef.current.clientWidth,
-            height: gridRef.current.clientHeight
-        });
-    }
-    const handleResize = () => {
-        if (gridRef.current) {
+    const updateMapDimensions = () => {
+        if (containerRef.current) {
             setMapDimensions({
-                width: gridRef.current.clientWidth,
-                height: gridRef.current.clientHeight
+                width: containerRef.current.scrollWidth,
+                height: containerRef.current.scrollHeight
             });
         }
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    
+    updateMapDimensions();
+    window.addEventListener('resize', updateMapDimensions);
+    return () => window.removeEventListener('resize', updateMapDimensions);
   }, []);
 
   const getTransformedPoint = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
@@ -203,9 +199,10 @@ export function MapGrid({
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isPlayerView) return;
     
-    if (e.button === 0 && e.altKey) { // For MacOS trackpad pan
+    if (e.button === 2 || (e.button === 0 && e.altKey)) { // Right-click or Alt+Left-click for panning
         setIsPanning(true);
         panStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+        e.preventDefault();
         return;
     }
     
@@ -237,7 +234,7 @@ export function MapGrid({
     setCurrentPath(prevPath => [...prevPath, getTransformedPoint(e)]);
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isPlayerView) {
       setIsPanning(false);
       return;
@@ -363,7 +360,8 @@ export function MapGrid({
         bright ? "opacity-100" : "opacity-30"
       )}
       style={{ 
-          backgroundSize: `${cellSize}px ${cellSize}px`,
+          backgroundSize: `${cellSize * zoom}px ${cellSize * zoom}px`,
+          backgroundPosition: `${pan.x}px ${pan.y}px`,
           backgroundImage: `linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)`
       }}
     ></div>
@@ -396,17 +394,21 @@ export function MapGrid({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp} // End drawing/panning if mouse leaves
+      onMouseLeave={(e) => {
+          if (isDrawing) handleMouseUp(e);
+          if (isPanning) setIsPanning(false);
+      }}
       onWheel={handleWheel}
+      onContextMenu={(e) => e.preventDefault()} // Prevent context menu on right-click
       >
+
+        {/* Base Grid */}
+        {showGrid && <GridLines bright={!isPlayerView} />}
+      
       <div 
-        ref={gridRef}
         className="absolute inset-0 origin-top-left"
         style={{ transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)` }}
       >
-        {/* Base Grid */}
-        {showGrid && <GridLines bright={!isPlayerView} />}
-        
         {/* Container for masked elements */}
         <div 
           className="absolute inset-0"
@@ -416,9 +418,6 @@ export function MapGrid({
           }}
           >
           
-          {/* Bright Grid (for revealed areas in player view) */}
-          {showGrid && isPlayerView && <GridLines bright />}
-
           {/* Drawing Layer */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none">
               {paths.map((path, i) => (
@@ -476,7 +475,7 @@ export function MapGrid({
           <defs>
             <mask id="fog-mask">
               {/* Start with black, which hides everything */}
-              <rect width="100vw" height="100vh" fill="black" />
+              <rect x="-1000vw" y="-1000vh" width="2000vw" height="2000vh" fill="black" />
               
               {/* Add white polygons for each torch to reveal areas */}
               {tokens.filter(t => t.torch.enabled).map(token => {
@@ -486,25 +485,44 @@ export function MapGrid({
                 };
                 const torchRadiusInPixels = token.torch.radius * cellSize;
                 
+                const visibilityBoundary = {
+                    width: mapDimensions.width / zoom,
+                    height: mapDimensions.height / zoom
+                };
+                
                 const boundarySegments = [
-                    ...wallSegments.filter(s => s.width > 0), // Filter out zero-width segments for performance
-                    // Add map boundaries as segments
-                    { a: { x: 0, y: 0 }, b: { x: mapDimensions.width, y: 0 }, width: 0 },
-                    { a: { x: mapDimensions.width, y: 0 }, b: { x: mapDimensions.width, y: mapDimensions.height }, width: 0 },
-                    { a: { x: mapDimensions.width, y: mapDimensions.height }, b: { x: 0, y: mapDimensions.height }, width: 0 },
-                    { a: { x: 0, y: mapDimensions.height }, b: { x: 0, y: 0 }, width: 0 },
+                    ...wallSegments.filter(s => s.width > 0),
+                    { a: { x: -10000, y: -10000 }, b: { x: 10000, y: -10000 }, width: 0 },
+                    { a: { x: 10000, y: -10000 }, b: { x: 10000, y: 10000 }, width: 0 },
+                    { a: { x: 10000, y: 10000 }, b: { x: -10000, y: 10000 }, width: 0 },
+                    { a: { x: -10000, y: 10000 }, b: { x: -10000, y: -10000 }, width: 0 },
                 ];
 
-                const visibilityPolygon = calculateVisibilityPolygon(lightSource, boundarySegments, mapDimensions, torchRadiusInPixels);
+                const visibilityPolygon = calculateVisibilityPolygon(lightSource, boundarySegments, visibilityBoundary, torchRadiusInPixels);
                 
                 if (visibilityPolygon.length === 0) return null;
 
-                return <path key={`${token.id}-torch`} d={`M ${visibilityPolygon.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />;
+                return (
+                    <g key={`${token.id}-torch`} transform={`scale(${zoom}) translate(${pan.x / zoom}, ${pan.y / zoom})`}>
+                      <path d={`M ${visibilityPolygon.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
+                    </g>
+                );
               })}
             </mask>
           </defs>
         </svg>
       )}
+
+      {isPlayerView && <div 
+          className='absolute inset-0 pointer-events-none'
+          style={{
+            mask: 'url(#fog-mask)',
+            WebkitMask: 'url(#fog-mask)',
+          }}>
+          <div className='w-full h-full bg-background'>
+              {showGrid && <GridLines bright />}
+          </div>
+      </div>}
     </div>
   );
 }
