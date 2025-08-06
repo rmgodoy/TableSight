@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Copy, Grid, Undo, Redo, Home, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { Copy, Grid, Undo, Redo, Home, ZoomIn, ZoomOut, Maximize, Eye, Users } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { GmToolbar } from '@/components/gm-toolbar';
 import { TokenPanel } from '@/components/token-panel';
@@ -54,6 +54,8 @@ export type GameState = {
     paths: Path[];
     zoom?: number;
     pan?: { x: number, y: number };
+    playerZoom?: number;
+    playerPan?: { x: number, y: number };
 };
 
 
@@ -67,14 +69,24 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [paths, setPaths] = useState<Path[]>([]);
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
+    const [playerZoom, setPlayerZoom] = useState(1);
+    const [playerPan, setPlayerPan] = useState({ x: 0, y: 0 });
     const { toast } = useToast();
     const storageKey = `tabletop-alchemist-session-${sessionId}`;
 
 
-    const updateGameState = useCallback(() => {
-        const newState: GameState = { tokens, paths, zoom, pan };
+    const updateGameState = useCallback((newState: Partial<GameState> = {}) => {
+        const fullState: GameState = { 
+            tokens, 
+            paths, 
+            zoom, 
+            pan,
+            playerZoom,
+            playerPan,
+            ...newState 
+        };
         try {
-            localStorage.setItem(storageKey, JSON.stringify(newState));
+            localStorage.setItem(storageKey, JSON.stringify(fullState));
         } catch (error) {
             console.error("Failed to save game state to localStorage", error);
             toast({
@@ -83,7 +95,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 variant: "destructive"
             });
         }
-    }, [storageKey, toast, tokens, paths, zoom, pan]);
+    }, [storageKey, toast, tokens, paths, zoom, pan, playerPan, playerZoom]);
     
     // This effect synchronizes the local state to localStorage.
     // It's debounced to avoid excessive writes.
@@ -92,7 +104,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             updateGameState();
         }, 500); // Debounce time in ms
         return () => clearTimeout(handler);
-    }, [tokens, paths, zoom, pan, updateGameState]);
+    }, [tokens, paths, zoom, pan, playerPan, playerZoom, updateGameState]);
 
 
     useEffect(() => {
@@ -121,6 +133,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 setPaths(updatedPaths);
                 if (gameState.zoom) setZoom(gameState.zoom);
                 if (gameState.pan) setPan(gameState.pan);
+                if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
+                if (gameState.playerPan) setPlayerPan(gameState.playerPan);
             }
         } catch (error) {
             console.error("Failed to load game state from localStorage", error);
@@ -240,6 +254,25 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         setPan({ x: 0, y: 0 });
     }
 
+    const syncPlayerView = () => {
+        setPlayerPan(pan);
+        setPlayerZoom(zoom);
+        updateGameState({ playerPan: pan, playerZoom: zoom });
+        toast({
+          title: "Player View Synced!",
+          description: "The player's view now matches yours.",
+        });
+    };
+    
+    const matchPlayerView = () => {
+        setPan(playerPan);
+        setZoom(playerZoom);
+        toast({
+          title: "Synced with Player View!",
+          description: "Your view now matches the player's.",
+        });
+    };
+
     return (
         <div className="flex h-dvh w-screen bg-background text-foreground overflow-hidden">
             {/* Left Sidebar */}
@@ -316,6 +349,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         <Button variant="outline" onClick={() => handleZoom(0.1)}><ZoomIn className="mr-2" /> Zoom In</Button>
                         <Button variant="outline" onClick={() => handleZoom(-0.1)}><ZoomOut className="mr-2" /> Zoom Out</Button>
                         <Button variant="outline" onClick={resetView}><Maximize className="mr-2" /> Reset View</Button>
+                        <Separator orientation="vertical" className="h-6 mx-4" />
+                        <Button variant="outline" onClick={syncPlayerView}><Eye className="mr-2" /> Sync Player View</Button>
+                        <Button variant="outline" onClick={matchPlayerView}><Users className="mr-2" /> Match Player View</Button>
                         <Separator orientation="vertical" className="h-6 mx-4" />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>

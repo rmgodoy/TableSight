@@ -13,74 +13,51 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const storageKey = `tabletop-alchemist-session-${sessionId}`;
 
-  const handleStorageChange = useCallback((event: StorageEvent) => {
-    if (event.key === storageKey && event.newValue) {
-      try {
-        const newState: GameState = JSON.parse(event.newValue);
-        // Backwards compatibility
-        const updatedTokens = (newState.tokens || []).map(t => ({
-          ...t,
-          torch: t.torch || { enabled: false, radius: 5 }
-        }));
-        const updatedPaths = (newState.paths || []).map(p => {
-          if (Array.isArray(p)) {
-              return { points: p, color: '#000000', width: 10, blocksLight: true };
-          }
-           if (typeof p.blocksLight === 'undefined') {
-              return { ...p, blocksLight: true };
-          }
-          if (typeof p.width === 'undefined') {
-              return { ...p, width: 10 };
-          }
-          return p;
-        });
-        setTokens(updatedTokens);
-        setPaths(updatedPaths);
-        if (newState.zoom) setZoom(newState.zoom);
-        if (newState.pan) setPan(newState.pan);
-      } catch (error) {
-        console.error("Failed to parse game state from localStorage", error);
-      }
+  const applyState = useCallback((savedState: string | null) => {
+    if (!savedState) return;
+    try {
+      const gameState: GameState = JSON.parse(savedState);
+      // Backwards compatibility
+      const updatedTokens = (gameState.tokens || []).map(t => ({
+        ...t,
+        torch: t.torch || { enabled: false, radius: 5 }
+      }));
+      const updatedPaths = (gameState.paths || []).map(p => {
+        if (Array.isArray(p)) {
+            return { points: p, color: '#000000', width: 10, blocksLight: true };
+        }
+         if (typeof p.blocksLight === 'undefined') {
+            return { ...p, blocksLight: true };
+        }
+        if (typeof p.width === 'undefined') {
+            return { ...p, width: 10 };
+        }
+        return p;
+      });
+      setTokens(updatedTokens);
+      setPaths(updatedPaths);
+      if (gameState.playerZoom) setZoom(gameState.playerZoom);
+      if (gameState.playerPan) setPan(gameState.playerPan);
+    } catch (error) {
+      console.error("Failed to parse game state from localStorage", error);
     }
-  }, [storageKey]);
+  }, []);
+
+  const handleStorageChange = useCallback((event: StorageEvent) => {
+    if (event.key === storageKey) {
+      applyState(event.newValue);
+    }
+  }, [storageKey, applyState]);
 
   useEffect(() => {
     // Initial load from localStorage
-    try {
-      const savedState = localStorage.getItem(storageKey);
-      if (savedState) {
-        const gameState: GameState = JSON.parse(savedState);
-        // Backwards compatibility
-        const updatedTokens = (gameState.tokens || []).map(t => ({
-          ...t,
-          torch: t.torch || { enabled: false, radius: 5 }
-        }));
-        const updatedPaths = (gameState.paths || []).map(p => {
-          if (Array.isArray(p)) {
-              return { points: p, color: '#000000', width: 10, blocksLight: true };
-          }
-           if (typeof p.blocksLight === 'undefined') {
-              return { ...p, blocksLight: true };
-          }
-          if (typeof p.width === 'undefined') {
-              return { ...p, width: 10 };
-          }
-          return p;
-        });
-        setTokens(updatedTokens);
-        setPaths(updatedPaths);
-        if(gameState.zoom) setZoom(gameState.zoom);
-        if(gameState.pan) setPan(gameState.pan);
-      }
-    } catch (error) {
-        console.error("Failed to load game state from localStorage", error);
-    }
+    applyState(localStorage.getItem(storageKey));
     
     window.addEventListener('storage', handleStorageChange);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [storageKey, handleStorageChange]);
+  }, [storageKey, handleStorageChange, applyState]);
 
   const visibleTokens = tokens.filter(token => token.visible);
 
