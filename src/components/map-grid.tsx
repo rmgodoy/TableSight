@@ -70,14 +70,21 @@ function calculateVisibilityPolygon(
   mapBounds: { width: number; height: number },
   radius: number
 ): Point[] {
-    const allPoints: Point[] = [];
+    let allPoints: Point[] = [];
     for (const segment of segments) {
         allPoints.push(segment.a, segment.b);
     }
+
     allPoints.push({ x: 0, y: 0 });
     allPoints.push({ x: mapBounds.width, y: 0 });
     allPoints.push({ x: mapBounds.width, y: mapBounds.height });
     allPoints.push({ x: 0, y: mapBounds.height });
+
+    // Optimization: Only consider points within the light radius
+    allPoints = allPoints.filter(p => {
+        const distance = Math.hypot(p.x - lightSource.x, p.y - lightSource.y);
+        return distance <= radius;
+    });
 
     const uniquePoints = allPoints.reduce((acc, p) => {
         if (!acc.find(ap => ap.x === p.x && ap.y === p.y)) {
@@ -341,22 +348,21 @@ export function MapGrid({
   }, [isPanning, activePan, isPlayerView]);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-      if (isPlayerView) return;
-      if (onZoomChange && onPanChange) {
-          const delta = e.deltaY > 0 ? -0.1 : 0.1;
-          const rect = containerRef.current!.getBoundingClientRect();
-          const mouseX = e.clientX - rect.left;
-          const mouseY = e.clientY - rect.top;
-          
-          const newZoom = Math.max(0.1, Math.min(5, activeZoom + delta));
-          
-          const newPanX = mouseX - (mouseX - activePan.x) * (newZoom / activeZoom);
-          const newPanY = mouseY - (mouseY - activePan.y) * (newZoom / activeZoom);
-          const newPan = {x: newPanX, y: newPanY};
-          
-          onPanChange(newPan);
-          onZoomChange(newZoom);
-      }
+      if (isPlayerView || !onZoomChange || !onPanChange) return;
+      
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      const rect = containerRef.current!.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      const newZoom = Math.max(0.1, Math.min(5, activeZoom + delta));
+      
+      const newPanX = mouseX - (mouseX - activePan.x) * (newZoom / activeZoom);
+      const newPanY = mouseY - (mouseY - activePan.y) * (newZoom / activeZoom);
+      const newPan = {x: newPanX, y: newPanY};
+      
+      onPanChange(newPan);
+      onZoomChange(newZoom);
   }
 
   const renderToken = (token: Token) => {
@@ -416,20 +422,24 @@ export function MapGrid({
   const MapContent = ({ forPlayer, revealed }: { forPlayer: boolean, revealed: boolean }) => {
     let renderPaths = paths;
     if (forPlayer && !revealed) {
-      // In the fog, don't show any paths
       renderPaths = [];
     } else if (forPlayer && revealed) {
-      // In the light, show all paths
-      renderPaths = paths;
+      renderPaths = paths.filter(p => p.blocksLight);
     }
     
     let renderTokens = tokens;
-    if (forPlayer && !revealed) {
+    if (forPlayer) {
+      if (revealed) {
+        // In the light, show all visible tokens
+        renderTokens = tokens.filter(t => t.visible);
+        // And all paths
+        renderPaths = paths;
+      } else {
         // In the fog, only show PC tokens that are visible
         renderTokens = tokens.filter(t => t.type === 'PC' && t.visible);
-    } else if (forPlayer && revealed) {
-      // In the light, show all visible tokens
-      renderTokens = tokens.filter(t => t.visible);
+        // And no paths
+        renderPaths = [];
+      }
     }
     
     return (
@@ -494,7 +504,7 @@ export function MapGrid({
       ref={containerRef}
       className={cn(
         "w-full h-full relative",
-        isPlayerView ? 'bg-black' : 'bg-background',
+        "bg-background",
         !isPlayerView && (isPanning ? "cursor-grabbing" : "cursor-grab"),
         !isPlayerView && !isPanning && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
@@ -559,6 +569,7 @@ export function MapGrid({
             className="absolute inset-0 origin-top-left"
             style={{
                 transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
+                overflow: 'visible'
             }}
           >
               <MapContent forPlayer={false} revealed={true} />
@@ -567,3 +578,5 @@ export function MapGrid({
     </div>
   );
 }
+
+    
