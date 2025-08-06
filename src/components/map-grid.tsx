@@ -162,6 +162,18 @@ export function MapGrid({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp} // End drawing if mouse leaves canvas
       >
+
+      {/* Grid Lines (always visible) */}
+      {showGrid && (
+          <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{ 
+              backgroundSize: `${cellSize}px ${cellSize}px`,
+              backgroundImage: `linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)`
+          }}
+          ></div>
+      )}
+
       {/* This container holds the elements that will be masked */}
       <div 
         className="absolute inset-0"
@@ -171,17 +183,6 @@ export function MapGrid({
         }}
         >
 
-        {/* Grid Lines */}
-        {showGrid && (
-            <div 
-            className="absolute inset-0 pointer-events-none"
-            style={{ 
-                backgroundSize: `${cellSize}px ${cellSize}px`,
-                backgroundImage: `linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)`
-            }}
-            ></div>
-        )}
-        
         {/* Drawing Layer */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none">
             {paths.map((path, i) => (
