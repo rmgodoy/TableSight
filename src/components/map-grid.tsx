@@ -176,7 +176,7 @@ export function MapGrid({
       onMouseLeave={handleMouseUp} // End drawing if mouse leaves canvas
       >
 
-      {/* Base Grid (always visible) */}
+      {/* Base Grid */}
       {showGrid && (isPlayerView ? <GridLines /> : <GridLines bright />)}
 
       {/* This container holds the elements that will be masked */}
@@ -256,20 +256,34 @@ export function MapGrid({
         </div>
       )}
 
-      {/* We need a separate SVG for the mask definition because some browsers (Safari) have issues with masks and sibling elements */}
+      {/* SVG mask for player view fog of war */}
       {isPlayerView && (
         <svg width="0" height="0" style={{ position: 'absolute' }}>
           <defs>
             <mask id="fog-mask">
               {/* Start with black, which hides everything */}
               <rect width="100vw" height="100vh" fill="black" />
+              
               {/* Add white circles for each torch to reveal areas */}
               {tokens.filter(t => t.torch.enabled).map(token => {
                 const cx = token.x * cellSize + cellSize / 2;
                 const cy = token.y * cellSize + cellSize / 2;
                 const r = token.torch.radius * cellSize;
-                return <circle key={token.id} cx={cx} cy={cy} r={r} fill="white" />;
+                return <circle key={`${token.id}-torch`} cx={cx} cy={cy} r={r} fill="white" />;
               })}
+
+              {/* Render walls as black lines to block light inside the mask */}
+              {paths.map((path, i) => (
+                  <path 
+                      key={`${i}-mask`}
+                      d={getSvgPath(path)} 
+                      stroke="black"
+                      strokeWidth="10" // Make walls thick enough to cast shadows
+                      fill="black"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                  />
+              ))}
             </mask>
           </defs>
         </svg>
