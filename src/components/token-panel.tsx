@@ -3,14 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, CircleUserRound, Shield, Trash2 } from 'lucide-react';
 import type { Token } from './gm-view';
+import { Input } from '@/components/ui/input';
 
 interface TokenPanelProps {
     tokens: Token[];
     onVisibilityChange: (tokenId: string, isVisible: boolean) => void;
     onTokenDelete: (tokenId: string) => void;
+    onTokenNameChange: (tokenId: string, newName: string) => void;
 }
 
-export function TokenPanel({ tokens, onVisibilityChange, onTokenDelete }: TokenPanelProps) {
+export function TokenPanel({ tokens, onVisibilityChange, onTokenDelete, onTokenNameChange }: TokenPanelProps) {
     return (
         <Card className="w-full">
             <CardHeader>
@@ -23,9 +25,14 @@ export function TokenPanel({ tokens, onVisibilityChange, onTokenDelete }: TokenP
                     <ul className="space-y-2">
                         {tokens.map(token => (
                             <li key={token.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50 transition-colors">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-1">
                                     {token.type === 'PC' ? <CircleUserRound className="text-primary" /> : <Shield className="text-destructive" />}
-                                    <span>{token.name}</span>
+                                    <Input 
+                                        className="h-8 border-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                        value={token.name} 
+                                        onChange={(e) => onTokenNameChange(token.id, e.target.value)}
+                                        aria-label="Token name"
+                                    />
                                 </div>
                                 <div className="flex items-center">
                                     <Button 

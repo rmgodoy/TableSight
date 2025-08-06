@@ -135,6 +135,13 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         updateGameState(newTokens);
     };
 
+    const handleTokenNameChange = (tokenId: string, newName: string) => {
+        const newTokens = tokens.map(token =>
+            token.id === tokenId ? { ...token, name: newName } : token
+        );
+        updateGameState(newTokens);
+    };
+
     return (
         <div className="flex h-dvh w-screen bg-background text-foreground overflow-hidden">
             {/* Left Sidebar */}
@@ -166,6 +173,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         tokens={tokens} 
                         onVisibilityChange={handleTokenVisibilityChange}
                         onTokenDelete={handleTokenDelete}
+                        onTokenNameChange={handleTokenNameChange}
                     />
                 </div>
             </aside>
