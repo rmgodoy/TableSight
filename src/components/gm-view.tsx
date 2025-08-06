@@ -276,7 +276,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     return (
         <div className="flex h-dvh w-screen bg-background text-foreground">
             {/* Left Sidebar */}
-            <aside className="w-80 h-full flex flex-col p-4 gap-4 border-r border-border bg-card/50 z-10">
+            <aside className="w-80 h-full flex flex-col p-4 gap-4 border-r border-border bg-card/50 z-20">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold font-headline text-primary">Tabletop Alchemist</h1>
                     <Button variant="ghost" size="icon" asChild>
@@ -321,7 +321,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col p-4 gap-4">
+            <main className="flex-1 flex flex-col p-4 gap-4 relative">
                 <div className="flex-1 relative bg-card/50 rounded-lg shadow-inner">
                     <MapGrid 
                         showGrid={showGrid} 
@@ -340,7 +340,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         onPanChange={setPan}
                     />
                 </div>
-                <footer className="h-16 flex items-center justify-center p-2 rounded-lg bg-card border border-border">
+                <footer className="relative z-10 h-16 flex items-center justify-center p-2 rounded-lg bg-card border border-border">
                     <div className="flex items-center gap-2">
                         <Button variant="outline"><Undo className="mr-2" /> Undo</Button>
                         <Button variant="outline">Redo <Redo className="ml-2" /></Button>
@@ -378,5 +378,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             </main>
         </div>
     );
+
+    
 
     
