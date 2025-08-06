@@ -56,16 +56,18 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="w-screen h-dvh bg-black relative">
-      <MapGrid 
-        showGrid={true} 
-        tokens={visibleTokens}
-        paths={paths}
-        onMapClick={() => {}} 
-        onNewPath={() => {}}
-        onErase={() => {}}
-        selectedTool="select" 
-        isPlayerView={true}
-      />
+      <div className="absolute inset-0 bg-gray-900">
+        <MapGrid 
+          showGrid={true} 
+          tokens={visibleTokens}
+          paths={paths}
+          onMapClick={() => {}} 
+          onNewPath={() => {}}
+          onErase={() => {}}
+          selectedTool="select" 
+          isPlayerView={true}
+        />
+      </div>
       <div className="absolute top-4 left-4 bg-background/80 text-foreground p-3 rounded-lg flex items-center gap-2 shadow-lg backdrop-blur-sm border border-border">
         <Eye className="text-primary" />
         <div>
@@ -76,3 +78,5 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     </div>
   );
 }
+
+    

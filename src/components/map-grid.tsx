@@ -154,7 +154,7 @@ export function MapGrid({
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
             'cursor-grab': draggingToken,
             'cursor-cell': selectedTool === 'brush',
-            'cursor-help': selectedTool === 'erase', // Just an example
+            'cursor-help': selectedTool === 'erase',
         }
       )}
       onMouseDown={handleMouseDown}
@@ -175,17 +175,19 @@ export function MapGrid({
       
       {/* Drawing Layer */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none">
-          {paths.map((path, i) => (
-              <path 
-                key={i} 
-                d={getSvgPath(path)} 
-                stroke="hsl(var(--foreground))"
-                strokeWidth="4"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-          ))}
+          <g mask={isPlayerView ? "url(#fog-mask)" : ""}>
+            {paths.map((path, i) => (
+                <path 
+                  key={i} 
+                  d={getSvgPath(path)} 
+                  stroke="hsl(var(--foreground))"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+            ))}
+          </g>
           {isDrawing && currentPath.length > 0 && (
               <path 
                 d={getSvgPath(currentPath)} 
@@ -241,18 +243,22 @@ export function MapGrid({
          <svg className="absolute inset-0 w-full h-full pointer-events-none" >
             <defs>
                 <mask id="fog-mask">
-                    <rect width="100%" height="100%" fill="white" />
+                    {/* The base of the mask is transparent; we'll add white circles to reveal areas */}
+                    <rect width="100%" height="100%" fill="black" />
                     {tokens.filter(t => t.torch.enabled).map(token => {
                         const cx = token.x * cellSize + cellSize / 2;
                         const cy = token.y * cellSize + cellSize / 2;
                         const r = token.torch.radius * cellSize;
-                        return <circle key={token.id} cx={cx} cy={cy} r={r} fill="black" />;
+                        return <circle key={token.id} cx={cx} cy={cy} r={r} fill="white" />;
                     })}
                 </mask>
             </defs>
-            <rect width="100%" height="100%" fill="black" opacity="0.8" mask="url(#fog-mask)" />
+            {/* This black rectangle covers everything. The mask reveals parts of it. */}
+            <rect width="100%" height="100%" fill="black" opacity="1" mask="url(#fog-mask)" />
         </svg>
        }
     </div>
   );
 }
+
+    
