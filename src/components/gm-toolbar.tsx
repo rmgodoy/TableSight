@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { MousePointer, Square, Layers, Eraser, CircleUserRound, Shield } from 'lucide-react';
+import { MousePointer, Brush, CircleUserRound, Shield, Eraser } from 'lucide-react';
 import type { Tool } from './gm-view';
 
 interface GmToolbarProps {
@@ -13,8 +13,7 @@ interface GmToolbarProps {
 export function GmToolbar({ selectedTool, onToolSelect }: GmToolbarProps) {
     const tools: { id: Tool, label: string, icon: React.ReactNode }[] = [
         { id: 'select', label: 'Select', icon: <MousePointer /> },
-        { id: 'wall', label: 'Wall', icon: <Square /> },
-        { id: 'floor', label: 'Floor', icon: <Layers /> },
+        { id: 'brush', label: 'Brush', icon: <Brush /> },
         { id: 'erase', label: 'Erase', icon: <Eraser /> },
     ];
 

@@ -24,7 +24,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-export type Tool = 'select' | 'wall' | 'floor' | 'erase' | 'add-pc' | 'add-enemy';
+export type Tool = 'select' | 'brush' | 'erase' | 'add-pc' | 'add-enemy';
+
+export type Point = { x: number; y: number };
+export type Path = Point[];
 
 export type Token = {
   id: string;
@@ -39,6 +42,7 @@ export type Token = {
 
 export type GameState = {
     tokens: Token[];
+    paths: Path[];
 };
 
 
@@ -47,15 +51,17 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [showGrid, setShowGrid] = useState(true);
     const [selectedTool, setSelectedTool] = useState<Tool>('select');
     const [tokens, setTokens] = useState<Token[]>([]);
+    const [paths, setPaths] = useState<Path[]>([]);
     const { toast } = useToast();
     const storageKey = `tabletop-alchemist-session-${sessionId}`;
 
 
-    const updateGameState = useCallback((newTokens: Token[]) => {
-        const newState: GameState = { tokens: newTokens };
+    const updateGameState = useCallback((newTokens: Token[], newPaths: Path[]) => {
+        const newState: GameState = { tokens: newTokens, paths: newPaths };
         try {
             localStorage.setItem(storageKey, JSON.stringify(newState));
             setTokens(newTokens);
+            setPaths(newPaths);
         } catch (error) {
             console.error("Failed to save game state to localStorage", error);
             toast({
@@ -72,6 +78,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             if (savedState) {
                 const gameState: GameState = JSON.parse(savedState);
                 setTokens(gameState.tokens || []);
+                setPaths(gameState.paths || []);
             }
         } catch (error) {
             console.error("Failed to load game state from localStorage", error);
@@ -105,7 +112,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 visible: false,
                 color: '#3b82f6',
             };
-            updateGameState([...tokens, newPc]);
+            updateGameState([...tokens, newPc], paths);
         }
         if (selectedTool === 'add-enemy') {
             const newEnemy: Token = {
@@ -117,48 +124,62 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 visible: false,
                 color: '#ef4444'
             };
-            updateGameState([...tokens, newEnemy]);
+            updateGameState([...tokens, newEnemy], paths);
         }
     };
+
+    const handleNewPath = (path: Path) => {
+        updateGameState(tokens, [...paths, path]);
+    };
+
+    const handleErase = (point: Point) => {
+        // A simple erase implementation: remove paths that are close to the erase point.
+        const eraseRadius = 20; // in pixels
+        const newPaths = paths.filter(path => 
+            !path.some(p => Math.sqrt(Math.pow(p.x - point.x, 2) + Math.pow(p.y - point.y, 2)) < eraseRadius)
+        );
+        updateGameState(tokens, newPaths);
+    };
+
 
     const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => {
         const newTokens = tokens.map(token => 
             token.id === tokenId ? { ...token, visible: isVisible } : token
         );
-        updateGameState(newTokens);
+        updateGameState(newTokens, paths);
     };
     
     const handleTokenDelete = (tokenId: string) => {
         const newTokens = tokens.filter(token => token.id !== tokenId);
-        updateGameState(newTokens);
+        updateGameState(newTokens, paths);
     };
 
     const handleTokenMove = (tokenId: string, x: number, y: number) => {
         const newTokens = tokens.map(token =>
             token.id === tokenId ? { ...token, x, y } : token
         );
-        updateGameState(newTokens);
+        updateGameState(newTokens, paths);
     };
 
     const handleTokenNameChange = (tokenId: string, newName: string) => {
         const newTokens = tokens.map(token =>
             token.id === tokenId ? { ...token, name: newName } : token
         );
-        updateGameState(newTokens);
+        updateGameState(newTokens, paths);
     };
 
     const handleTokenColorChange = (tokenId: string, newColor: string) => {
         const newTokens = tokens.map(token =>
             token.id === tokenId ? { ...token, color: newColor } : token
         );
-        updateGameState(newTokens);
+        updateGameState(newTokens, paths);
     };
 
     const handleTokenIconChange = (tokenId: string, newIconUrl: string) => {
         const newTokens = tokens.map(token =>
             token.id === tokenId ? { ...token, iconUrl: newIconUrl } : token
         );
-        updateGameState(newTokens);
+        updateGameState(newTokens, paths);
     };
 
 
@@ -206,7 +227,10 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     <MapGrid 
                         showGrid={showGrid} 
                         tokens={tokens}
+                        paths={paths}
                         onMapClick={handleMapClick} 
+                        onErase={handleErase}
+                        onNewPath={handleNewPath}
                         selectedTool={selectedTool}
                         onTokenMove={handleTokenMove}
                     />

@@ -1,23 +1,34 @@
 'use client';
 
 import { CircleUserRound, Shield } from 'lucide-react';
-import type { Token, Tool } from './gm-view';
+import type { Token, Tool, Path, Point } from './gm-view';
 import { cn } from '@/lib/utils';
 import React, { useState, useRef, useEffect } from 'react';
 
 interface MapGridProps {
   showGrid: boolean;
   tokens: Token[];
+  paths: Path[];
   onMapClick: (x: number, y: number) => void;
+  onNewPath: (path: Path) => void;
+  onErase: (point: Point) => void;
   selectedTool: Tool;
   onTokenMove?: (tokenId: string, x: number, y: number) => void;
   isPlayerView?: boolean;
 }
 
+function getSvgPath(path: Path) {
+  if (path.length === 0) return '';
+  return `M ${path[0].x} ${path[0].y} ` + path.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+}
+
 export function MapGrid({ 
   showGrid, 
   tokens, 
+  paths,
   onMapClick, 
+  onNewPath,
+  onErase,
   selectedTool,
   onTokenMove,
   isPlayerView = false
@@ -26,16 +37,48 @@ export function MapGrid({
   const gridRef = useRef<HTMLDivElement>(null);
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
   const [dragPosition, setDragPosition] = useState<{x: number, y: number} | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentPath, setCurrentPath] = useState<Path>([]);
 
-  const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPlayerView || (selectedTool !== 'add-pc' && selectedTool !== 'add-enemy')) return;
+  const getPointFromEvent = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
+    if (!gridRef.current) return { x: 0, y: 0 };
+    const rect = gridRef.current.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  }
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / cellSize);
-    const y = Math.floor((e.clientY - rect.top) / cellSize);
-    onMapClick(x, y);
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isPlayerView) return;
+
+    if (selectedTool === 'brush') {
+      setIsDrawing(true);
+      setCurrentPath([getPointFromEvent(e)]);
+    } else if (selectedTool === 'erase') {
+        onErase(getPointFromEvent(e));
+    } else if (selectedTool === 'add-pc' || selectedTool === 'add-enemy') {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const gridX = Math.floor((e.clientX - rect.left) / cellSize);
+        const gridY = Math.floor((e.clientY - rect.top) / cellSize);
+        onMapClick(gridX, gridY);
+    }
   };
-  
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isPlayerView || !isDrawing || selectedTool !== 'brush') return;
+    setCurrentPath(prevPath => [...prevPath, getPointFromEvent(e)]);
+  };
+
+  const handleMouseUp = () => {
+    if (isPlayerView || !isDrawing) return;
+    setIsDrawing(false);
+    if (currentPath.length > 1) {
+        onNewPath(currentPath);
+    }
+    setCurrentPath([]);
+  };
+
   const handleTokenMouseDown = (e: React.MouseEvent<HTMLDivElement>, token: Token) => {
     if (isPlayerView || selectedTool !== 'select' || !onTokenMove) return;
     e.stopPropagation(); 
@@ -43,15 +86,16 @@ export function MapGrid({
     setDragPosition({ x: e.clientX, y: e.clientY });
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleGlobalMouseMove = (e: MouseEvent) => {
     if (!draggingToken || !gridRef.current || !onTokenMove) return;
     setDragPosition({ x: e.clientX, y: e.clientY });
   };
 
-  const handleMouseUp = (e: MouseEvent) => {
+  const handleGlobalMouseUp = (e: MouseEvent) => {
     if (!draggingToken || !gridRef.current || !onTokenMove) return;
 
     const rect = gridRef.current.getBoundingClientRect();
+    // Snap to grid
     const x = Math.floor((e.clientX - rect.left) / cellSize);
     const y = Math.floor((e.clientY - rect.top) / cellSize);
 
@@ -62,16 +106,16 @@ export function MapGrid({
 
   useEffect(() => {
     if (draggingToken) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
     } else {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draggingToken]);
@@ -104,11 +148,18 @@ export function MapGrid({
     <div 
       ref={gridRef}
       className={cn(
-        "w-full h-full bg-card/50 rounded-lg shadow-inner flex items-center justify-center relative overflow-auto",
-        (selectedTool === 'add-pc' || selectedTool === 'add-enemy') && "cursor-crosshair",
-        draggingToken && "cursor-grabbing"
+        "w-full h-full bg-card/50 rounded-lg shadow-inner flex items-center justify-center relative overflow-hidden",
+        !isPlayerView && {
+            'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
+            'cursor-grab': draggingToken,
+            'cursor-cell': selectedTool === 'brush',
+            'cursor-help': selectedTool === 'erase', // Just an example
+        }
       )}
-      onClick={handleGridClick}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp} // End drawing if mouse leaves canvas
       >
       {/* Grid Lines */}
       {showGrid && (
@@ -120,6 +171,31 @@ export function MapGrid({
           }}
         ></div>
       )}
+      
+      {/* Drawing Layer */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none">
+          {paths.map((path, i) => (
+              <path 
+                key={i} 
+                d={getSvgPath(path)} 
+                stroke="hsl(var(--foreground))"
+                strokeWidth="4"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+          ))}
+          {isDrawing && currentPath.length > 0 && (
+              <path 
+                d={getSvgPath(currentPath)} 
+                stroke="hsl(var(--primary))"
+                strokeWidth="4"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+          )}
+      </svg>
 
       {/* Tokens Layer */}
       <div className="absolute inset-0">

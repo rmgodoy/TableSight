@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MapGrid } from '@/components/map-grid';
 import { Eye } from 'lucide-react';
-import type { GameState, Token } from './gm-view';
+import type { GameState, Path, Token } from './gm-view';
 
 export default function PlayerView({ sessionId }: { sessionId: string }) {
   const [tokens, setTokens] = useState<Token[]>([]);
+  const [paths, setPaths] = useState<Path[]>([]);
   const storageKey = `tabletop-alchemist-session-${sessionId}`;
 
   const handleStorageChange = useCallback((event: StorageEvent) => {
@@ -14,6 +15,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       try {
         const newState: GameState = JSON.parse(event.newValue);
         setTokens(newState.tokens || []);
+        setPaths(newState.paths || []);
       } catch (error) {
         console.error("Failed to parse game state from localStorage", error);
       }
@@ -27,6 +29,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       if (savedState) {
         const gameState: GameState = JSON.parse(savedState);
         setTokens(gameState.tokens || []);
+        setPaths(gameState.paths || []);
       }
     } catch (error) {
         console.error("Failed to load game state from localStorage", error);
@@ -44,8 +47,11 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     <div className="w-screen h-dvh bg-black relative">
       <MapGrid 
         showGrid={true} 
-        tokens={visibleTokens} 
+        tokens={visibleTokens}
+        paths={paths}
         onMapClick={() => {}} 
+        onNewPath={() => {}}
+        onErase={() => {}}
         selectedTool="select" 
         isPlayerView={true}
       />
