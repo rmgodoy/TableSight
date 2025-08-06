@@ -4,7 +4,7 @@
 import { CircleUserRound, Shield } from 'lucide-react';
 import type { Token, Tool, Path, Point } from './gm-view';
 import { cn } from '@/lib/utils';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 
 interface MapGridProps {
   showGrid: boolean;
@@ -22,6 +22,10 @@ interface MapGridProps {
   pan?: { x: number; y: number };
   onZoomChange?: (zoom: number) => void;
   onPanChange?: (pan: { x: number; y: number }) => void;
+  playerZoom?: number;
+  playerPan?: { x: number; y: number };
+  onPlayerPanChange?: (pan: { x: number; y: number }) => void;
+  onPlayerZoomChange?: (zoom: number) => void;
 }
 
 function getSvgPathFromPoints(points: Point[]) {
@@ -115,10 +119,10 @@ function calculateVisibilityPolygon(
         }
         
         let intersectPoint: Point;
-
+        
         if (closestIntersection) {
-            const pushAwayDist = intersectionWidth / 2;
-            minDistance += pushAwayDist;
+             const pushAwayDist = intersectionWidth / 2;
+             minDistance += pushAwayDist;
         }
 
         if (minDistance > radius) {
@@ -162,6 +166,8 @@ export function MapGrid({
   pan = { x: 0, y: 0 },
   onZoomChange,
   onPanChange,
+  playerZoom = 1,
+  playerPan = {x: 0, y: 0},
 }: MapGridProps) {
   const cellSize = 40; 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -171,6 +177,9 @@ export function MapGrid({
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0 });
+
+  const activeZoom = isPlayerView ? playerZoom : zoom;
+  const activePan = isPlayerView ? playerPan : pan;
 
   useEffect(() => {
     const updateMapDimensions = () => {
@@ -190,22 +199,28 @@ export function MapGrid({
   const getTransformedPoint = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
     if (!containerRef.current) return { x: 0, y: 0 };
     const rect = containerRef.current.getBoundingClientRect();
+    const currentPan = isPlayerView ? playerPan : pan;
+    const currentZoom = isPlayerView ? playerZoom : zoom;
+
     return {
-      x: (e.clientX - rect.left - pan.x) / zoom,
-      y: (e.clientY - rect.top - pan.y) / zoom,
+      x: (e.clientX - rect.left - currentPan.x) / currentZoom,
+      y: (e.clientY - rect.top - currentPan.y) / currentZoom,
     };
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPlayerView) return;
+    const currentPan = isPlayerView ? playerPan : pan;
+    const currentOnPanChange = isPlayerView ? () => {} : onPanChange;
     
-    if (e.button === 1 || (e.button === 0 && e.altKey)) { // Middle-click or Alt+Left-click for panning
+    if (e.button === 1 || e.button === 2 || (e.button === 0 && e.altKey)) {
         setIsPanning(true);
-        panStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+        panStartRef.current = { x: e.clientX - currentPan.x, y: e.clientY - currentPan.y };
         e.preventDefault();
         return;
     }
     
+    if (isPlayerView) return;
+
     const point = getTransformedPoint(e);
 
     if (selectedTool === 'wall' || selectedTool === 'detail') {
@@ -221,29 +236,27 @@ export function MapGrid({
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPlayerView) return;
-     if (isPanning && onPanChange) {
-      onPanChange({
+     const currentOnPanChange = isPlayerView ? () => {} : onPanChange;
+     if (isPanning && currentOnPanChange) {
+      currentOnPanChange({
         x: e.clientX - panStartRef.current.x,
         y: e.clientY - panStartRef.current.y
       });
       return;
     }
+    if (isPlayerView) return;
 
     if (!isDrawing || (selectedTool !== 'wall' && selectedTool !== 'detail')) return;
     setCurrentPath(prevPath => [...prevPath, getTransformedPoint(e)]);
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPlayerView) {
-      setIsPanning(false);
-      return;
-    };
-    
     if(isPanning) {
         setIsPanning(false);
         return;
     }
+    
+    if (isPlayerView) return;
 
     if (!isDrawing) return;
     setIsDrawing(false);
@@ -299,14 +312,12 @@ export function MapGrid({
 
   useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
+        const currentPan = isPlayerView ? playerPan : pan;
         if(e.key === ' ' && !isPanning) {
             e.preventDefault();
             setIsPanning(true);
-            if(containerRef.current) {
-                // This is a bit of a hack to get the initial mouse position
-                // We don't have the event here, so we assume (0,0) and adjust on first move
-                panStartRef.current = { x: 0 - pan.x, y: 0 - pan.y };
-            }
+            // We don't have the event here, so we have to get creative on the first mouse move.
+            panStartRef.current = { x: -currentPan.x, y: -currentPan.y };
         }
       };
       const handleKeyUp = (e: KeyboardEvent) => {
@@ -322,12 +333,14 @@ export function MapGrid({
           window.removeEventListener('keydown', handleKeyDown);
           window.removeEventListener('keyup', handleKeyUp);
       }
-  }, [isPanning, pan.x, pan.y]);
+  }, [isPanning, pan.x, pan.y, playerPan]);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-      if (onZoomChange) {
+      const currentZoom = isPlayerView ? playerZoom : zoom;
+      const currentOnZoomChange = isPlayerView ? () => {} : onZoomChange;
+      if (currentOnZoomChange) {
           const delta = e.deltaY > 0 ? -0.1 : 0.1;
-          onZoomChange(Math.max(0.1, Math.min(5, zoom + delta)));
+          currentOnZoomChange(Math.max(0.1, Math.min(5, currentZoom + delta)));
       }
   }
 
@@ -352,18 +365,8 @@ export function MapGrid({
        </div>
     );
   };
-
-  const GridLines = () => (
-    <div 
-      className="absolute inset-0 pointer-events-none opacity-30"
-      style={{ 
-          backgroundSize: `${cellSize}px ${cellSize}px`,
-          backgroundImage: `linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)`
-      }}
-    ></div>
-  );
   
-  const wallSegments = paths
+  const wallSegments = useMemo(() => paths
     .filter(p => p.blocksLight)
     .flatMap(path => {
         const segments: { a: Point, b: Point, width: number }[] = [];
@@ -371,12 +374,45 @@ export function MapGrid({
             segments.push({ a: path.points[i], b: path.points[i+1], width: path.width });
         }
         return segments;
-  });
+  }), [paths]);
 
-  const MapContent = () => (
+  const lightPolygons = useMemo(() => {
+      if (!isPlayerView) return [];
+      
+      const visibilityBoundary = {
+          width: mapDimensions.width / activeZoom,
+          height: mapDimensions.height / activeZoom
+      };
+      
+      const boundarySegments = [
+          ...wallSegments.filter(s => s.width > 0),
+          { a: { x: -10000, y: -10000 }, b: { x: 10000, y: -10000 }, width: 0 },
+          { a: { x: 10000, y: -10000 }, b: { x: 10000, y: 10000 }, width: 0 },
+          { a: { x: 10000, y: 10000 }, b: { x: -10000, y: 10000 }, width: 0 },
+          { a: { x: -10000, y: 10000 }, b: { x: -10000, y: -10000 }, width: 0 },
+      ];
+
+      return tokens.filter(t => t.torch.enabled && t.visible).map(token => {
+          const lightSource = { 
+              x: token.x * cellSize + cellSize / 2, 
+              y: token.y * cellSize + cellSize / 2 
+          };
+          const torchRadiusInPixels = token.torch.radius * cellSize;
+          return calculateVisibilityPolygon(lightSource, boundarySegments, visibilityBoundary, torchRadiusInPixels);
+      });
+  }, [isPlayerView, tokens, wallSegments, mapDimensions, activeZoom, cellSize]);
+
+
+  const MapContent = ({opacity = 1}: {opacity?: number}) => (
     <>
-      {(showGrid || isPlayerView) && <GridLines />}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none">
+      <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{ 
+              backgroundSize: `${cellSize}px ${cellSize}px`,
+              backgroundImage: `linear-gradient(to right, hsl(var(--border) / ${opacity}) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / ${opacity}) 1px, transparent 1px)`
+          }}
+      ></div>
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{opacity}}>
           {paths.map((path, i) => (
               <path 
                   key={i} 
@@ -399,7 +435,7 @@ export function MapGrid({
               />
           )}
       </svg>
-      <div className="absolute inset-0">
+      <div className="absolute inset-0" style={{opacity}}>
         {tokens.map(token => (
             <div 
             key={token.id}
@@ -427,7 +463,8 @@ export function MapGrid({
     <div 
       ref={containerRef}
       className={cn(
-        "w-full h-full relative overflow-hidden bg-background",
+        "w-full h-full relative overflow-hidden",
+        isPlayerView ? 'bg-black' : 'bg-background',
         isPanning && "cursor-grabbing",
         !isPlayerView && !isPanning && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
@@ -441,69 +478,51 @@ export function MapGrid({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={(e) => {
-          if (isDrawing) handleMouseUp(e);
+          if (!isPlayerView && isDrawing) handleMouseUp(e);
           if (isPanning) setIsPanning(false);
       }}
       onWheel={handleWheel}
-      onContextMenu={(e) => e.preventDefault()} // Prevent context menu on middle-click
+      onContextMenu={(e) => e.preventDefault()}
       >
       
-      {/* SVG mask for player view fog of war */}
       {isPlayerView && (
         <svg width="0" height="0" style={{ position: 'absolute' }}>
           <defs>
             <mask id="fog-mask">
               <rect x="0" y="0" width="100%" height="100%" fill="black" />
-              {tokens.filter(t => t.torch.enabled && t.visible).map(token => {
-                const lightSource = { 
-                    x: token.x * cellSize + cellSize / 2, 
-                    y: token.y * cellSize + cellSize / 2 
-                };
-                const torchRadiusInPixels = token.torch.radius * cellSize;
-                
-                const visibilityBoundary = {
-                    width: mapDimensions.width / zoom,
-                    height: mapDimensions.height / zoom
-                };
-                
-                const boundarySegments = [
-                    ...wallSegments.filter(s => s.width > 0),
-                    { a: { x: -10000, y: -10000 }, b: { x: 10000, y: -10000 }, width: 0 },
-                    { a: { x: 10000, y: -10000 }, b: { x: 10000, y: 10000 }, width: 0 },
-                    { a: { x: 10000, y: 10000 }, b: { x: -10000, y: 10000 }, width: 0 },
-                    { a: { x: -10000, y: 10000 }, b: { x: -10000, y: -10000 }, width: 0 },
-                ];
-
-                const visibilityPolygon = calculateVisibilityPolygon(lightSource, boundarySegments, visibilityBoundary, torchRadiusInPixels);
-                
-                if (visibilityPolygon.length === 0) return null;
-
-                return (
-                    <g key={`${token.id}-torch`}>
-                      <path d={`M ${visibilityPolygon.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
-                    </g>
-                );
-              })}
+               {lightPolygons.map((poly, i) => (
+                   poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
+               ))}
             </mask>
           </defs>
         </svg>
       )}
       
       <div 
-        className="absolute inset-0 origin-top-left bg-background"
+        className="absolute inset-0 origin-top-left"
         style={{ 
-          transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+          transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
         }}
       >
-        <div 
-          className="absolute inset-0"
-          style={{
-            mask: isPlayerView ? 'url(#fog-mask)' : 'none',
-            WebkitMask: isPlayerView ? 'url(#fog-mask)' : 'none',
-          }}
-        >
-          <MapContent />
-        </div>
+        {isPlayerView ? (
+            <>
+                {/* Dimmed/dark background content */}
+                <MapContent opacity={0.3} />
+                {/* Bright content revealed by mask */}
+                <div 
+                    className="absolute inset-0" 
+                    style={{ 
+                        mask: 'url(#fog-mask)', 
+                        WebkitMask: 'url(#fog-mask)' 
+                    }}
+                >
+                    <div className="absolute inset-0 bg-background"></div>
+                    <MapContent opacity={1} />
+                </div>
+            </>
+        ) : (
+            <MapContent />
+        )}
       </div>
     </div>
   );
