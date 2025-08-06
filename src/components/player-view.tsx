@@ -55,8 +55,8 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
   const visibleTokens = tokens.filter(token => token.visible);
 
   return (
-    <div className="w-screen h-dvh bg-black relative">
-      <div className="absolute inset-0 bg-gray-900">
+    <div className="w-screen h-dvh bg-black relative flex items-center justify-center">
+      <div className="w-full h-full">
         <MapGrid 
           showGrid={true} 
           tokens={visibleTokens}
@@ -78,5 +78,3 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     </div>
   );
 }
-
-    

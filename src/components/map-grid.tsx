@@ -162,45 +162,54 @@ export function MapGrid({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp} // End drawing if mouse leaves canvas
       >
-      {/* Grid Lines */}
-      {showGrid && (
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{ 
-            backgroundSize: `${cellSize}px ${cellSize}px`,
-            backgroundImage: `linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)`
-          }}
-        ></div>
-      )}
-      
-      {/* Drawing Layer */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none">
-          <g mask={isPlayerView ? "url(#fog-mask)" : ""}>
+      {/* This container holds the elements that will be masked */}
+      <div 
+        className="absolute inset-0"
+        style={{
+            mask: isPlayerView ? "url(#fog-mask)" : "",
+            WebkitMask: isPlayerView ? "url(#fog-mask)" : "",
+        }}
+        >
+
+        {/* Grid Lines */}
+        {showGrid && (
+            <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{ 
+                backgroundSize: `${cellSize}px ${cellSize}px`,
+                backgroundImage: `linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)`
+            }}
+            ></div>
+        )}
+        
+        {/* Drawing Layer */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
             {paths.map((path, i) => (
                 <path 
-                  key={i} 
-                  d={getSvgPath(path)} 
-                  stroke="hsl(var(--foreground))"
-                  strokeWidth="4"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                    key={i} 
+                    d={getSvgPath(path)} 
+                    stroke="hsl(var(--foreground))"
+                    strokeWidth="4"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                 />
             ))}
-          </g>
-          {isDrawing && currentPath.length > 0 && (
-              <path 
-                d={getSvgPath(currentPath)} 
-                stroke="hsl(var(--primary))"
-                strokeWidth="4"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-          )}
-      </svg>
+            {isDrawing && currentPath.length > 0 && (
+                <path 
+                    d={getSvgPath(currentPath)} 
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="4"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                />
+            )}
+        </svg>
 
-      {/* Tokens Layer */}
+      </div>
+      
+      {/* Tokens Layer (always visible) */}
       <div className="absolute inset-0">
         {tokens.map(token => (
           <div 
@@ -243,7 +252,7 @@ export function MapGrid({
          <svg className="absolute inset-0 w-full h-full pointer-events-none" >
             <defs>
                 <mask id="fog-mask">
-                    {/* The base of the mask is transparent; we'll add white circles to reveal areas */}
+                    {/* The base of the mask is black; we'll add white circles to reveal areas */}
                     <rect width="100%" height="100%" fill="black" />
                     {tokens.filter(t => t.torch.enabled).map(token => {
                         const cx = token.x * cellSize + cellSize / 2;
@@ -253,12 +262,28 @@ export function MapGrid({
                     })}
                 </mask>
             </defs>
-            {/* This black rectangle covers everything. The mask reveals parts of it. */}
-            <rect width="100%" height="100%" fill="black" opacity="1" mask="url(#fog-mask)" />
+            {/* This black rectangle covers everything that IS NOT revealed by the mask. */}
+            <rect width="100%" height="100%" fill="black" mask="url(#fog-mask-inverted-for-real-this-time)" />
         </svg>
        }
+
+        {/* We need a separate SVG for the mask definition because some browsers (Safari) have issues with masks and sibling elements */}
+        {isPlayerView && (
+            <svg width="0" height="0" style={{ position: 'absolute' }}>
+                <defs>
+                    <mask id="fog-mask">
+                        <rect width="100vw" height="100vh" fill="white" />
+                         {tokens.filter(t => t.torch.enabled).map(token => {
+                            const cx = token.x * cellSize + cellSize / 2;
+                            const cy = token.y * cellSize + cellSize / 2;
+                            const r = token.torch.radius * cellSize;
+                            return <circle key={token.id} cx={cx} cy={cy} r={r} fill="black" />;
+                        })}
+                    </mask>
+                </defs>
+            </svg>
+        )}
     </div>
   );
 }
-
     
