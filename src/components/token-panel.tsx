@@ -112,12 +112,10 @@ export function TokenPanel({
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-between pl-10">
-                                    <div className="flex items-center gap-2">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onTokenTorchToggle(token.id)}>
-                                             <Flame className={cn("h-4 w-4", token.torch.enabled ? "text-orange-500" : "text-muted-foreground")} />
-                                        </Button>
-                                        <span className="text-muted-foreground">Torch</span>
-                                    </div>
+                                    <Button variant="ghost" className="h-8 px-2" onClick={() => onTokenTorchToggle(token.id)}>
+                                         <Flame className={cn("h-4 w-4 mr-2", token.torch.enabled ? "text-orange-500" : "text-muted-foreground")} />
+                                         <span className={cn(token.torch.enabled ? "text-orange-500" : "text-muted-foreground")}>Torch</span>
+                                    </Button>
                                     
                                     {token.torch.enabled && (
                                     <div className="flex items-center gap-1">
