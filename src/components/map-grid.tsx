@@ -495,10 +495,10 @@ export function MapGrid({
     <div
       className="absolute inset-0 pointer-events-none"
       style={{
-        width: '100%',
-        height: '100%',
-        backgroundPosition: `${activePan.x % (cellSize * activeZoom)}px ${activePan.y % (cellSize * activeZoom)}px`,
-        backgroundSize: `${cellSize * activeZoom}px ${cellSize * activeZoom}px`,
+        width: mapDimensions.width / activeZoom,
+        height: mapDimensions.height / activeZoom,
+        backgroundPosition: `0 0`,
+        backgroundSize: `${cellSize}px ${cellSize}px`,
         backgroundImage: bright
           ? `linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px)`
           : `linear-gradient(to right, hsl(var(--border) / 0.1) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.1) 1px, transparent 1px)`,
@@ -532,7 +532,14 @@ export function MapGrid({
       onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
       >
-        {!isPlayerView && showGrid && <GridLayer bright />}
+        {!isPlayerView && showGrid && <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+                backgroundPosition: `${activePan.x % (cellSize * activeZoom)}px ${activePan.y % (cellSize * activeZoom)}px`,
+                backgroundSize: `${cellSize * activeZoom}px ${cellSize * activeZoom}px`,
+                backgroundImage: `linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px)`,
+            }}
+        />}
       
       {isPlayerView ? (
         <div className="absolute inset-0 overflow-hidden">
@@ -540,8 +547,6 @@ export function MapGrid({
                 className='absolute inset-0 origin-top-left'
                 style={{ 
                     transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
-                    width: mapDimensions.width,
-                    height: mapDimensions.height,
                 }}
             >
                 {/* Base layer (dimmed, always visible) */}
@@ -568,7 +573,7 @@ export function MapGrid({
               <defs>
                 <mask id="fog-mask" maskContentUnits="userSpaceOnUse">
                   <rect x="0" y="0" width="100%" height="100%" fill="black" />
-                   <g transform={`translate(${activePan.x}, ${activePan.y}) scale(${activeZoom})`}>
+                   <g transform={`scale(${activeZoom}) translate(${activePan.x / activeZoom}, ${activePan.y / activeZoom})`}>
                       {lightPolygons.map((poly, i) => (
                           poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
                       ))}
@@ -590,4 +595,3 @@ export function MapGrid({
     </div>
   );
 }
-
