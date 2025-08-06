@@ -80,7 +80,7 @@ function calculateVisibilityPolygon(
     allPoints.push({ x: mapBounds.width, y: mapBounds.height });
     allPoints.push({ x: 0, y: mapBounds.height });
 
-    // Optimization: Only consider points within the light radius
+    // Optimization: Only consider points that are in range of the torch range
     allPoints = allPoints.filter(p => {
         const distance = Math.hypot(p.x - lightSource.x, p.y - lightSource.y);
         return distance <= radius;
@@ -570,7 +570,7 @@ export function MapGrid({
                   <rect x="0" y="0" width="1" height="1" fill="black" />
                    <g transform={`scale(${1/mapDimensions.width}, ${1/mapDimensions.height})`}>
                       {lightPolygons.map((poly, i) => (
-                          poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x * activeZoom + activePan.x} ${p.y * activeZoom + activePan.y}`).join(' L ')} Z`} fill="white" />
+                          poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" transform={`translate(${activePan.x}, ${activePan.y}) scale(${activeZoom})`} />
                       ))}
                    </g>
                 </mask>
@@ -590,3 +590,4 @@ export function MapGrid({
     </div>
   );
 }
+
