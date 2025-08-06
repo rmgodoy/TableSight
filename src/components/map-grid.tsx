@@ -115,7 +115,7 @@ export function MapGrid({
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
-  const strokeWidth = 4; // Should match the SVG stroke width
+  const strokeWidth = 10; // Make walls thicker to help with visibility calculation
 
   useEffect(() => {
     if (gridRef.current) {
@@ -255,20 +255,7 @@ export function MapGrid({
   const wallSegments = paths.flatMap(path => {
     const segments: { a: Point, b: Point }[] = [];
     for (let i = 0; i < path.points.length - 1; i++) {
-        const p1 = path.points[i];
-        const p2 = path.points[i+1];
-        const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-        const offsetX = (strokeWidth / 2) * Math.sin(angle);
-        const offsetY = (strokeWidth / 2) * -Math.cos(angle);
-        
-        segments.push({
-            a: { x: p1.x - offsetX, y: p1.y - offsetY },
-            b: { x: p2.x - offsetX, y: p2.y - offsetY }
-        });
-        segments.push({
-            a: { x: p1.x + offsetX, y: p1.y + offsetY },
-            b: { x: p2.x + offsetX, y: p2.y + offsetY }
-        });
+        segments.push({ a: path.points[i], b: path.points[i+1] });
     }
     return segments;
   });
@@ -292,9 +279,9 @@ export function MapGrid({
       >
 
       {/* Base Grid */}
-      {showGrid && <GridLines bright={!isPlayerView} />}
-
-      {/* This container holds the elements that will be masked */}
+      {showGrid && <GridLines bright={!isPlayerView && !isPlayerView} />}
+      
+      {/* Container for masked elements */}
       <div 
         className="absolute inset-0"
         style={{
