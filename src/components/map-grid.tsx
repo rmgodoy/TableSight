@@ -217,22 +217,15 @@ export function MapGrid({
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button === 2) {
+    if (isPlayerView) return;
+
+    if (e.button === 2 || (e.button === 0 && (e.altKey || e.metaKey || e.ctrlKey))) {
         setIsPanning(true);
         panStartRef.current = { x: e.clientX - activePan.x, y: e.clientY - activePan.y };
         e.preventDefault();
         return;
     }
     
-    if (isPlayerView) return;
-
-    if (e.button === 1 || (e.button === 0 && (e.altKey || e.metaKey || e.ctrlKey))) {
-        setIsPanning(true);
-        panStartRef.current = { x: e.clientX - activePan.x, y: e.clientY - activePan.y };
-        e.preventDefault();
-        return;
-    }
-
     const point = getTransformedPoint(e);
 
     if (selectedTool === 'wall' || selectedTool === 'detail') {
@@ -248,19 +241,16 @@ export function MapGrid({
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-     if (isPanning && onPanChange) {
+    if (isPlayerView) return;
+
+    if (isPanning && onPanChange) {
       const newPan = {
         x: e.clientX - panStartRef.current.x,
         y: e.clientY - panStartRef.current.y
       };
-      if (isPlayerView) {
-        setActivePan(newPan);
-      } else {
-        onPanChange(newPan);
-      }
+      onPanChange(newPan);
       return;
     }
-    if (isPlayerView) return;
 
     if (!isDrawing) return;
     setCurrentPath(prevPath => [...prevPath, getTransformedPoint(e)]);
@@ -327,6 +317,7 @@ export function MapGrid({
 
   useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
+        if(isPlayerView) return;
         if(e.key === ' ' && !isPanning) {
             e.preventDefault();
             setIsPanning(true);
@@ -334,6 +325,7 @@ export function MapGrid({
         }
       };
       const handleKeyUp = (e: KeyboardEvent) => {
+          if(isPlayerView) return;
           if(e.key === ' ') {
               setIsPanning(false);
           }
@@ -346,10 +338,11 @@ export function MapGrid({
           window.removeEventListener('keydown', handleKeyDown);
           window.removeEventListener('keyup', handleKeyUp);
       }
-  }, [isPanning, activePan]);
+  }, [isPanning, activePan, isPlayerView]);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-      if (onZoomChange) {
+      if (isPlayerView) return;
+      if (onZoomChange && onPanChange) {
           const delta = e.deltaY > 0 ? -0.1 : 0.1;
           const rect = containerRef.current!.getBoundingClientRect();
           const mouseX = e.clientX - rect.left;
@@ -357,22 +350,12 @@ export function MapGrid({
           
           const newZoom = Math.max(0.1, Math.min(5, activeZoom + delta));
           
-          if(onPanChange) {
-            const newPanX = mouseX - (mouseX - activePan.x) * (newZoom / activeZoom);
-            const newPanY = mouseY - (mouseY - activePan.y) * (newZoom / activeZoom);
-            const newPan = {x: newPanX, y: newPanY};
-            if(isPlayerView) {
-                setActivePan(newPan);
-            } else {
-                onPanChange(newPan);
-            }
-          }
+          const newPanX = mouseX - (mouseX - activePan.x) * (newZoom / activeZoom);
+          const newPanY = mouseY - (mouseY - activePan.y) * (newZoom / activeZoom);
+          const newPan = {x: newPanX, y: newPanY};
           
-          if(isPlayerView) {
-            setActiveZoom(newZoom);
-          } else {
-            onZoomChange(newZoom);
-          }
+          onPanChange(newPan);
+          onZoomChange(newZoom);
       }
   }
 
@@ -441,9 +424,9 @@ export function MapGrid({
     }
     
     let renderTokens = tokens;
-    if(forPlayer && !revealed) {
-        // In the fog, only show PC tokens
-        renderTokens = tokens.filter(t => t.type === 'PC');
+    if (forPlayer && !revealed) {
+        // In the fog, only show PC tokens that are visible
+        renderTokens = tokens.filter(t => t.type === 'PC' && t.visible);
     } else if (forPlayer && revealed) {
       // In the light, show all visible tokens
       renderTokens = tokens.filter(t => t.visible);
@@ -469,9 +452,6 @@ export function MapGrid({
                         fill="none"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        style={{
-                            opacity: forPlayer ? (revealed ? 1 : 0) : 1
-                        }}
                     />
                 ))}
                 {!forPlayer && isDrawing && currentPath.length > 0 && (
@@ -499,7 +479,6 @@ export function MapGrid({
                             top: token.y * cellSize,
                             width: cellSize,
                             height: cellSize,
-                            opacity: (forPlayer && !revealed) ? 0 : (token.visible ? 1 : 0)
                         }}
                     >
                         {renderToken(token)}
@@ -516,7 +495,7 @@ export function MapGrid({
       className={cn(
         "w-full h-full relative",
         isPlayerView ? 'bg-black' : 'bg-background',
-        isPanning ? "cursor-grabbing" : "cursor-grab",
+        !isPlayerView && (isPanning ? "cursor-grabbing" : "cursor-grab"),
         !isPlayerView && !isPanning && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
             'cursor-grab': selectedTool === 'select' && !draggingToken,
@@ -588,5 +567,3 @@ export function MapGrid({
     </div>
   );
 }
-
-    

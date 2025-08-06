@@ -36,8 +36,8 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       });
       setTokens(updatedTokens);
       setPaths(updatedPaths);
-      if (gameState.playerZoom) setZoom(gameState.playerZoom);
-      if (gameState.playerPan) setPan(gameState.playerPan);
+      setZoom(gameState.playerZoom || 1);
+      setPan(gameState.playerPan || { x: 0, y: 0 });
     } catch (error) {
       console.error("Failed to parse game state from localStorage", error);
     }
@@ -62,7 +62,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
   const visibleTokens = tokens.filter(token => token.visible);
 
   return (
-    <div className="w-screen h-dvh bg-black relative flex items-center justify-center">
+    <div className="w-screen h-dvh bg-black relative flex items-center justify-center overflow-hidden">
       <div className="w-full h-full">
         <MapGrid 
           showGrid={true} 
@@ -75,8 +75,6 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
           isPlayerView={true}
           zoom={zoom}
           pan={pan}
-          onZoomChange={setZoom}
-          onPanChange={setPan}
         />
       </div>
       <div className="absolute top-4 left-4 bg-background/80 text-foreground p-3 rounded-lg flex items-center gap-2 shadow-lg backdrop-blur-sm border border-border">
