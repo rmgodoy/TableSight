@@ -2,12 +2,13 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Minus, Plus } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { Slider } from './ui/slider';
 
 interface TokenPanelProps {
     tokens: Token[];
@@ -58,7 +59,7 @@ export function TokenPanel({
                     <ul className="space-y-2">
                         {tokens.map(token => (
                             <li key={token.id} className="flex flex-col p-2 rounded-md hover:bg-accent/50 transition-colors gap-2 text-sm">
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
                                         <div
                                             className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg shrink-0 bg-cover bg-center"
@@ -74,6 +75,15 @@ export function TokenPanel({
                                         />
                                     </div>
                                     <div className="flex items-center shrink-0">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            onClick={() => onVisibilityChange(token.id, !token.visible)}
+                                            title={token.visible ? "Hide Token" : "Show Token"}
+                                        >
+                                            {token.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                        </Button>
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -90,16 +100,6 @@ export function TokenPanel({
                                                 />
                                             </PopoverContent>
                                         </Popover>
-
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon"
-                                            className="h-8 w-8"
-                                            onClick={() => onVisibilityChange(token.id, !token.visible)}
-                                            title={token.visible ? "Hide Token" : "Show Token"}
-                                        >
-                                            {token.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                                        </Button>
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -111,27 +111,22 @@ export function TokenPanel({
                                         </Button>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between pl-10">
-                                    <Button variant="ghost" className="h-8 px-2" onClick={() => onTokenTorchToggle(token.id)}>
+                                <div className="pl-10 space-y-2">
+                                    <Button variant="ghost" className="h-8 px-2 justify-start w-full" onClick={() => onTokenTorchToggle(token.id)}>
                                          <Flame className={cn("h-4 w-4 mr-2", token.torch.enabled ? "text-orange-500" : "text-muted-foreground")} />
                                          <span className={cn(token.torch.enabled ? "text-orange-500" : "text-muted-foreground")}>Torch</span>
                                     </Button>
                                     
                                     {token.torch.enabled && (
-                                    <div className="flex items-center gap-1">
-                                        <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onTokenTorchRadiusChange(token.id, Math.max(0, token.torch.radius - 1))}>
-                                            <Minus className="h-3 w-3" />
-                                        </Button>
-                                        <Input
-                                            type="number"
-                                            className="h-6 w-12 text-center border-x-0 rounded-none bg-transparent"
-                                            value={token.torch.radius}
-                                            onChange={(e) => onTokenTorchRadiusChange(token.id, parseInt(e.target.value) || 0)}
-                                            aria-label="Torch radius"
+                                    <div className="flex items-center gap-2">
+                                        <Slider
+                                            min={1}
+                                            max={999}
+                                            step={1}
+                                            value={[token.torch.radius]}
+                                            onValueChange={(value) => onTokenTorchRadiusChange(token.id, value[0])}
                                         />
-                                        <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onTokenTorchRadiusChange(token.id, token.torch.radius + 1)}>
-                                            <Plus className="h-3 w-3" />
-                                        </Button>
+                                        <span className='text-sm font-bold w-10 text-center'>{token.torch.radius}</span>
                                     </div>
                                     )}
                                 </div>
