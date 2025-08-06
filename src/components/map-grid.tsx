@@ -23,6 +23,78 @@ function getSvgPath(path: Path) {
   return `M ${path[0].x} ${path[0].y} ` + path.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
 }
 
+// Helper function to calculate the visibility polygon
+function calculateVisibilityPolygon(lightSource: Point, segments: { a: Point, b: Point }[], mapBounds: { width: number, height: number }): Point[] {
+    const allPoints: Point[] = [];
+    for (const segment of segments) {
+        allPoints.push(segment.a, segment.b);
+    }
+    allPoints.push({ x: 0, y: 0 });
+    allPoints.push({ x: mapBounds.width, y: 0 });
+    allPoints.push({ x: mapBounds.width, y: mapBounds.height });
+    allPoints.push({ x: 0, y: mapBounds.height });
+
+    const uniquePoints = allPoints.reduce((acc, p) => {
+        if (!acc.find(ap => ap.x === p.x && ap.y === p.y)) {
+            acc.push(p);
+        }
+        return acc;
+    }, [] as Point[]);
+
+    const uniqueAngles: number[] = [];
+    for (const point of uniquePoints) {
+        const angle = Math.atan2(point.y - lightSource.y, point.x - lightSource.x);
+        uniqueAngles.push(angle, angle - 1e-5, angle + 1e-5);
+    }
+    
+    const intersects: Point[] = [];
+    for (const angle of uniqueAngles) {
+        const dx = Math.cos(angle);
+        const dy = Math.sin(angle);
+
+        let closestIntersection: Point | null = null;
+        let minDistance = Infinity;
+
+        for (const segment of segments) {
+            const intersection = getIntersection(lightSource, { x: lightSource.x + dx, y: lightSource.y + dy }, segment.a, segment.b);
+            if (intersection) {
+                const distance = Math.hypot(intersection.x - lightSource.x, intersection.y - lightSource.y);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestIntersection = intersection;
+                }
+            }
+        }
+        if (closestIntersection) {
+            intersects.push(closestIntersection);
+        }
+    }
+
+    intersects.sort((a, b) => {
+        const angleA = Math.atan2(a.y - lightSource.y, a.x - lightSource.x);
+        const angleB = Math.atan2(b.y - lightSource.y, b.x - lightSource.x);
+        return angleA - angleB;
+    });
+
+    return intersects;
+}
+
+
+function getIntersection(a1: Point, a2: Point, b1: Point, b2: Point): Point | null {
+    const d = (a2.x - a1.x) * (b2.y - b1.y) - (a2.y - a1.y) * (b2.x - b1.x);
+    if (d === 0) return null;
+    const t = ((b1.x - a1.x) * (b2.y - b1.y) - (b1.y - a1.y) * (b2.x - b1.x)) / d;
+    const u = -((a2.x - a1.x) * (b1.y - a1.y) - (a2.y - a1.y) * (b1.x - a1.x)) / d;
+    if (t >= 0 && u >= 0 && u <= 1) {
+        return {
+            x: a1.x + t * (a2.x - a1.x),
+            y: a1.y + t * (a2.y - a1.y),
+        };
+    }
+    return null;
+}
+
+
 export function MapGrid({ 
   showGrid, 
   tokens, 
@@ -40,6 +112,26 @@ export function MapGrid({
   const [dragPosition, setDragPosition] = useState<{x: number, y: number} | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<Path>([]);
+  const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (gridRef.current) {
+        setMapDimensions({
+            width: gridRef.current.clientWidth,
+            height: gridRef.current.clientHeight
+        });
+    }
+    const handleResize = () => {
+        if (gridRef.current) {
+            setMapDimensions({
+                width: gridRef.current.clientWidth,
+                height: gridRef.current.clientHeight
+            });
+        }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const getPointFromEvent = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
     if (!gridRef.current) return { x: 0, y: 0 };
@@ -157,6 +249,13 @@ export function MapGrid({
     ></div>
   );
 
+  const wallSegments = paths.flatMap(path => {
+    const segments: { a: Point, b: Point }[] = [];
+    for (let i = 0; i < path.length - 1; i++) {
+        segments.push({ a: path[i], b: path[i+1] });
+    }
+    return segments;
+  });
 
   return (
     <div 
@@ -264,12 +363,28 @@ export function MapGrid({
               {/* Start with black, which hides everything */}
               <rect width="100vw" height="100vh" fill="black" />
               
-              {/* Add white circles for each torch to reveal areas */}
+              {/* Add white polygons for each torch to reveal areas */}
               {tokens.filter(t => t.torch.enabled).map(token => {
-                const cx = token.x * cellSize + cellSize / 2;
-                const cy = token.y * cellSize + cellSize / 2;
-                const r = token.torch.radius * cellSize;
-                return <circle key={`${token.id}-torch`} cx={cx} cy={cy} r={r} fill="white" />;
+                const lightSource = { 
+                    x: token.x * cellSize + cellSize / 2, 
+                    y: token.y * cellSize + cellSize / 2 
+                };
+                const radius = token.torch.radius * cellSize;
+                
+                const lightBoundary: {a: Point, b: Point}[] = [];
+                for (let i = 0; i < 360; i += 5) {
+                    const angle = i * Math.PI / 180;
+                    lightBoundary.push({
+                        a: { x: lightSource.x + Math.cos(angle) * radius, y: lightSource.y + Math.sin(angle) * radius },
+                        b: { x: lightSource.x + Math.cos(angle + 5 * Math.PI / 180) * radius, y: lightSource.y + Math.sin(angle + 5 * Math.PI / 180) * radius }
+                    });
+                }
+
+                const visibilityPolygon = calculateVisibilityPolygon(lightSource, [...wallSegments, ...lightBoundary], mapDimensions);
+                
+                if (visibilityPolygon.length === 0) return null;
+
+                return <path key={`${token.id}-torch`} d={`M ${visibilityPolygon.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />;
               })}
             </mask>
           </defs>
