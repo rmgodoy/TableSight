@@ -22,8 +22,6 @@ interface MapGridProps {
   pan?: { x: number; y: number };
   onZoomChange?: (zoom: number) => void;
   onPanChange?: (pan: { x: number; y: number }) => void;
-  playerZoom?: number;
-  playerPan?: { x: number; y: number };
 }
 
 function getSvgPathFromPoints(points: Point[]) {
@@ -164,8 +162,6 @@ export function MapGrid({
   pan = { x: 0, y: 0 },
   onZoomChange,
   onPanChange,
-  playerZoom = 1,
-  playerPan = {x: 0, y: 0},
 }: MapGridProps) {
   const cellSize = 40; 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -175,12 +171,9 @@ export function MapGrid({
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0 });
-  const [playerViewportRect, setPlayerViewportRect] = useState<DOMRect | null>(null);
-  const [isResizing, setIsResizing] = useState<string | null>(null);
-  const [showPlayerViewport, setShowPlayerViewport] = useState(true);
 
-  const activeZoom = isPlayerView ? playerZoom : zoom;
-  const activePan = isPlayerView ? playerPan : pan;
+  const activeZoom = zoom;
+  const activePan = pan;
 
   useEffect(() => {
     const updateMapDimensions = () => {
@@ -200,17 +193,14 @@ export function MapGrid({
   const getTransformedPoint = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
     if (!containerRef.current) return { x: 0, y: 0 };
     const rect = containerRef.current.getBoundingClientRect();
-    const currentPan = isPlayerView ? playerPan : pan;
-    const currentZoom = isPlayerView ? playerZoom : zoom;
-
     return {
-      x: (e.clientX - rect.left - currentPan.x) / currentZoom,
-      y: (e.clientY - rect.top - currentPan.y) / currentZoom,
+      x: (e.clientX - rect.left - activePan.x) / activeZoom,
+      y: (e.clientY - rect.top - activePan.y) / activeZoom,
     };
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button === 1 || e.button === 2 || (e.button === 0 && e.altKey)) {
+    if (e.button === 1 || e.button === 2 || (e.button === 0 && (e.altKey || e.metaKey || e.ctrlKey))) {
         setIsPanning(true);
         panStartRef.current = { x: e.clientX - activePan.x, y: e.clientY - activePan.y };
         e.preventDefault();
@@ -255,16 +245,15 @@ export function MapGrid({
     
     if (isPlayerView) return;
 
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    if (currentPath.length > 1) {
-        onNewPath({ 
-            points: currentPath, 
-            color: brushColor,
-            width: brushSize,
-            blocksLight: selectedTool === 'wall'
-        });
+    if (isDrawing && currentPath.length > 0) {
+      onNewPath({ 
+          points: currentPath, 
+          color: brushColor,
+          width: brushSize,
+          blocksLight: selectedTool === 'wall'
+      });
     }
+    setIsDrawing(false);
     setCurrentPath([]);
   };
 
@@ -333,7 +322,19 @@ export function MapGrid({
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
       if (onZoomChange) {
           const delta = e.deltaY > 0 ? -0.1 : 0.1;
-          onZoomChange(Math.max(0.1, Math.min(5, zoom + delta)));
+          const rect = containerRef.current!.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+          
+          const newZoom = Math.max(0.1, Math.min(5, zoom + delta));
+          
+          if(onPanChange) {
+            const newPanX = mouseX - (mouseX - pan.x) * (newZoom / zoom);
+            const newPanY = mouseY - (mouseY - pan.y) * (newZoom / zoom);
+            onPanChange({x: newPanX, y: newPanY});
+          }
+          
+          onZoomChange(newZoom);
       }
   }
 
@@ -373,8 +374,8 @@ export function MapGrid({
       if (!isPlayerView) return [];
       
       const visibilityBoundary = {
-          width: mapDimensions.width / activeZoom - activePan.x,
-          height: mapDimensions.height / activeZoom - activePan.y
+          width: mapDimensions.width / activeZoom,
+          height: mapDimensions.height / activeZoom
       };
       
       const boundarySegments = [
@@ -389,65 +390,78 @@ export function MapGrid({
           const torchRadiusInPixels = token.torch.radius * cellSize;
           return calculateVisibilityPolygon(lightSource, boundarySegments, visibilityBoundary, torchRadiusInPixels);
       });
-  }, [isPlayerView, tokens, wallSegments, mapDimensions, activeZoom, activePan, cellSize]);
+  }, [isPlayerView, tokens, wallSegments, mapDimensions, activeZoom, cellSize]);
 
 
   const MapContent = ({ forPlayer, revealed }: { forPlayer: boolean, revealed: boolean }) => {
-    const renderPaths = forPlayer ? paths.filter(p => revealed || p.blocksLight) : paths;
-    const renderTokens = forPlayer ? tokens.filter(t => revealed || t.type === 'PC') : tokens;
+    const renderPaths = forPlayer 
+      ? paths.filter(p => revealed || p.blocksLight) 
+      : paths;
+
+    const renderTokens = forPlayer 
+      ? tokens.filter(t => revealed || t.type === 'PC') 
+      : tokens;
 
     return (
         <>
             {showGrid && <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
-                    backgroundSize: `${cellSize}px ${cellSize}px`,
+                    backgroundPosition: `${activePan.x}px ${activePan.y}px`,
+                    backgroundSize: `${cellSize * activeZoom}px ${cellSize * activeZoom}px`,
                     backgroundImage: `linear-gradient(to right, hsl(var(--border) / ${revealed ? 1 : 0.3}) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / ${revealed ? 1 : 0.3}) 1px, transparent 1px)`
                 }}
             ></div>}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                {renderPaths.map((path, i) => (
-                    <path
-                        key={i}
-                        d={getSvgPathFromPoints(path.points)}
-                        stroke={path.color}
-                        strokeWidth={path.width}
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                ))}
-                {isDrawing && currentPath.length > 0 && (
-                    <path
-                        d={getSvgPathFromPoints(currentPath)}
-                        stroke={brushColor}
-                        strokeWidth={brushSize}
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                )}
-            </svg>
-            <div className="absolute inset-0">
-                {renderTokens.map(token => (
-                    <div
-                        key={token.id}
-                        onMouseDown={(e) => handleTokenMouseDown(e, token)}
-                        className={cn(
-                            "absolute flex items-center justify-center transition-opacity duration-100 ease-in-out",
-                            draggingToken?.id === token.id && "opacity-50"
-                        )}
-                        style={{
-                            left: token.x * cellSize,
-                            top: token.y * cellSize,
-                            width: cellSize,
-                            height: cellSize,
-                            opacity: isPlayerView ? (token.visible ? 1 : 0) : 1
-                        }}
-                    >
-                        {renderToken(token)}
-                    </div>
-                ))}
+            <div 
+              className="absolute inset-0 origin-top-left"
+              style={{ 
+                transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
+              }}
+            >
+              <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+                  {renderPaths.map((path, i) => (
+                      <path
+                          key={i}
+                          d={getSvgPathFromPoints(path.points)}
+                          stroke={path.color}
+                          strokeWidth={path.width}
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                      />
+                  ))}
+                  {!forPlayer && isDrawing && currentPath.length > 0 && (
+                      <path
+                          d={getSvgPathFromPoints(currentPath)}
+                          stroke={brushColor}
+                          strokeWidth={brushSize}
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                      />
+                  )}
+              </svg>
+              <div className="absolute inset-0">
+                  {renderTokens.map(token => (
+                      <div
+                          key={token.id}
+                          onMouseDown={(e) => handleTokenMouseDown(e, token)}
+                          className={cn(
+                              "absolute flex items-center justify-center transition-opacity duration-100 ease-in-out",
+                              draggingToken?.id === token.id && "opacity-50"
+                          )}
+                          style={{
+                              left: token.x * cellSize,
+                              top: token.y * cellSize,
+                              width: cellSize,
+                              height: cellSize,
+                              opacity: isPlayerView ? (token.visible ? 1 : 0) : 1
+                          }}
+                      >
+                          {renderToken(token)}
+                      </div>
+                  ))}
+              </div>
             </div>
         </>
     );
@@ -457,9 +471,9 @@ export function MapGrid({
     <div 
       ref={containerRef}
       className={cn(
-        "w-full h-full relative overflow-hidden",
+        "w-full h-full relative",
         isPlayerView ? 'bg-black' : 'bg-background',
-        isPanning && "cursor-grabbing",
+        isPanning ? "cursor-grabbing" : "cursor-grab",
         !isPlayerView && !isPanning && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
             'cursor-grab': selectedTool === 'select' && !draggingToken,
@@ -479,41 +493,41 @@ export function MapGrid({
       onContextMenu={(e) => e.preventDefault()}
       >
       
-      <div 
-        className="absolute inset-0 origin-top-left"
-        style={{ 
-          transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
-        }}
-      >
-        {isPlayerView ? (
-            <>
-                <MapContent forPlayer={true} revealed={false} />
-                <div 
-                    className="absolute inset-0"
-                    style={{
-                      mask: `url(#fog-mask)`,
-                      WebkitMask: 'url(#fog-mask)',
-                    }}
-                >
-                    <div className="w-full h-full bg-background">
-                       <MapContent forPlayer={true} revealed={true} />
-                    </div>
-                </div>
-                <svg width="0" height="0" style={{ position: 'absolute' }}>
-                  <defs>
-                    <mask id="fog-mask">
-                      <rect x={-activePan.x / activeZoom} y={-activePan.y / activeZoom} width={`${100 / activeZoom}%`} height={`${100 / activeZoom}%`} fill="black" />
-                       {lightPolygons.map((poly, i) => (
-                           poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
-                       ))}
-                    </mask>
-                  </defs>
-                </svg>
-            </>
-        ) : (
-            <MapContent forPlayer={false} revealed={true} />
-        )}
-      </div>
+      {isPlayerView ? (
+        <>
+            <div className='absolute inset-0 bg-background'>
+              <MapContent forPlayer={true} revealed={false} />
+            </div>
+
+            <div 
+                className="absolute inset-0 bg-black/80"
+                style={{
+                  mask: `url(#fog-mask)`,
+                  WebkitMask: 'url(#fog-mask)',
+                }}
+            >
+              <div className="absolute inset-0 bg-background">
+                 <MapContent forPlayer={true} revealed={true} />
+              </div>
+            </div>
+            <svg width="0" height="0" style={{ position: 'absolute' }}>
+              <defs>
+                <mask id="fog-mask">
+                  <rect x={0} y={0} width="100%" height="100%" fill="black" />
+                   <g style={{ 
+                      transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`
+                    }}>
+                      {lightPolygons.map((poly, i) => (
+                          poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
+                      ))}
+                   </g>
+                </mask>
+              </defs>
+            </svg>
+        </>
+      ) : (
+          <MapContent forPlayer={false} revealed={true} />
+      )}
     </div>
   );
 }
