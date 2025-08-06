@@ -20,8 +20,15 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
           ...t,
           torch: t.torch || { enabled: false, radius: 5 }
         }));
+        const updatedPaths = (newState.paths || []).map(p => {
+          // Backwards compatibility for paths without color
+          if (Array.isArray(p)) {
+              return { points: p, color: '#000000' };
+          }
+          return p;
+        });
         setTokens(updatedTokens);
-        setPaths(newState.paths || []);
+        setPaths(updatedPaths);
       } catch (error) {
         console.error("Failed to parse game state from localStorage", error);
       }
@@ -39,8 +46,15 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
           ...t,
           torch: t.torch || { enabled: false, radius: 5 }
         }));
+        const updatedPaths = (gameState.paths || []).map(p => {
+          // Backwards compatibility for paths without color
+          if (Array.isArray(p)) {
+              return { points: p, color: '#000000' };
+          }
+          return p;
+        });
         setTokens(updatedTokens);
-        setPaths(gameState.paths || []);
+        setPaths(updatedPaths);
       }
     } catch (error) {
         console.error("Failed to load game state from localStorage", error);

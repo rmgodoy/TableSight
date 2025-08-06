@@ -27,7 +27,10 @@ import {
 export type Tool = 'select' | 'brush' | 'erase' | 'add-pc' | 'add-enemy';
 
 export type Point = { x: number; y: number };
-export type Path = Point[];
+export type Path = {
+    points: Point[];
+    color: string;
+};
 
 export type Token = {
   id: string;
@@ -54,6 +57,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [playerUrl, setPlayerUrl] = useState('');
     const [showGrid, setShowGrid] = useState(true);
     const [selectedTool, setSelectedTool] = useState<Tool>('select');
+    const [brushColor, setBrushColor] = useState('#000000');
     const [tokens, setTokens] = useState<Token[]>([]);
     const [paths, setPaths] = useState<Path[]>([]);
     const { toast } = useToast();
@@ -86,8 +90,15 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                   ...t,
                   torch: t.torch || { enabled: false, radius: 5 }
                 }));
+                const updatedPaths = (gameState.paths || []).map(p => {
+                    // Backwards compatibility for paths without color
+                    if (Array.isArray(p)) {
+                        return { points: p, color: '#000000' };
+                    }
+                    return p;
+                });
                 setTokens(updatedTokens);
-                setPaths(gameState.paths || []);
+                setPaths(updatedPaths);
             }
         } catch (error) {
             console.error("Failed to load game state from localStorage", error);
@@ -147,7 +158,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         // A simple erase implementation: remove paths that are close to the erase point.
         const eraseRadius = 20; // in pixels
         const newPaths = paths.filter(path => 
-            !path.some(p => Math.sqrt(Math.pow(p.x - point.x, 2) + Math.pow(p.y - point.y, 2)) < eraseRadius)
+            !path.points.some(p => Math.sqrt(Math.pow(p.x - point.x, 2) + Math.pow(p.y - point.y, 2)) < eraseRadius)
         );
         updateGameState(tokens, newPaths);
     };
@@ -233,7 +244,12 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     </CardContent>
                 </Card>
                 <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-                    <GmToolbar selectedTool={selectedTool} onToolSelect={setSelectedTool} />
+                    <GmToolbar 
+                        selectedTool={selectedTool} 
+                        onToolSelect={setSelectedTool}
+                        brushColor={brushColor}
+                        onBrushColorChange={setBrushColor}
+                    />
                     <TokenPanel 
                         tokens={tokens} 
                         onVisibilityChange={handleTokenVisibilityChange}
@@ -259,6 +275,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         onNewPath={handleNewPath}
                         selectedTool={selectedTool}
                         onTokenMove={handleTokenMove}
+                        brushColor={brushColor}
                     />
                 </div>
                 <footer className="h-16 flex items-center justify-center p-2 rounded-lg bg-card border border-border">

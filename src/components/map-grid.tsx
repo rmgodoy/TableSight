@@ -16,11 +16,12 @@ interface MapGridProps {
   selectedTool: Tool;
   onTokenMove?: (tokenId: string, x: number, y: number) => void;
   isPlayerView?: boolean;
+  brushColor?: string;
 }
 
-function getSvgPath(path: Path) {
-  if (path.length === 0) return '';
-  return `M ${path[0].x} ${path[0].y} ` + path.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+function getSvgPathFromPoints(points: Point[]) {
+  if (points.length === 0) return '';
+  return `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
 }
 
 // Helper function to calculate the visibility polygon
@@ -104,14 +105,15 @@ export function MapGrid({
   onErase,
   selectedTool,
   onTokenMove,
-  isPlayerView = false
+  isPlayerView = false,
+  brushColor = '#000000',
 }: MapGridProps) {
   const cellSize = 40; 
   const gridRef = useRef<HTMLDivElement>(null);
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
   const [dragPosition, setDragPosition] = useState<{x: number, y: number} | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentPath, setCurrentPath] = useState<Path>([]);
+  const [currentPath, setCurrentPath] = useState<Point[]>([]);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
@@ -167,7 +169,7 @@ export function MapGrid({
     if (isPlayerView || !isDrawing) return;
     setIsDrawing(false);
     if (currentPath.length > 1) {
-        onNewPath(currentPath);
+        onNewPath({ points: currentPath, color: brushColor });
     }
     setCurrentPath([]);
   };
@@ -251,8 +253,8 @@ export function MapGrid({
 
   const wallSegments = paths.flatMap(path => {
     const segments: { a: Point, b: Point }[] = [];
-    for (let i = 0; i < path.length - 1; i++) {
-        segments.push({ a: path[i], b: path[i+1] });
+    for (let i = 0; i < path.points.length - 1; i++) {
+        segments.push({ a: path.points[i], b: path.points[i+1] });
     }
     return segments;
   });
@@ -276,7 +278,7 @@ export function MapGrid({
       >
 
       {/* Base Grid */}
-      {showGrid && (isPlayerView ? <GridLines /> : <GridLines bright />)}
+      {showGrid && <GridLines bright={!isPlayerView} />}
 
       {/* This container holds the elements that will be masked */}
       <div 
@@ -287,7 +289,7 @@ export function MapGrid({
         }}
         >
         
-        {/* Bright Grid (for revealed areas) */}
+        {/* Bright Grid (for revealed areas in player view) */}
         {showGrid && isPlayerView && <GridLines bright />}
 
         {/* Drawing Layer */}
@@ -295,8 +297,8 @@ export function MapGrid({
             {paths.map((path, i) => (
                 <path 
                     key={i} 
-                    d={getSvgPath(path)} 
-                    stroke="hsl(var(--foreground))"
+                    d={getSvgPathFromPoints(path.points)} 
+                    stroke={path.color}
                     strokeWidth="4"
                     fill="none"
                     strokeLinecap="round"
@@ -305,8 +307,8 @@ export function MapGrid({
             ))}
             {isDrawing && currentPath.length > 0 && (
                 <path 
-                    d={getSvgPath(currentPath)} 
-                    stroke="hsl(var(--primary))"
+                    d={getSvgPathFromPoints(currentPath)} 
+                    stroke={brushColor}
                     strokeWidth="4"
                     fill="none"
                     strokeLinecap="round"
@@ -369,18 +371,8 @@ export function MapGrid({
                     x: token.x * cellSize + cellSize / 2, 
                     y: token.y * cellSize + cellSize / 2 
                 };
-                const radius = token.torch.radius * cellSize;
                 
-                const lightBoundary: {a: Point, b: Point}[] = [];
-                for (let i = 0; i < 360; i += 5) {
-                    const angle = i * Math.PI / 180;
-                    lightBoundary.push({
-                        a: { x: lightSource.x + Math.cos(angle) * radius, y: lightSource.y + Math.sin(angle) * radius },
-                        b: { x: lightSource.x + Math.cos(angle + 5 * Math.PI / 180) * radius, y: lightSource.y + Math.sin(angle + 5 * Math.PI / 180) * radius }
-                    });
-                }
-
-                const visibilityPolygon = calculateVisibilityPolygon(lightSource, [...wallSegments, ...lightBoundary], mapDimensions);
+                const visibilityPolygon = calculateVisibilityPolygon(lightSource, wallSegments, mapDimensions);
                 
                 if (visibilityPolygon.length === 0) return null;
 
