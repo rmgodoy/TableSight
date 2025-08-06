@@ -421,10 +421,14 @@ export function MapGrid({
 
   const MapContent = ({ forPlayer, revealed }: { forPlayer: boolean, revealed: boolean }) => {
     let renderPaths = paths;
-    if (forPlayer && !revealed) {
-      renderPaths = [];
-    } else if (forPlayer && revealed) {
-      renderPaths = paths.filter(p => p.blocksLight);
+    if (forPlayer) {
+      if (revealed) {
+        // In the light, show all paths
+        renderPaths = paths;
+      } else {
+        // In the fog, only show walls
+        renderPaths = [];
+      }
     }
     
     let renderTokens = tokens;
@@ -432,13 +436,9 @@ export function MapGrid({
       if (revealed) {
         // In the light, show all visible tokens
         renderTokens = tokens.filter(t => t.visible);
-        // And all paths
-        renderPaths = paths;
       } else {
         // In the fog, only show PC tokens that are visible
         renderTokens = tokens.filter(t => t.type === 'PC' && t.visible);
-        // And no paths
-        renderPaths = [];
       }
     }
     
@@ -449,7 +449,7 @@ export function MapGrid({
                 style={{
                     backgroundPosition: `0 0`,
                     backgroundSize: `${cellSize}px ${cellSize}px`,
-                    backgroundImage: `linear-gradient(to right, hsl(var(--border) / ${revealed ? 1 : 0.3}) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / ${revealed ? 1 : 0.3}) 1px, transparent 1px)`
+                    backgroundImage: `linear-gradient(to right, hsl(var(--border) / ${revealed ? 1 : 0.1}) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / ${revealed ? 1 : 0.1}) 1px, transparent 1px)`
                 }}
             ></div>}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
@@ -534,6 +534,7 @@ export function MapGrid({
                     transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
                 }}
             >
+                <div className='absolute inset-0 bg-black/80' />
                 <MapContent forPlayer={true} revealed={false} />
             </div>
             
