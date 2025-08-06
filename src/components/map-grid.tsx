@@ -535,39 +535,40 @@ export function MapGrid({
         {!isPlayerView && showGrid && <GridLayer bright />}
       
       {isPlayerView ? (
-        <>
-            {/* Base layer (dimmed, always visible) */}
+        <div className="absolute inset-0 overflow-hidden">
             <div 
                 className='absolute inset-0 origin-top-left'
                 style={{ 
                     transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
+                    width: mapDimensions.width / activeZoom,
+                    height: mapDimensions.height / activeZoom,
                 }}
             >
+                {/* Base layer (dimmed, always visible) */}
                 <div className='absolute inset-0 bg-black/90' />
                 <GridLayer bright={false} />
                  <MapContent forPlayer={true} revealed={false} />
-            </div>
             
-            {/* Revealed layer (bright, masked) */}
-            <div 
-                className="absolute inset-0 origin-top-left"
-                style={{
-                  transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
-                  mask: `url(#fog-mask)`,
-                  WebkitMask: 'url(#fog-mask)',
-                }}
-            >
-              <div className="absolute inset-0 bg-background">
-                 <GridLayer bright={true} />
-                 <MapContent forPlayer={true} revealed={true} />
-              </div>
+                {/* Revealed layer (bright, masked) */}
+                <div 
+                    className="absolute inset-0"
+                    style={{
+                      mask: `url(#fog-mask)`,
+                      WebkitMask: 'url(#fog-mask)',
+                    }}
+                >
+                  <div className="absolute inset-0 bg-background">
+                     <GridLayer bright={true} />
+                     <MapContent forPlayer={true} revealed={true} />
+                  </div>
+                </div>
             </div>
             
             <svg width="0" height="0" style={{ position: 'absolute' }}>
               <defs>
                 <mask id="fog-mask">
-                  <rect x={-activePan.x/activeZoom} y={-activePan.y/activeZoom} width={`${100/activeZoom}%`} height={`${100/activeZoom}%`} fill="black" />
-                   <g>
+                  <rect x="0" y="0" width="100%" height="100%" fill="black" />
+                   <g transform={`scale(${activeZoom}) translate(${activePan.x / activeZoom}, ${activePan.y / activeZoom})`}>
                       {lightPolygons.map((poly, i) => (
                           poly.length > 0 && <path key={i} d={`M ${poly.map(p => `${p.x} ${p.y}`).join(' L ')} Z`} fill="white" />
                       ))}
@@ -575,7 +576,7 @@ export function MapGrid({
                 </mask>
               </defs>
             </svg>
-        </>
+        </div>
       ) : (
           <div
             className="absolute inset-0 origin-top-left"
