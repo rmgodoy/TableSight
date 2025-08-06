@@ -113,13 +113,9 @@ function calculateVisibilityPolygon(
         let intersectPoint: Point;
 
         if (closestIntersection) {
-            // Heuristic to account for wall thickness: move the intersection point towards the light source
-            const pullBackDist = segmentWidth / 2;
-            if (minDistance > pullBackDist) {
-                minDistance -= pullBackDist;
-            } else {
-                minDistance = 0;
-            }
+            // Heuristic to account for wall thickness: move the intersection point away from the light source
+            const pushAwayDist = segmentWidth / 2;
+            minDistance += pushAwayDist;
         }
 
         if (minDistance > radius) {
@@ -458,4 +454,5 @@ export function MapGrid({
     
 
     
+
 
