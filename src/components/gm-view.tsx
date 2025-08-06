@@ -274,9 +274,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     };
 
     return (
-        <div className="flex h-dvh w-screen bg-background text-foreground overflow-hidden">
+        <div className="flex h-dvh w-screen bg-background text-foreground">
             {/* Left Sidebar */}
-            <aside className="w-80 h-full flex flex-col p-4 gap-4 border-r border-border bg-card/50">
+            <aside className="w-80 h-full flex flex-col p-4 gap-4 border-r border-border bg-card/50 z-10">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold font-headline text-primary">Tabletop Alchemist</h1>
                     <Button variant="ghost" size="icon" asChild>
@@ -378,4 +378,5 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             </main>
         </div>
     );
-}
+
+    
