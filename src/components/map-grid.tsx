@@ -375,7 +375,7 @@ export function MapGrid({
 
   const MapContent = () => (
     <>
-      {showGrid && <GridLines />}
+      {(showGrid || isPlayerView) && <GridLines />}
       <svg className="absolute inset-0 w-full h-full pointer-events-none">
           {paths.map((path, i) => (
               <path 
@@ -453,7 +453,7 @@ export function MapGrid({
         <svg width="0" height="0" style={{ position: 'absolute' }}>
           <defs>
             <mask id="fog-mask">
-              <rect x="-1000vw" y="-1000vh" width="2000vw" height="2000vh" fill="black" />
+              <rect x="0" y="0" width="100%" height="100%" fill="black" />
               {tokens.filter(t => t.torch.enabled && t.visible).map(token => {
                 const lightSource = { 
                     x: token.x * cellSize + cellSize / 2, 
@@ -488,18 +488,23 @@ export function MapGrid({
           </defs>
         </svg>
       )}
-
+      
       <div 
-        className="absolute inset-0 origin-top-left"
+        className="absolute inset-0 origin-top-left bg-background"
         style={{ 
           transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
-          mask: isPlayerView ? 'url(#fog-mask)' : 'none',
-          WebkitMask: isPlayerView ? 'url(#fog-mask)' : 'none',
         }}
       >
-        <MapContent />
+        <div 
+          className="absolute inset-0"
+          style={{
+            mask: isPlayerView ? 'url(#fog-mask)' : 'none',
+            WebkitMask: isPlayerView ? 'url(#fog-mask)' : 'none',
+          }}
+        >
+          <MapContent />
+        </div>
       </div>
-
     </div>
   );
 }
