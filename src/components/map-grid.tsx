@@ -248,9 +248,9 @@ export function MapGrid({
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPlayerView) return;
+    if (isPlayerView || !onPanChange) return;
 
-    if (isPanning && onPanChange) {
+    if (isPanning) {
       const newPan = {
         x: e.clientX - panStartRef.current.x,
         y: e.clientY - panStartRef.current.y
@@ -444,14 +444,6 @@ export function MapGrid({
     
     return (
         <>
-            {showGrid && <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                    backgroundPosition: `0 0`,
-                    backgroundSize: `${cellSize}px ${cellSize}px`,
-                    backgroundImage: `linear-gradient(to right, hsl(var(--border) / ${revealed ? 1 : 0.1}) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / ${revealed ? 1 : 0.1}) 1px, transparent 1px)`
-                }}
-            ></div>}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                 {renderPaths.map((path, i) => (
                     <path
@@ -524,6 +516,15 @@ export function MapGrid({
       onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
       >
+
+        {showGrid && <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+                backgroundPosition: `${activePan.x}px ${activePan.y}px`,
+                backgroundSize: `${cellSize * activeZoom}px ${cellSize * activeZoom}px`,
+                backgroundImage: `linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px)`
+            }}
+        ></div>}
       
       {isPlayerView ? (
         <>
@@ -534,8 +535,8 @@ export function MapGrid({
                     transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
                 }}
             >
-                <div className='absolute inset-0 bg-black/80' />
-                <MapContent forPlayer={true} revealed={false} />
+                <div className='absolute inset-0 bg-black/90' />
+                 <MapContent forPlayer={true} revealed={false} />
             </div>
             
             {/* Revealed layer (bright, masked) */}
@@ -570,7 +571,6 @@ export function MapGrid({
             className="absolute inset-0 origin-top-left"
             style={{
                 transform: `scale(${activeZoom}) translate(${activePan.x / activeZoom}px, ${activePan.y / activeZoom}px)`,
-                overflow: 'visible'
             }}
           >
               <MapContent forPlayer={false} revealed={true} />
