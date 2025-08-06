@@ -60,7 +60,12 @@ function getIntersection(ray_p1: Point, ray_p2: Point, seg_p1: Point, seg_p2: Po
     return null;
 }
 
-function calculateVisibilityPolygon(lightSource: Point, segments: { a: Point, b: Point }[], mapBounds: { width: number, height: number }, radius: number): Point[] {
+function calculateVisibilityPolygon(
+  lightSource: Point,
+  segments: { a: Point; b: Point }[],
+  mapBounds: { width: number; height: number },
+  radius: number
+): Point[] {
     const allPoints: Point[] = [];
     for (const segment of segments) {
         allPoints.push(segment.a, segment.b);
@@ -291,8 +296,30 @@ export function MapGrid({
 
   const wallSegments = paths.filter(p => p.blocksLight).flatMap(path => {
     const segments: { a: Point, b: Point }[] = [];
+    const width = path.width || brushSize;
+
     for (let i = 0; i < path.points.length - 1; i++) {
-        segments.push({ a: path.points[i], b: path.points[i+1] });
+        const p1 = path.points[i];
+        const p2 = path.points[i+1];
+        
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = Math.sqrt(dx*dx + dy*dy);
+        
+        const nx = -dy / len;
+        const ny = dx / len;
+
+        const halfWidth = width / 2;
+        
+        const c1 = { x: p1.x + nx * halfWidth, y: p1.y + ny * halfWidth };
+        const c2 = { x: p2.x + nx * halfWidth, y: p2.y + ny * halfWidth };
+        const c3 = { x: p2.x - nx * halfWidth, y: p2.y - ny * halfWidth };
+        const c4 = { x: p1.x - nx * halfWidth, y: p1.y - ny * halfWidth };
+
+        segments.push({a: c1, b: c2});
+        segments.push({a: c2, b: c3});
+        segments.push({a: c3, b: c4});
+        segments.push({a: c4, b: c1});
     }
     return segments;
   });
