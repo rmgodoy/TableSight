@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Brush, CircleUserRound, Eraser, Hand, Maximize, MousePointer, PenLine, Redo, Shield, Undo, ZoomIn, ZoomOut } from 'lucide-react';
+import { Brush, CircleUserRound, Eraser, Hand, Maximize, MousePointer, PenLine, Redo, Shield, Undo, Upload, ZoomIn, ZoomOut } from 'lucide-react';
 import type { Tool } from './gm-view';
 import { cn } from '@/lib/utils';
 import {
@@ -11,10 +11,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useRef } from 'react';
 
 interface GmSidebarProps {
     selectedTool: Tool;
     onToolSelect: (tool: Tool) => void;
+    onImport: (file: File) => void;
     undo: () => void;
     redo: () => void;
     resetView: () => void;
@@ -26,12 +28,15 @@ interface GmSidebarProps {
 export function GmSidebar({ 
     selectedTool, 
     onToolSelect,
+    onImport,
     undo,
     redo,
     resetView,
     zoomIn,
     zoomOut
 }: GmSidebarProps) {
+    const importInputRef = useRef<HTMLInputElement>(null);
+
     const tools: { id: Tool, label: string, icon: React.ReactNode }[] = [
         { id: 'select', label: 'Select', icon: <MousePointer /> },
         { id: 'wall', label: 'Wall', icon: <Brush /> },
@@ -48,6 +53,19 @@ export function GmSidebar({
         { id: 'zoom-out', label: 'Zoom Out', icon: <ZoomOut />, action: zoomOut },
         { id: 'reset-view', label: 'Reset View', icon: <Maximize />, action: resetView },
     ];
+
+    const handleImportClick = () => {
+        importInputRef.current?.click();
+    };
+    
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            onImport(file);
+        }
+        // Reset the input value to allow re-uploading the same file
+        event.target.value = '';
+    };
 
     return (
         <TooltipProvider delayDuration={100}>
@@ -72,6 +90,31 @@ export function GmSidebar({
                             </TooltipContent>
                         </Tooltip>
                     ))}
+                </div>
+                 <Separator />
+                <div className="flex flex-col gap-2">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                             <Button 
+                                size="icon"
+                                variant='ghost'
+                                className="w-10 h-10"
+                                onClick={handleImportClick}
+                            >
+                                <Upload />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                            <p>Import .dd2vtt Map</p>
+                        </TooltipContent>
+                    </Tooltip>
+                    <input 
+                        type="file" 
+                        ref={importInputRef} 
+                        className="hidden" 
+                        accept=".dd2vtt"
+                        onChange={handleFileChange} 
+                    />
                 </div>
                  <Separator />
                 <div className="flex flex-col gap-2">

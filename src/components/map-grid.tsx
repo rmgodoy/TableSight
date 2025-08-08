@@ -10,6 +10,7 @@ interface MapGridProps {
   showGrid: boolean;
   tokens: Token[];
   paths: Path[];
+  backgroundImage: string | null;
   onMapClick: (x: number, y: number) => void;
   onNewPath: (path: Omit<Path, 'id'>) => void;
   onEraseLine: (point: Point) => void;
@@ -161,6 +162,7 @@ export function MapGrid({
   showGrid, 
   tokens, 
   paths,
+  backgroundImage,
   onMapClick, 
   onNewPath,
   onEraseLine,
@@ -544,6 +546,9 @@ export function MapGrid({
               transformOrigin: '0 0'
           }}
         >
+            {backgroundImage && (
+                <img src={backgroundImage} className="absolute inset-0 w-full h-full pointer-events-none" alt="Game Map Background" />
+            )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                 {paths.map((path) => (
                     <path
@@ -730,5 +735,3 @@ export function MapGrid({
     </div>
   );
 }
-
-    

@@ -9,6 +9,7 @@ import type { GameState, Path, Token, EraseMode } from './gm-view';
 export default function PlayerView({ sessionId }: { sessionId: string }) {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [paths, setPaths] = useState<Path[]>([]);
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const storageKey = `tabletop-alchemist-session-${sessionId}`;
@@ -31,6 +32,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
 
       setTokens(updatedTokens);
       setPaths(loadedPaths);
+      setBackgroundImage(gameState.backgroundImage || null);
       setZoom(gameState.playerZoom || 1);
       setPan(gameState.playerPan || { x: 0, y: 0 });
     } catch (error) {
@@ -65,6 +67,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
           showGrid={true} 
           tokens={visibleTokens}
           paths={paths}
+          backgroundImage={backgroundImage}
           onMapClick={() => {}} 
           onNewPath={() => {}}
           onEraseLine={() => {}}
@@ -86,5 +89,3 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     </div>
   );
 }
-
-    
