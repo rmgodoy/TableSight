@@ -183,8 +183,23 @@ export function MapGrid({
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   
-  const activeZoom = isPlayerView ? (JSON.parse(localStorage.getItem(`tabletop-alchemist-session-${(window.location.pathname).split('/')[2]}`) || '{}').playerZoom || 1) : zoom;
-  const activePan = isPlayerView ? (JSON.parse(localStorage.getItem(`tabletop-alchemist-session-${(window.location.pathname).split('/')[2]}`) || '{}').playerPan || { x: 0, y: 0 }) : pan;
+  const [activeZoom, setActiveZoom] = useState(zoom);
+  const [activePan, setActivePan] = useState(pan);
+
+  useEffect(() => {
+    if (isPlayerView) {
+      const sessionId = window.location.pathname.split('/')[2];
+      const savedStateRaw = localStorage.getItem(`tabletop-alchemist-session-${sessionId}`);
+      if (savedStateRaw) {
+        const savedState = JSON.parse(savedStateRaw);
+        setActiveZoom(savedState.playerZoom || 1);
+        setActivePan(savedState.playerPan || { x: 0, y: 0 });
+      }
+    } else {
+      setActiveZoom(zoom);
+      setActivePan(pan);
+    }
+  }, [isPlayerView, zoom, pan]);
   
   useEffect(() => {
     const updateMapDimensions = () => {
