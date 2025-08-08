@@ -145,7 +145,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
     const redo = useCallback(() => {
         if (historyIndex < history.length - 1) {
-            setHistoryIndex(prev => prev - 1);
+            setHistoryIndex(prev => prev + 1);
         }
     }, [history, historyIndex]);
 
@@ -339,7 +339,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 const newBackgroundImage = `data:image/webp;base64,${data.image}`;
                 const newWalls: Path[] = (data.line_of_sight || []).map((wall: any, index: number) => ({
                     id: `wall-${Date.now()}-${index}`,
-                    points: wall.map((p: {x: number, y: number}) => ({ x: p.x * pixelsPerGrid, y: p.y * pixelsPerGrid })),
+                    points: wall.map((p: {x: number, y: number}) => ({ x: p.x, y: p.y })),
                     color: '#000000',
                     width: 5,
                     blocksLight: true
@@ -350,9 +350,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     x: light.position.x,
                     y: light.position.y,
                     type: 'Light' as const,
-                    visible: false,
-                    color: '#fBBF24',
-                    size: 1,
+                    visible: false, // Lights are not directly visible, they just emit light
+                    color: '#fBBF24', // Not really used, but good to have
+                    size: 1, // Lights don't have a physical size in the same way
                     torch: {
                         enabled: true,
                         radius: light.range
@@ -526,7 +526,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
                 <aside className="w-80 h-full flex flex-col p-4 gap-4 border-l border-border bg-card z-20">
                     <TokenPanel 
-                        tokens={tokens} 
+                        tokens={tokens.filter(t => t.type !== 'Light')} 
                         onVisibilityChange={handleTokenVisibilityChange}
                         onTokenDelete={handleTokenDelete}
                         onTokenNameChange={handleTokenNameChange}
@@ -544,5 +544,3 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         </>
     );
 }
-
-    

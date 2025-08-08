@@ -512,11 +512,11 @@ export function MapGrid({
         .filter(p => p.blocksLight)
         .forEach(path => {
             for (let i = 0; i < path.points.length - 1; i++) {
-                segments.push({ a: path.points[i], b: path.points[i+1], width: path.width });
+                segments.push({ a: { x: path.points[i].x * cellSize, y: path.points[i].y * cellSize }, b: { x: path.points[i+1].x * cellSize, y: path.points[i+1].y * cellSize }, width: path.width });
             }
         });
     return segments;
-  }, [paths]);
+  }, [paths, cellSize]);
 
 
   const screenSpaceLightPolygons = useMemo(() => {
@@ -525,10 +525,19 @@ export function MapGrid({
       const lightTokens = isPlayerView ? tokens.filter(t => t.visible) : tokens;
       return lightTokens.filter(t => t.torch.enabled).map(token => {
           const tokenPixelSize = token.size * cellSize;
-          const lightSource = { 
-              x: (token.x * cellSize + tokenPixelSize / 2), 
-              y: (token.y * cellSize + tokenPixelSize / 2)
-          };
+          let lightSource: Point;
+
+          if (token.type === 'Light') {
+              lightSource = { 
+                  x: token.x * cellSize,
+                  y: token.y * cellSize,
+              };
+          } else {
+              lightSource = { 
+                  x: (token.x * cellSize + tokenPixelSize / 2), 
+                  y: (token.y * cellSize + tokenPixelSize / 2)
+              };
+          }
           const torchRadiusInPixels = token.torch.radius * cellSize;
           
           const screenSpaceSegments = wallSegments.map(seg => ({
@@ -557,7 +566,7 @@ export function MapGrid({
   const MapContent = () => {
     let renderTokens = tokens;
     if (isPlayerView) {
-      renderTokens = tokens.filter(t => t.visible);
+      renderTokens = tokens.filter(t => t.visible || t.type === 'Light');
     }
     
     return (
@@ -569,13 +578,13 @@ export function MapGrid({
           }}
         >
             {backgroundImage && (
-                <img src={backgroundImage} className="absolute top-0 left-0 pointer-events-none" alt="Game Map Background" />
+                <img src={backgroundImage} className="absolute top-0 left-0 pointer-events-none w-auto h-auto max-w-none max-h-none" alt="Game Map Background" />
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                 {paths.map((path) => (
                     <path
                         key={path.id}
-                        d={getSvgPathFromPoints(path.points)}
+                        d={getSvgPathFromPoints(path.points.map(p => ({ x: p.x * cellSize, y: p.y * cellSize })))}
                         stroke={path.color}
                         strokeWidth={path.width}
                         fill="none"
@@ -606,25 +615,33 @@ export function MapGrid({
                     }}
                   />
                 )}
-                {renderTokens.map(token => (
-                    <div
-                        key={token.id}
-                        onMouseDown={(e) => handleTokenMouseDown(e, token)}
-                        className={cn(
-                            "absolute flex items-center justify-center",
-                             isPlayerView ? "transition-[left,top] duration-300 ease-in-out" : "transition-opacity duration-100 ease-in-out",
-                            draggingToken?.id === token.id && "opacity-50"
-                        )}
-                        style={{
-                            left: token.x * cellSize,
-                            top: token.y * cellSize,
-                            width: token.size * cellSize,
-                            height: token.size * cellSize,
-                        }}
-                    >
-                        {renderToken(token)}
-                    </div>
-                ))}
+                {renderTokens.map(token => {
+                    const tokenSize = token.type === 'Light' ? cellSize : token.size * cellSize;
+                    const tokenPos = {
+                         x: token.x * cellSize - (token.type === 'Light' ? tokenSize / 2 : 0),
+                         y: token.y * cellSize - (token.type === 'Light' ? tokenSize / 2 : 0)
+                    }
+
+                    return (
+                        <div
+                            key={token.id}
+                            onMouseDown={(e) => handleTokenMouseDown(e, token)}
+                            className={cn(
+                                "absolute flex items-center justify-center",
+                                isPlayerView ? "transition-[left,top] duration-300 ease-in-out" : "transition-opacity duration-100 ease-in-out",
+                                draggingToken?.id === token.id && "opacity-50"
+                            )}
+                            style={{
+                                left: tokenPos.x,
+                                top: tokenPos.y,
+                                width: tokenSize,
+                                height: tokenSize,
+                            }}
+                        >
+                            {renderToken(token)}
+                        </div>
+                    )
+                })}
                 {!isPlayerView && draggingToken && ghostPosition && (
                     <div
                         className="absolute flex items-center justify-center opacity-50 pointer-events-none"
@@ -757,5 +774,3 @@ export function MapGrid({
     </div>
   );
 }
-
-    
