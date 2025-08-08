@@ -1,7 +1,7 @@
 
 'use client';
 
-import { CircleUserRound, Shield } from 'lucide-react';
+import { CircleUserRound, Shield, Lightbulb } from 'lucide-react';
 import type { Token, Tool, Path, Point, EraseMode } from './gm-view';
 import { cn } from '@/lib/utils';
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
@@ -16,6 +16,7 @@ interface MapGridProps {
   onNewPath: (path: Omit<Path, 'id'>) => void;
   onEraseLine: (point: Point) => void;
   onEraseBrush: (updatedPaths: Path[]) => void;
+  onTokenTorchToggle: (tokenId: string) => void;
   selectedTool: Tool;
   eraseMode: EraseMode;
   onTokenMove?: (tokenId: string, x: number, y: number) => void;
@@ -169,6 +170,7 @@ export function MapGrid({
   onNewPath,
   onEraseLine,
   onEraseBrush,
+  onTokenTorchToggle,
   selectedTool,
   eraseMode,
   onTokenMove,
@@ -363,8 +365,13 @@ export function MapGrid({
 
 
   const handleTokenMouseDown = (e: React.MouseEvent<HTMLDivElement>, token: Token) => {
-    if (isPlayerView || (selectedTool !== 'select') || !onTokenMove) return;
+    if (isPlayerView || (selectedTool !== 'select' && token.type !== 'Light') || !onTokenMove) return;
     e.stopPropagation(); 
+    
+    if (token.type === 'Light' && selectedTool === 'select') {
+        onTokenTorchToggle(token.id);
+        return;
+    }
     if (selectedTool !== 'select') return;
     
     setDraggingToken(token);
@@ -465,27 +472,36 @@ export function MapGrid({
   }
 
   const renderToken = (token: Token) => {
+    const iconContent = () => {
+        if (token.type === 'Light') {
+          return <Lightbulb className={cn("text-white/80 transition-colors", token.torch.enabled && "text-yellow-300")}/>
+        }
+        if (token.iconUrl) return null;
+        if (token.type === 'PC') {
+            return <CircleUserRound className="text-white/80" />;
+        }
+        if (token.type === 'Enemy') {
+            return <Shield className="text-white/80" />;
+        }
+        return null;
+    }
+
     return (
        <div
         className={cn(
-          "rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center"
+          "rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center",
+           token.type === 'Light' && 'cursor-pointer'
         )}
         style={{ 
-          backgroundColor: token.color, 
+          backgroundColor: token.type === 'Light' ? 'transparent' : token.color, 
           backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none',
           width: '100%',
           height: '100%',
         }}
        >
-         {!token.iconUrl && (
-             <div style={{transform: `scale(${token.size * 0.5})`}}>
-             {token.type === 'PC' ? (
-                 <CircleUserRound className="text-white/80" />
-             ) : (
-                 <Shield className="text-white/80" />
-             )}
-             </div>
-         )}
+         <div style={{transform: `scale(${token.size * 0.5})`}}>
+            {iconContent()}
+         </div>
        </div>
     );
   };
@@ -510,23 +526,28 @@ export function MapGrid({
       return lightTokens.filter(t => t.torch.enabled).map(token => {
           const tokenPixelSize = token.size * cellSize;
           const lightSource = { 
-              x: (token.x * cellSize + tokenPixelSize / 2) * activeZoom + activePan.x, 
-              y: (token.y * cellSize + tokenPixelSize / 2) * activeZoom + activePan.y
+              x: (token.x * cellSize + tokenPixelSize / 2), 
+              y: (token.y * cellSize + tokenPixelSize / 2)
           };
-          const torchRadiusInPixels = token.torch.radius * cellSize * activeZoom;
+          const torchRadiusInPixels = token.torch.radius * cellSize;
           
           const screenSpaceSegments = wallSegments.map(seg => ({
               a: { x: seg.a.x * activeZoom + activePan.x, y: seg.a.y * activeZoom + activePan.y },
               b: { x: seg.b.x * activeZoom + activePan.x, y: seg.b.y * activeZoom + activePan.y },
               width: seg.width * activeZoom
           }));
+          
+          const transformedLightSource = {
+              x: lightSource.x * activeZoom + activePan.x,
+              y: lightSource.y * activeZoom + activePan.y
+          }
 
           const screenBounds = { 
               width: containerRef.current?.clientWidth || 0, 
               height: containerRef.current?.clientHeight || 0 
           };
 
-          return calculateVisibilityPolygon(lightSource, screenSpaceSegments, screenBounds, torchRadiusInPixels);
+          return calculateVisibilityPolygon(transformedLightSource, screenSpaceSegments, screenBounds, torchRadiusInPixels * activeZoom);
       });
   }, [isPlayerView, showFogOfWar, tokens, wallSegments, activePan, activeZoom, cellSize]);
 
@@ -640,7 +661,7 @@ export function MapGrid({
     <div 
       ref={containerRef}
       className={cn(
-        "w-full h-full relative",
+        "w-full h-full relative overflow-hidden",
         isPlayerView ? "bg-transparent" : "bg-background",
          !isPlayerView && isPanning && "cursor-grabbing",
          !isPlayerView && !isPanning && {
@@ -736,3 +757,5 @@ export function MapGrid({
     </div>
   );
 }
+
+    

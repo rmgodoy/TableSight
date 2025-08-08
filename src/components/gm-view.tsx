@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush } from 'lucide-react';
+import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { GmSidebar } from '@/components/gm-sidebar';
 import { TokenPanel } from '@/components/token-panel';
@@ -42,7 +42,7 @@ export type Token = {
   name: string;
   x: number;
   y: number;
-  type: 'PC' | 'Enemy';
+  type: 'PC' | 'Enemy' | 'Light';
   visible: boolean;
   color: string;
   iconUrl?: string;
@@ -87,7 +87,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [selectedTool, setSelectedTool] = useState<Tool>('select');
     const [eraseMode, setEraseMode] = useState<EraseMode>('line');
     const [brushColor, setBrushColor] = useState('#000000');
-    const [brushSize, setBrushSize] = useState(10);
+    const [brushSize, setBrushSize] = useState(5);
     const [eraseBrushSize, setEraseBrushSize] = useState(20);
     
     const [tokens, setTokens] = useState<Token[]>([]);
@@ -203,6 +203,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 }));
                 const loadedTokens = (gameState.tokens || []).map(t => ({
                   ...t,
+                  type: t.type || (t.id.startsWith('pc-') ? 'PC' : 'Enemy'),
                   size: t.size || 1,
                   torch: t.torch || { enabled: false, radius: 5 }
                 }));
@@ -215,7 +216,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 setCellSize(loadedCellSize);
 
                 // Initialize history with the loaded state
-                const initialHistory: HistoryState[] = [{ paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize }];
+                const initialHistory: HistoryState = [{ paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize }];
                 setHistory(initialHistory);
                 setHistoryIndex(0);
 
@@ -343,15 +344,27 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     width: 5,
                     blocksLight: true
                 }));
-                
+                 const newLightTokens: Token[] = (data.lights || []).map((light: any, index: number) => ({
+                    id: `light-${Date.now()}-${index}`,
+                    name: `Light ${index + 1}`,
+                    x: light.position.x,
+                    y: light.position.y,
+                    type: 'Light' as const,
+                    visible: false,
+                    color: '#fBBF24',
+                    size: 1,
+                    torch: {
+                        enabled: true,
+                        radius: light.range
+                    }
+                }));
+
                 // Reset state and load new map
                 setPan({ x: 0, y: 0 });
                 setZoom(1);
                 setBackgroundImage(newBackgroundImage);
-                setPaths(newWalls);
-                setTokens([]);
-                setCellSize(pixelsPerGrid);
-                recordHistory(newWalls, [], newBackgroundImage, pixelsPerGrid);
+                
+                recordHistory(newWalls, newLightTokens, newBackgroundImage, pixelsPerGrid);
 
                 toast({ title: "Map Imported!", description: `${file.name} was successfully imported.` });
 
@@ -495,6 +508,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                             onEraseLine={handleEraseLine}
                             onEraseBrush={handleEraseBrush}
                             onNewPath={handleNewPath}
+                            onTokenTorchToggle={handleTokenTorchToggle}
                             selectedTool={selectedTool}
                             eraseMode={eraseMode}
                             onTokenMove={handleTokenMove}
@@ -530,3 +544,5 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         </>
     );
 }
+
+    

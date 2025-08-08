@@ -14,7 +14,6 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [cellSize, setCellSize] = useState(40);
   const storageKey = `tabletop-alchemist-session-${sessionId}`;
-  const [eraseMode, setEraseMode] = useState<EraseMode>('line');
 
   const applyState = useCallback((savedState: string | null) => {
     if (!savedState) return;
@@ -23,6 +22,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       // Backwards compatibility
       const updatedTokens = (gameState.tokens || []).map(t => ({
         ...t,
+        type: t.type || (t.id.startsWith('pc-') ? 'PC' : 'Enemy'),
         size: t.size || 1,
         torch: t.torch || { enabled: false, radius: 5 }
       }));
@@ -60,7 +60,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     };
   }, [sessionId, applyState]);
 
-  const visibleTokens = tokens.filter(token => token.visible);
+  const visibleTokens = tokens.filter(token => token.visible || token.type === 'Light');
 
   return (
     <div className="w-screen h-dvh bg-black relative flex items-center justify-center overflow-hidden">
@@ -75,8 +75,9 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
           onNewPath={() => {}}
           onEraseLine={() => {}}
           onEraseBrush={() => {}}
+          onTokenTorchToggle={() => {}}
           selectedTool="select" 
-          eraseMode={eraseMode}
+          eraseMode={'line'}
           isPlayerView={true}
           zoom={zoom}
           pan={pan}
@@ -92,3 +93,5 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     </div>
   );
 }
+
+    

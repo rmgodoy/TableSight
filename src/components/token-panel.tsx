@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -86,6 +86,13 @@ export function TokenPanel({
         }
     };
 
+    const renderIcon = (token: Token) => {
+        if (token.type === 'PC') return <CircleUserRound className="text-white/80" />;
+        if (token.type === 'Enemy') return <Shield className="text-white/80" />;
+        if (token.type === 'Light') return <Lightbulb className={cn("text-white/80", token.torch.enabled && "text-yellow-300")} />;
+        return null;
+    }
+
     return (
         <div className="h-full flex flex-col gap-4">
             <Card className="w-full">
@@ -102,12 +109,15 @@ export function TokenPanel({
                                     <div className="flex items-center gap-2">
                                         <div className="flex items-center gap-2 flex-1 min-w-0">
                                             <Popover>
-                                                <PopoverTrigger asChild>
+                                                <PopoverTrigger asChild disabled={token.type === 'Light'}>
                                                      <div
-                                                        className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg shrink-0 bg-cover bg-center cursor-pointer"
+                                                        className={cn(
+                                                            "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg shrink-0 bg-cover bg-center",
+                                                            token.type !== 'Light' && "cursor-pointer"
+                                                        )}
                                                         style={{ backgroundColor: token.color, backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none' }}
                                                     >
-                                                        {!token.iconUrl && (token.type === 'PC' ? <CircleUserRound className="text-white/80" /> : <Shield className="text-white/80" />)}
+                                                        {!token.iconUrl && renderIcon(token)}
                                                     </div>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-2">
@@ -148,24 +158,28 @@ export function TokenPanel({
                                                 value={token.name} 
                                                 onChange={(e) => onTokenNameChange(token.id, e.target.value)}
                                                 aria-label="Token name"
+                                                disabled={token.type === 'Light'}
                                             />
                                         </div>
                                         <div className="flex items-center shrink-0">
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon"
-                                                className="h-8 w-8"
-                                                onClick={() => onVisibilityChange(token.id, !token.visible)}
-                                                title={token.visible ? "Hide Token" : "Show Token"}
-                                            >
-                                                {token.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                                            </Button>
+                                            {token.type !== 'Light' && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon"
+                                                    className="h-8 w-8"
+                                                    onClick={() => onVisibilityChange(token.id, !token.visible)}
+                                                    title={token.visible ? "Hide Token" : "Show Token"}
+                                                >
+                                                    {token.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                                </Button>
+                                            )}
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 className="text-destructive hover:text-destructive h-8 w-8"
                                                 onClick={() => onTokenDelete(token.id)}
                                                 title="Delete Token"
+                                                disabled={token.type === 'Light'}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
@@ -245,3 +259,5 @@ export function TokenPanel({
         </div>
     );
 }
+
+    
