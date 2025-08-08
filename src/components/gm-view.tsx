@@ -61,6 +61,7 @@ export type GameState = {
     playerZoom?: number;
     playerPan?: { x: number, y: number };
     backgroundImage?: string | null;
+    cellSize?: number;
 };
 
 // Represents a single state in the history for undo/redo
@@ -68,6 +69,7 @@ type HistoryState = {
     paths: Path[];
     tokens: Token[];
     backgroundImage: string | null;
+    cellSize: number;
 }
 
 const colorPalette = [
@@ -91,6 +93,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [tokens, setTokens] = useState<Token[]>([]);
     const [paths, setPaths] = useState<Path[]>([]);
     const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+    const [cellSize, setCellSize] = useState(40);
 
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -112,6 +115,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             playerZoom,
             playerPan,
             backgroundImage,
+            cellSize,
             ...newState 
         };
         try {
@@ -124,11 +128,11 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 variant: "destructive"
             });
         }
-    }, [storageKey, toast, tokens, paths, zoom, pan, playerPan, playerZoom, backgroundImage]);
+    }, [storageKey, toast, tokens, paths, zoom, pan, playerPan, playerZoom, backgroundImage, cellSize]);
 
-    const recordHistory = (newPaths: Path[], newTokens: Token[], newBackgroundImage: string | null) => {
+    const recordHistory = (newPaths: Path[], newTokens: Token[], newBackgroundImage: string | null, newCellSize: number) => {
         const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push({ paths: newPaths, tokens: newTokens, backgroundImage: newBackgroundImage });
+        newHistory.push({ paths: newPaths, tokens: newTokens, backgroundImage: newBackgroundImage, cellSize: newCellSize });
         setHistory(newHistory);
         setHistoryIndex(newHistory.length - 1);
     }
@@ -141,7 +145,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
     const redo = useCallback(() => {
         if (historyIndex < history.length - 1) {
-            setHistoryIndex(prev => prev + 1);
+            setHistoryIndex(prev => prev - 1);
         }
     }, [history, historyIndex]);
 
@@ -167,10 +171,11 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     // This effect synchronizes the component state (paths, tokens) with the current point in history
     useEffect(() => {
         if(historyIndex >= 0 && history[historyIndex]) {
-            const { paths: historyPaths, tokens: historyTokens, backgroundImage: historyBg } = history[historyIndex];
+            const { paths: historyPaths, tokens: historyTokens, backgroundImage: historyBg, cellSize: historyCellSize } = history[historyIndex];
             setPaths(historyPaths);
             setTokens(historyTokens);
             setBackgroundImage(historyBg);
+            setCellSize(historyCellSize);
         }
     }, [history, historyIndex]);
     
@@ -184,7 +189,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             updateGameState();
         }, 500); // Debounce time in ms
         return () => clearTimeout(handler);
-    }, [tokens, paths, backgroundImage, zoom, pan, playerPan, playerZoom, updateGameState, history.length]);
+    }, [tokens, paths, backgroundImage, cellSize, zoom, pan, playerPan, playerZoom, updateGameState, history.length]);
 
 
     useEffect(() => {
@@ -202,13 +207,15 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                   torch: t.torch || { enabled: false, radius: 5 }
                 }));
                 const loadedBg = gameState.backgroundImage || null;
+                const loadedCellSize = gameState.cellSize || 40;
                 
                 setPaths(loadedPaths);
                 setTokens(loadedTokens);
                 setBackgroundImage(loadedBg);
+                setCellSize(loadedCellSize);
 
                 // Initialize history with the loaded state
-                const initialHistory: HistoryState[] = [{ paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg }];
+                const initialHistory: HistoryState[] = [{ paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize }];
                 setHistory(initialHistory);
                 setHistoryIndex(0);
 
@@ -218,7 +225,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 if (gameState.playerPan) setPlayerPan(gameState.playerPan);
             } else {
                  // If no saved state, initialize with an empty state
-                const initialState: HistoryState = { paths: [], tokens: [], backgroundImage: null };
+                const initialState: HistoryState = { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
                 setHistory([initialState]);
                 setHistoryIndex(0);
             }
@@ -249,14 +256,14 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }
         if (newToken) {
             const newTokens = [...tokens, newToken];
-            recordHistory(paths, newTokens, backgroundImage);
+            recordHistory(paths, newTokens, backgroundImage, cellSize);
         }
     };
 
     const handleNewPath = (path: Omit<Path, 'id'>) => {
         const newPath = { ...path, id: `path-${Date.now()}` };
         const newPaths = [...paths, newPath];
-        recordHistory(newPaths, tokens, backgroundImage);
+        recordHistory(newPaths, tokens, backgroundImage, cellSize);
     };
 
     const handleEraseLine = (point: Point) => {
@@ -270,12 +277,12 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         );
         
         if(remainingPaths.length < paths.length) {
-            recordHistory(remainingPaths, tokens, backgroundImage);
+            recordHistory(remainingPaths, tokens, backgroundImage, cellSize);
         }
     };
 
     const handleEraseBrush = (updatedPaths: Path[]) => {
-        recordHistory(updatedPaths, tokens, backgroundImage);
+        recordHistory(updatedPaths, tokens, backgroundImage, cellSize);
     };
 
     const updateToken = (tokenId: string, updates: Partial<Token>) => {
@@ -283,13 +290,13 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         const tokenIndex = newTokens.findIndex(t => t.id === tokenId);
         if (tokenIndex !== -1) {
             newTokens[tokenIndex] = { ...newTokens[tokenIndex], ...updates };
-            recordHistory(paths, newTokens, backgroundImage);
+            recordHistory(paths, newTokens, backgroundImage, cellSize);
         }
     };
     
     const handleTokenDelete = (tokenId: string) => {
         const newTokens = tokens.filter(t => t.id !== tokenId);
-        recordHistory(paths, newTokens, backgroundImage);
+        recordHistory(paths, newTokens, backgroundImage, cellSize);
     }
 
     const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => updateToken(tokenId, { visible: isVisible });
@@ -343,7 +350,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 setBackgroundImage(newBackgroundImage);
                 setPaths(newWalls);
                 setTokens([]);
-                recordHistory(newWalls, [], newBackgroundImage);
+                setCellSize(pixelsPerGrid);
+                recordHistory(newWalls, [], newBackgroundImage, pixelsPerGrid);
 
                 toast({ title: "Map Imported!", description: `${file.name} was successfully imported.` });
 
@@ -482,6 +490,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                             tokens={tokens}
                             paths={paths}
                             backgroundImage={backgroundImage}
+                            cellSize={cellSize}
                             onMapClick={handleMapClick} 
                             onEraseLine={handleEraseLine}
                             onEraseBrush={handleEraseBrush}

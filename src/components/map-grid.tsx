@@ -11,6 +11,7 @@ interface MapGridProps {
   tokens: Token[];
   paths: Path[];
   backgroundImage: string | null;
+  cellSize: number;
   onMapClick: (x: number, y: number) => void;
   onNewPath: (path: Omit<Path, 'id'>) => void;
   onEraseLine: (point: Point) => void;
@@ -163,6 +164,7 @@ export function MapGrid({
   tokens, 
   paths,
   backgroundImage,
+  cellSize,
   onMapClick, 
   onNewPath,
   onEraseLine,
@@ -180,7 +182,6 @@ export function MapGrid({
   onPanChange,
   showFogOfWar = false,
 }: MapGridProps) {
-  const cellSize = 40; 
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
   const [ghostPosition, setGhostPosition] = useState<Point | null>(null);
@@ -547,7 +548,7 @@ export function MapGrid({
           }}
         >
             {backgroundImage && (
-                <img src={backgroundImage} className="absolute inset-0 w-full h-full object-cover pointer-events-none" alt="Game Map Background" />
+                <img src={backgroundImage} className="absolute inset-0 w-full h-auto object-contain pointer-events-none" alt="Game Map Background" />
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                 {paths.map((path) => (

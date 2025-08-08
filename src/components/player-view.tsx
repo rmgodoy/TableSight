@@ -12,6 +12,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [cellSize, setCellSize] = useState(40);
   const storageKey = `tabletop-alchemist-session-${sessionId}`;
   const [eraseMode, setEraseMode] = useState<EraseMode>('line');
 
@@ -35,6 +36,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       setBackgroundImage(gameState.backgroundImage || null);
       setZoom(gameState.playerZoom || 1);
       setPan(gameState.playerPan || { x: 0, y: 0 });
+      setCellSize(gameState.cellSize || 40);
     } catch (error) {
       console.error("Failed to parse game state from localStorage", error);
     }
@@ -68,6 +70,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
           tokens={visibleTokens}
           paths={paths}
           backgroundImage={backgroundImage}
+          cellSize={cellSize}
           onMapClick={() => {}} 
           onNewPath={() => {}}
           onEraseLine={() => {}}
