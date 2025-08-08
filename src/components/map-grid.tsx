@@ -287,13 +287,12 @@ export function MapGrid({
   const handleGlobalMouseMove = (e: MouseEvent) => {
     if (!draggingToken || !onTokenMove || !dragOffset) return;
     const point = getTransformedPoint(e);
-    setGhostPosition({
-      x: point.x - dragOffset.x,
-      y: point.y - dragOffset.y,
-    });
+    const ghostX = point.x - dragOffset.x;
+    const ghostY = point.y - dragOffset.y;
+    setGhostPosition({ x: ghostX, y: ghostY });
     
-    const dropX = Math.floor((point.x - dragOffset.x) / cellSize);
-    const dropY = Math.floor((point.y - dragOffset.y) / cellSize);
+    const dropX = Math.floor((ghostX + cellSize / 2) / cellSize);
+    const dropY = Math.floor((ghostY + cellSize / 2) / cellSize);
     setDropTargetCell({ x: dropX, y: dropY });
   };
   
@@ -301,8 +300,11 @@ export function MapGrid({
     if (!draggingToken || !onTokenMove || !dragOffset) return;
 
     const point = getTransformedPoint(e);
-    const x = Math.floor((point.x - dragOffset.x) / cellSize);
-    const y = Math.floor((point.y - dragOffset.y) / cellSize);
+    const ghostX = point.x - dragOffset.x;
+    const ghostY = point.y - dragOffset.y;
+    
+    const x = Math.floor((ghostX + cellSize / 2) / cellSize);
+    const y = Math.floor((ghostY + cellSize / 2) / cellSize);
 
     onTokenMove(draggingToken.id, x, y);
     setDraggingToken(null);
