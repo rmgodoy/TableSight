@@ -188,8 +188,9 @@ export function MapGrid({
 
   useEffect(() => {
     if (isPlayerView) {
-      const sessionId = window.location.pathname.split('/')[2];
-      const savedStateRaw = localStorage.getItem(`tabletop-alchemist-session-${sessionId}`);
+      const sessionId = window.location.hash.substring(1);
+      const storageKey = `tabletop-alchemist-session-${sessionId}`;
+      const savedStateRaw = localStorage.getItem(storageKey);
       if (savedStateRaw) {
         const savedState = JSON.parse(savedStateRaw);
         setActiveZoom(savedState.playerZoom || 1);

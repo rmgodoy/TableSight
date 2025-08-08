@@ -55,7 +55,7 @@ export function TokenPanel({
 
      useEffect(() => {
         if (typeof window !== 'undefined') {
-            setPlayerUrl(`${window.location.origin}/player/${sessionId}`);
+            setPlayerUrl(`${window.location.origin}/player#${sessionId}`);
         }
     }, [sessionId]);
 

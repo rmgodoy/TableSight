@@ -38,7 +38,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       setPaths(updatedPaths);
       setZoom(gameState.playerZoom || 1);
       setPan(gameState.playerPan || { x: 0, y: 0 });
-    } catch (error) {
+    } catch (error) => {
       console.error("Failed to parse game state from localStorage", error);
     }
   }, []);
@@ -50,14 +50,22 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
   }, [storageKey, applyState]);
 
   useEffect(() => {
+    if (!sessionId) return;
     // Initial load from localStorage
+    const storageKey = `tabletop-alchemist-session-${sessionId}`;
     applyState(localStorage.getItem(storageKey));
     
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
+    const listener = (event: StorageEvent) => {
+        if (event.key === storageKey) {
+          applyState(event.newValue);
+        }
     };
-  }, [storageKey, handleStorageChange, applyState]);
+    window.addEventListener('storage', listener);
+
+    return () => {
+      window.removeEventListener('storage', listener);
+    };
+  }, [sessionId, applyState]);
 
   const visibleTokens = tokens.filter(token => token.visible);
 

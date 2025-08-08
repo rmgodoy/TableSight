@@ -13,13 +13,13 @@ export default function Home() {
 
   const createNewSession = () => {
     const newSessionId = Math.random().toString(36).substring(2, 11);
-    router.push(`/gm/${newSessionId}`);
+    router.push(`/gm#${newSessionId}`);
   };
 
   const joinSession = (e: React.FormEvent) => {
     e.preventDefault();
     if (sessionId) {
-      router.push(`/player/${sessionId}`);
+      router.push(`/player#${sessionId}`);
     }
   }
 
