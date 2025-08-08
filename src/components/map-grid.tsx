@@ -754,7 +754,7 @@ export function MapGrid({
                     }}
                 />
             )}
-            {showFogOfWar && screenSpaceLightPolygons.length > 0 && (
+            {showFogOfWar && (
               <div className='absolute inset-0 pointer-events-none'>
                 <svg width="100%" height="100%">
                   <defs>
