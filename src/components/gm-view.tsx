@@ -69,7 +69,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [playerZoom, setPlayerZoom] = useState(1);
     const [playerPan, setPlayerPan] = useState({ x: 0, y: 0 });
-    const [showFogOfWar, setShowFogOfWar] = useState(false);
+    const [showFogOfWar, setShowFogOfWar] = useState(true);
     const { toast } = useToast();
     const storageKey = `tabletop-alchemist-session-${sessionId}`;
 
@@ -294,7 +294,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                  <div className="absolute top-2 left-2 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-2">
                      <Button variant={showGrid ? "default" : "outline"} onClick={() => setShowGrid(!showGrid)} size="icon" className="w-8 h-8"><Grid/></Button>
                      <Button variant={showFogOfWar ? "default" : "outline"} onClick={() => setShowFogOfWar(!showFogOfWar)} size="icon" className="w-8 h-8">
-                        {showFogOfWar ? <EyeOff /> : <Eye />}
+                        {showFogOfWar ? <Eye /> : <EyeOff />}
                     </Button>
                 </div>
 
