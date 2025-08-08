@@ -281,7 +281,7 @@ export function MapGrid({
   };
 
   const handleTokenMouseDown = (e: React.MouseEvent<HTMLDivElement>, token: Token) => {
-    if (isPlayerView || (selectedTool !== 'select' && selectedTool !== 'pan') || !onTokenMove) return;
+    if (isPlayerView || (selectedTool !== 'select') || !onTokenMove) return;
     e.stopPropagation(); 
     if (selectedTool !== 'select') return;
     
@@ -338,6 +338,7 @@ export function MapGrid({
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draggingToken, pan, zoom, dragOffset]);
 
   useEffect(() => {
