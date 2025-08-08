@@ -3,28 +3,18 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Copy, Grid, Undo, Redo, Home, ZoomIn, ZoomOut, Maximize, Eye, Users, EyeOff } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Eye, Grid, EyeOff, Brush, PenLine } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { GmToolbar } from '@/components/gm-toolbar';
+import { GmSidebar } from '@/components/gm-sidebar';
 import { TokenPanel } from '@/components/token-panel';
 import { MapGrid } from '@/components/map-grid';
-import Link from 'next/link';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { Slider } from './ui/slider';
+import { Label } from './ui/label';
+import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
-export type Tool = 'select' | 'wall' | 'detail' | 'erase' | 'add-pc' | 'add-enemy';
+export type Tool = 'select' | 'wall' | 'detail' | 'erase' | 'add-pc' | 'add-enemy' | 'pan';
 
 export type Point = { x: number; y: number };
 export type Path = {
@@ -58,11 +48,19 @@ export type GameState = {
     playerPan?: { x: number, y: number };
 };
 
+const colorPalette = [
+    '#000000', '#ef4444', '#f97316', '#eab308',
+    '#84cc16', '#22c55e', '#14b8a6', '#06b6d4',
+    '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'
+];
+
 
 export default function GmView({ sessionId }: { sessionId: string }) {
-    const [playerUrl, setPlayerUrl] = useState('');
+    const [history, setHistory] = useState<(Path | Token)[]>([]);
+    const [historyIndex, setHistoryIndex] = useState(-1);
+
     const [showGrid, setShowGrid] = useState(true);
-    const [selectedTool, setSelectedTool] = useState<Tool>('select');
+    const [selectedTool, setSelectedTool] = useState<Tool>('pan');
     const [brushColor, setBrushColor] = useState('#000000');
     const [brushSize, setBrushSize] = useState(10);
     const [tokens, setTokens] = useState<Token[]>([]);
@@ -97,6 +95,43 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             });
         }
     }, [storageKey, toast, tokens, paths, zoom, pan, playerPan, playerZoom]);
+
+    const addToHistory = (item: Path | Token) => {
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(item);
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+    }
+
+    const undo = () => {
+        if (historyIndex < 0) return;
+        setHistoryIndex(prev => prev - 1);
+    }
+    const redo = () => {
+        if (historyIndex > history.length - 2) return;
+        setHistoryIndex(prev => prev + 1);
+    }
+
+    useEffect(() => {
+        const currentState = history.slice(0, historyIndex + 1);
+        const newPaths: Path[] = [];
+        const newTokens: Token[] = [];
+        const tokenIds = new Set();
+        
+        // Iterate backwards to get the latest state of each token
+        for(let i = currentState.length - 1; i >= 0; i--) {
+            const item = currentState[i] as any;
+            if(item.points) { // It's a path
+                newPaths.unshift(item);
+            } else if (item.id && !tokenIds.has(item.id)) { // It's a token
+                newTokens.unshift(item as Token);
+                tokenIds.add(item.id);
+            }
+        }
+
+        setPaths(newPaths);
+        setTokens(newTokens);
+    }, [history, historyIndex]);
     
     // This effect synchronizes the local state to localStorage.
     // It's debounced to avoid excessive writes.
@@ -113,7 +148,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             const savedState = localStorage.getItem(storageKey);
             if (savedState) {
                 const gameState: GameState = JSON.parse(savedState);
-                // Backwards compatibility
                 const updatedTokens = (gameState.tokens || []).map(t => ({
                   ...t,
                   torch: t.torch || { enabled: false, radius: 5 }
@@ -130,8 +164,11 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     }
                     return p;
                 });
-                setTokens(updatedTokens);
-                setPaths(updatedPaths);
+                
+                const initialHistory = [...updatedPaths, ...updatedTokens];
+                setHistory(initialHistory);
+                setHistoryIndex(initialHistory.length -1);
+
                 if (gameState.zoom) setZoom(gameState.zoom);
                 if (gameState.pan) setPan(gameState.pan);
                 if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
@@ -142,188 +179,143 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }
     }, [storageKey]);
 
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            setPlayerUrl(`${window.location.origin}/player/${sessionId}`);
-        }
-    }, [sessionId]);
-
-    const copyPlayerUrl = () => {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(playerUrl);
-            toast({
-              title: "Player URL Copied!",
-              description: "Share this link with your players.",
-            });
-        }
-    };
-
     const handleMapClick = (x: number, y: number) => {
+        let newToken: Token | null = null;
         if (selectedTool === 'add-pc') {
-            const newPc: Token = {
+            newToken = {
                 id: `pc-${Date.now()}`,
                 name: `PC ${tokens.filter(t => t.type === 'PC').length + 1}`,
-                x,
-                y,
-                type: 'PC' as const,
-                visible: true,
-                color: '#3b82f6',
+                x, y, type: 'PC' as const, visible: true, color: '#3b82f6',
                 torch: { enabled: false, radius: 5 },
             };
-            setTokens(current => [...current, newPc]);
         }
         if (selectedTool === 'add-enemy') {
-            const newEnemy: Token = {
+            newToken = {
                 id: `enemy-${Date.now()}`,
                 name: `Enemy ${tokens.filter(t => t.type === 'Enemy').length + 1}`,
-                x,
-                y,
-                type: 'Enemy' as const,
-                visible: false,
-                color: '#ef4444',
+                x, y, type: 'Enemy' as const, visible: false, color: '#ef4444',
                 torch: { enabled: false, radius: 5 },
             };
-            setTokens(current => [...current, newEnemy]);
+        }
+        if (newToken) {
+            addToHistory(newToken);
         }
     };
 
     const handleNewPath = (path: Path) => {
-        setPaths(current => [...current, path]);
+        addToHistory(path);
     };
 
     const handleErase = (point: Point) => {
-        // A simple erase implementation: remove paths that are close to the erase point.
-        const eraseRadius = 20; // in pixels
+        const eraseRadius = 20; 
         setPaths(currentPaths => currentPaths.filter(path => 
             !path.points.some(p => Math.sqrt(Math.pow(p.x - point.x, 2) + Math.pow(p.y - point.y, 2)) < eraseRadius)
         ));
     };
 
-
-    const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => {
-        setTokens(current => current.map(token => 
-            token.id === tokenId ? { ...token, visible: isVisible } : token
-        ));
+    const updateToken = (tokenId: string, updates: Partial<Token>) => {
+        const currentToken = tokens.find(t => t.id === tokenId);
+        if (currentToken) {
+            addToHistory({ ...currentToken, ...updates });
+        }
     };
-    
+
+    const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => updateToken(tokenId, { visible: isVisible });
     const handleTokenDelete = (tokenId: string) => {
         setTokens(current => current.filter(token => token.id !== tokenId));
-    };
-
-    const handleTokenMove = (tokenId: string, x: number, y: number) => {
-        setTokens(current => current.map(token =>
-            token.id === tokenId ? { ...token, x, y } : token
-        ));
-    };
-
-    const handleTokenNameChange = (tokenId: string, newName: string) => {
-        setTokens(current => current.map(token =>
-            token.id === tokenId ? { ...token, name: newName } : token
-        ));
-    };
-
-    const handleTokenColorChange = (tokenId: string, newColor: string) => {
-        setTokens(current => current.map(token =>
-            token.id === tokenId ? { ...token, color: newColor } : token
-        ));
-    };
-
-    const handleTokenIconChange = (tokenId: string, newIconUrl: string) => {
-        setTokens(current => current.map(token =>
-            token.id === tokenId ? { ...token, iconUrl: newIconUrl } : token
-        ));
-    };
-
+        const newHistory = history.filter((item: any) => item.id !== tokenId);
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length -1);
+    }
+    const handleTokenMove = (tokenId: string, x: number, y: number) => updateToken(tokenId, { x, y });
+    const handleTokenNameChange = (tokenId: string, newName: string) => updateToken(tokenId, { name: newName });
+    const handleTokenColorChange = (tokenId: string, newColor: string) => updateToken(tokenId, { color: newColor });
+    const handleTokenIconChange = (tokenId: string, newIconUrl: string) => updateToken(tokenId, { iconUrl: newIconUrl });
     const handleTokenTorchToggle = (tokenId: string) => {
-        setTokens(current => current.map(token =>
-            token.id === tokenId ? { ...token, torch: { ...token.torch, enabled: !token.torch.enabled } } : token
-        ));
+        const token = tokens.find(t => t.id === tokenId);
+        if(token) updateToken(tokenId, { torch: { ...token.torch, enabled: !token.torch.enabled } });
     }
-    
     const handleTokenTorchRadiusChange = (tokenId: string, radius: number) => {
-        setTokens(current => current.map(token =>
-            token.id === tokenId ? { ...token, torch: { ...token.torch, radius } } : token
-        ));
+         const token = tokens.find(t => t.id === tokenId);
+        if(token) updateToken(tokenId, { torch: { ...token.torch, radius } });
     }
 
-    const handleZoom = (delta: number) => {
-        setZoom(prevZoom => Math.max(0.1, Math.min(5, prevZoom + delta)));
-    }
-
-    const resetView = () => {
-        setZoom(1);
-        setPan({ x: 0, y: 0 });
-    }
-
+    const handleZoom = (delta: number) => setZoom(prevZoom => Math.max(0.1, Math.min(5, prevZoom + delta)));
+    const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); }
     const syncPlayerView = () => {
         setPlayerPan(pan);
         setPlayerZoom(zoom);
         updateGameState({ playerPan: pan, playerZoom: zoom });
-        toast({
-          title: "Player View Synced!",
-          description: "The player's view now matches yours.",
-        });
+        toast({ title: "Player View Synced!", description: "The player's view now matches yours." });
     };
-    
-    const matchPlayerView = () => {
-        setPan(playerPan);
-        setZoom(playerZoom);
-        toast({
-          title: "Synced with Player View!",
-          description: "Your view now matches the player's.",
-        });
-    };
+    const matchPlayerView = () => { setPan(playerPan); setZoom(playerZoom); };
 
     return (
         <div className="flex h-dvh w-screen bg-background text-foreground">
-            {/* Left Sidebar */}
-            <aside className="w-80 h-full flex flex-col p-4 gap-4 border-r border-border bg-card/50 z-20">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold font-headline text-primary">Tabletop Alchemist</h1>
-                    <Button variant="ghost" size="icon" asChild>
-                        <Link href="/"><Home className="h-4 w-4" /></Link>
+            <GmSidebar 
+                selectedTool={selectedTool}
+                onToolSelect={setSelectedTool}
+                undo={undo}
+                redo={redo}
+                resetView={resetView}
+                zoomIn={() => handleZoom(0.1)}
+                zoomOut={() => handleZoom(-0.1)}
+            />
+            
+            <main className="flex-1 flex flex-col relative bg-muted/30">
+                 <div className="absolute top-2 left-2 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-2">
+                     <Button variant={showGrid ? "default" : "outline"} onClick={() => setShowGrid(!showGrid)} size="icon" className="w-8 h-8"><Grid/></Button>
+                     <Button variant={showFogOfWar ? "default" : "outline"} onClick={() => setShowFogOfWar(!showFogOfWar)} size="icon" className="w-8 h-8">
+                        {showFogOfWar ? <EyeOff /> : <Eye />}
                     </Button>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Player Link</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground mb-2">Share this URL for the player screen.</p>
-                        <div className="flex items-center gap-2">
-                            <Input readOnly value={playerUrl} className="bg-muted border-none" />
-                            <Button size="icon" variant="outline" onClick={copyPlayerUrl}>
-                                <Copy className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-                <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-                    <GmToolbar 
-                        selectedTool={selectedTool} 
-                        onToolSelect={setSelectedTool}
-                        brushColor={brushColor}
-                        onBrushColorChange={setBrushColor}
-                        brushSize={brushSize}
-                        onBrushSizeChange={setBrushSize}
-                    />
-                    <TokenPanel 
-                        tokens={tokens} 
-                        onVisibilityChange={handleTokenVisibilityChange}
-                        onTokenDelete={handleTokenDelete}
-                        onTokenNameChange={handleTokenNameChange}
-                        onTokenColorChange={handleTokenColorChange}
-                        onTokenIconChange={handleTokenIconChange}
-                        onTokenTorchToggle={handleTokenTorchToggle}
-                        onTokenTorchRadiusChange={handleTokenTorchRadiusChange}
-                    />
-                </div>
-            </aside>
+                {(selectedTool === 'wall' || selectedTool === 'detail') && (
+                    <Card className="absolute top-2 left-24 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-4">
+                        <CardContent className="p-2 flex items-center gap-4">
+                            <div className='flex items-center gap-2'>
+                                {selectedTool === 'wall' ? <Brush/> : <PenLine />}
+                                <Label className="text-sm font-medium">Brush Size</Label>
+                                <Slider
+                                    id="brush-size-slider"
+                                    min={2} max={50} step={1}
+                                    value={[brushSize]}
+                                    onValueChange={(value) => setBrushSize(value[0])}
+                                    className="w-32"
+                                />
+                                <span className='text-sm font-bold w-8 text-center'>{brushSize}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Label className="text-sm font-medium">Color</Label>
+                                 <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button style={{backgroundColor: brushColor}} className="w-8 h-8 rounded-md border-2 border-border" />
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0 border-none">
+                                        <div className="grid grid-cols-6 gap-1 p-1 bg-card rounded-md">
+                                        {colorPalette.map(color => (
+                                            <button
+                                                key={color}
+                                                type="button"
+                                                className={cn(
+                                                    "w-8 h-8 rounded-md border-2 transition-all",
+                                                    brushColor === color ? 'border-primary' : 'border-transparent hover:border-muted-foreground/50'
+                                                )}
+                                                style={{ backgroundColor: color }}
+                                                onClick={() => setBrushColor(color)}
+                                                aria-label={`Select color ${color}`}
+                                            />
+                                        ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col p-4 gap-4 relative z-10">
-                <div className="flex-1 relative bg-card/50 rounded-lg shadow-inner overflow-hidden">
+
+                <div className="flex-1 relative overflow-hidden">
                     <MapGrid 
                         showGrid={showGrid} 
                         tokens={tokens}
@@ -342,51 +334,23 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         showFogOfWar={showFogOfWar}
                     />
                 </div>
-                <footer className="relative z-10 h-16 flex items-center justify-center p-2 rounded-lg bg-card border border-border">
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline"><Undo className="mr-2" /> Undo</Button>
-                        <Button variant="outline">Redo <Redo className="ml-2" /></Button>
-                        <Separator orientation="vertical" className="h-6 mx-4" />
-                        <Button variant="outline" onClick={() => setShowGrid(!showGrid)}><Grid className="mr-2" /> Toggle Grid</Button>
-                         <Button variant="outline" onClick={() => setShowFogOfWar(!showFogOfWar)}>
-                            {showFogOfWar ? <EyeOff className="mr-2" /> : <Eye className="mr-2" />}
-                            Toggle Fog
-                        </Button>
-                        <Separator orientation="vertical" className="h-6 mx-4" />
-                        <Button variant="outline" onClick={() => handleZoom(0.1)}><ZoomIn className="mr-2" /> Zoom In</Button>
-                        <Button variant="outline" onClick={() => handleZoom(-0.1)}><ZoomOut className="mr-2" /> Zoom Out</Button>
-                        <Button variant="outline" onClick={resetView}><Maximize className="mr-2" /> Reset View</Button>
-                        <Separator orientation="vertical" className="h-6 mx-4" />
-                        <Button variant="outline" onClick={syncPlayerView}><Eye className="mr-2" /> Sync Player View</Button>
-                        <Button variant="outline" onClick={matchPlayerView}><Users className="mr-2" /> Match Player View</Button>
-                        <Separator orientation="vertical" className="h-6 mx-4" />
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive">End Session</Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure you want to end the session?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. Your map will be saved, but the session will end.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction asChild>
-                                <Link href="/">End Session</Link>
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-
-                    </div>
-                </footer>
             </main>
+
+            <aside className="w-80 h-full flex flex-col p-4 gap-4 border-l border-border bg-card z-20">
+                 <TokenPanel 
+                    tokens={tokens} 
+                    onVisibilityChange={handleTokenVisibilityChange}
+                    onTokenDelete={handleTokenDelete}
+                    onTokenNameChange={handleTokenNameChange}
+                    onTokenColorChange={handleTokenColorChange}
+                    onTokenIconChange={handleTokenIconChange}
+                    onTokenTorchToggle={handleTokenTorchToggle}
+                    onTokenTorchRadiusChange={handleTokenTorchRadiusChange}
+                    sessionId={sessionId}
+                    syncPlayerView={syncPlayerView}
+                    matchPlayerView={matchPlayerView}
+                />
+            </aside>
         </div>
     );
-
-    
-
-    
 }
