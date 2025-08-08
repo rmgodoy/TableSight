@@ -67,7 +67,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       <div className="w-full h-full">
         <MapGrid 
           showGrid={true} 
-          tokens={playerVisibleTokens}
+          tokens={visibleTokens}
           paths={paths}
           backgroundImage={backgroundImage}
           cellSize={cellSize}
