@@ -14,7 +14,7 @@ import { Label } from './ui/label';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
-export type Tool = 'select' | 'wall' | 'detail' | 'erase' | 'add-pc' | 'add-enemy' | 'pan';
+export type Tool = 'select' | 'wall' | 'detail' | 'erase' | 'add-pc' | 'add-enemy';
 
 export type Point = { x: number; y: number };
 export type Path = {
@@ -60,7 +60,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [historyIndex, setHistoryIndex] = useState(-1);
 
     const [showGrid, setShowGrid] = useState(true);
-    const [selectedTool, setSelectedTool] = useState<Tool>('pan');
+    const [selectedTool, setSelectedTool] = useState<Tool>('select');
     const [brushColor, setBrushColor] = useState('#000000');
     const [brushSize, setBrushSize] = useState(10);
     const [tokens, setTokens] = useState<Token[]>([]);
@@ -230,17 +230,23 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     };
 
     const handleErase = (point: Point) => {
-        const eraseRadius = 20; 
-        const remainingPaths = paths.filter(path => 
-            !path.points.some(p => Math.sqrt(Math.pow(p.x - point.x, 2) + Math.pow(p.y - point.y, 2)) < eraseRadius)
+        const eraseRadius = 20; // This can be adjusted or made dynamic
+        const currentPaths = history.filter(item => (item as any).points) as Path[];
+        const currentTokens = history.filter(item => (item as any).id);
+
+        const isPointInRadius = (p1: Point, p2: Point, radius: number) => {
+             return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)) < radius;
+        }
+
+        const remainingPaths = currentPaths.filter(path => 
+            !path.points.some(p => isPointInRadius(p, point, eraseRadius))
         );
-        const newHistoryState = [...tokens, ...remainingPaths];
-        const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push(...newHistoryState.filter(item => !history.includes(item)));
-        
+
+        const newHistoryState = [...currentTokens, ...remainingPaths];
         setHistory(newHistoryState);
         setHistoryIndex(newHistoryState.length - 1);
     };
+
 
     const updateToken = (tokenId: string, updates: Partial<Token>) => {
         const currentToken = tokens.find(t => t.id === tokenId);

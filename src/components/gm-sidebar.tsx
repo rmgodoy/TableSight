@@ -33,7 +33,6 @@ export function GmSidebar({
     zoomOut
 }: GmSidebarProps) {
     const tools: { id: Tool, label: string, icon: React.ReactNode }[] = [
-        { id: 'pan', label: 'Pan', icon: <Hand /> },
         { id: 'select', label: 'Select', icon: <MousePointer /> },
         { id: 'wall', label: 'Wall', icon: <Brush /> },
         { id: 'detail', label: 'Detail', icon: <PenLine /> },
