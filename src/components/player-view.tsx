@@ -60,14 +60,14 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     };
   }, [sessionId, applyState]);
 
-  const visibleTokens = tokens.filter(token => token.visible || token.type === 'Light');
+  const visibleTokens = tokens.filter(token => token.visible && token.type !== 'Light');
 
   return (
     <div className="w-screen h-dvh bg-black relative flex items-center justify-center overflow-hidden">
       <div className="w-full h-full">
         <MapGrid 
           showGrid={true} 
-          tokens={visibleTokens}
+          tokens={playerVisibleTokens}
           paths={paths}
           backgroundImage={backgroundImage}
           cellSize={cellSize}
@@ -93,5 +93,3 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     </div>
   );
 }
-
-    

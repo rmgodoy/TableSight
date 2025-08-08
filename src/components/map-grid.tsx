@@ -566,7 +566,7 @@ export function MapGrid({
   const MapContent = () => {
     let renderTokens = tokens;
     if (isPlayerView) {
-      renderTokens = tokens.filter(t => t.visible || t.type === 'Light');
+      renderTokens = tokens.filter(t => t.visible && t.type !== 'Light');
     }
     
     return (
