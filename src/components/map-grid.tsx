@@ -485,7 +485,9 @@ export function MapGrid({
                         key={token.id}
                         onMouseDown={(e) => handleTokenMouseDown(e, token)}
                         className={cn(
-                            "absolute flex items-center justify-center transition-opacity duration-100 ease-in-out",
+                            "absolute flex items-center justify-center",
+                            "transition-opacity duration-100 ease-in-out",
+                             isPlayerView && "transition-[left,top] duration-300 ease-in-out",
                             draggingToken?.id === token.id && "opacity-50"
                         )}
                         style={{
