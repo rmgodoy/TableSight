@@ -176,6 +176,7 @@ export function MapGrid({
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
   const [ghostPosition, setGhostPosition] = useState<Point | null>(null);
   const [dragOffset, setDragOffset] = useState<Point | null>(null);
+  const [dropTargetCell, setDropTargetCell] = useState<Point | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
@@ -290,19 +291,24 @@ export function MapGrid({
       x: point.x - dragOffset.x,
       y: point.y - dragOffset.y,
     });
+    
+    const dropX = Math.floor((point.x - dragOffset.x) / cellSize);
+    const dropY = Math.floor((point.y - dragOffset.y) / cellSize);
+    setDropTargetCell({ x: dropX, y: dropY });
   };
   
   const handleGlobalMouseUp = (e: MouseEvent) => {
-    if (!draggingToken || !onTokenMove) return;
+    if (!draggingToken || !onTokenMove || !dragOffset) return;
 
     const point = getTransformedPoint(e);
-    const x = Math.floor((point.x - (dragOffset?.x || 0)) / cellSize);
-    const y = Math.floor((point.y - (dragOffset?.y || 0)) / cellSize);
+    const x = Math.floor((point.x - dragOffset.x) / cellSize);
+    const y = Math.floor((point.y - dragOffset.y) / cellSize);
 
     onTokenMove(draggingToken.id, x, y);
     setDraggingToken(null);
     setGhostPosition(null);
     setDragOffset(null);
+    setDropTargetCell(null);
   };
 
   useEffect(() => {
@@ -461,6 +467,17 @@ export function MapGrid({
                 )}
             </svg>
             <div className="absolute inset-0">
+                {dropTargetCell && !isPlayerView && (
+                  <div
+                    className="absolute bg-primary/20 border-2 border-dashed border-primary"
+                    style={{
+                      left: dropTargetCell.x * cellSize,
+                      top: dropTargetCell.y * cellSize,
+                      width: cellSize,
+                      height: cellSize,
+                    }}
+                  />
+                )}
                 {renderTokens.map(token => (
                     <div
                         key={token.id}
