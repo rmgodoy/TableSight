@@ -196,6 +196,8 @@ export function MapGrid({
   const [activeZoom, setActiveZoom] = useState(zoom);
   const [activePan, setActivePan] = useState(pan);
 
+  const [cursorPosition, setCursorPosition] = useState<Point | null>(null);
+
   useEffect(() => {
     // For GM view, always sync with props
     if (!isPlayerView) {
@@ -236,6 +238,15 @@ export function MapGrid({
     };
   }
 
+  const getScreenPoint = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
+    if (!containerRef.current) return { x: 0, y: 0 };
+    const rect = containerRef.current.getBoundingClientRect();
+    return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+    };
+  }
+
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isPlayerView) return;
 
@@ -266,6 +277,10 @@ export function MapGrid({
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPlayerView) {
+        setCursorPosition(getScreenPoint(e));
+    }
+    
     if (isPlayerView) return;
 
     if (isPanning && onPanChange) {
@@ -512,6 +527,8 @@ export function MapGrid({
       });
   }, [isPlayerView, showFogOfWar, tokens, wallSegments, activePan, activeZoom, cellSize]);
 
+  const isBrushToolActive = !isPlayerView && (selectedTool === 'wall' || selectedTool === 'detail' || (selectedTool === 'erase' && eraseMode === 'brush'));
+  const currentBrushSize = selectedTool === 'erase' ? eraseBrushSize : brushSize;
 
   const MapContent = () => {
     let renderTokens = tokens;
@@ -568,8 +585,7 @@ export function MapGrid({
                         onMouseDown={(e) => handleTokenMouseDown(e, token)}
                         className={cn(
                             "absolute flex items-center justify-center",
-                            "transition-opacity duration-100 ease-in-out",
-                             isPlayerView && "transition-[left,top] duration-300 ease-in-out",
+                             isPlayerView ? "transition-[left,top] duration-300 ease-in-out" : "transition-opacity duration-100 ease-in-out",
                             draggingToken?.id === token.id && "opacity-50"
                         )}
                         style={{
@@ -624,7 +640,7 @@ export function MapGrid({
          !isPlayerView && !isPanning && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
             'cursor-default': selectedTool === 'select',
-            'cursor-cell': selectedTool === 'wall' || selectedTool === 'detail' || (selectedTool === 'erase' && eraseMode === 'brush'),
+            'cursor-none': isBrushToolActive,
             'cursor-not-allowed': selectedTool === 'erase' && eraseMode === 'line',
         }
       )}
@@ -633,11 +649,17 @@ export function MapGrid({
       onMouseUp={handleMouseUp}
       onMouseLeave={(e) => {
           if (!isPlayerView) {
+              setCursorPosition(null);
               if (isDrawing) handleMouseUp(e);
               if (isErasingRef.current) isErasingRef.current = false;
           }
           if (isPanning) setIsPanning(false);
       }}
+       onMouseEnter={e => {
+            if (!isPlayerView) {
+                setCursorPosition(getScreenPoint(e));
+            }
+       }}
       onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
       >
@@ -676,6 +698,18 @@ export function MapGrid({
           <>
             {showGrid && <GridLayer bright={true} />}
             <MapContent />
+            {isBrushToolActive && cursorPosition && (
+                <div
+                    className="absolute rounded-full bg-primary/20 border-2 border-primary pointer-events-none"
+                    style={{
+                        width: currentBrushSize * activeZoom,
+                        height: currentBrushSize * activeZoom,
+                        left: cursorPosition.x - (currentBrushSize * activeZoom / 2),
+                        top: cursorPosition.y - (currentBrushSize * activeZoom / 2),
+                        transformOrigin: 'center center',
+                    }}
+                />
+            )}
             {showFogOfWar && screenSpaceLightPolygons.length > 0 && (
               <div className='absolute inset-0 pointer-events-none'>
                 <svg width="100%" height="100%">
