@@ -124,14 +124,34 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         setHistoryIndex(finalHistory.length - 1);
     }
 
-    const undo = () => {
+    const undo = useCallback(() => {
         if (historyIndex < 0) return;
         setHistoryIndex(prev => prev - 1);
-    }
-    const redo = () => {
+    }, [historyIndex]);
+
+    const redo = useCallback(() => {
         if (historyIndex > history.length - 2) return;
         setHistoryIndex(prev => prev + 1);
-    }
+    }, [history, historyIndex]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z') {
+                    e.preventDefault();
+                    undo();
+                } else if (e.key === 'y') {
+                    e.preventDefault();
+                    redo();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [undo, redo]);
 
     useEffect(() => {
         const currentState = history.slice(0, historyIndex + 1);
