@@ -96,11 +96,32 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }
     }, [storageKey, toast, tokens, paths, zoom, pan, playerPan, playerZoom]);
 
-    const addToHistory = (item: Path | Token) => {
+    const addToHistory = (item: Path | Token | (Path | Token)[]) => {
         const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push(item);
-        setHistory(newHistory);
-        setHistoryIndex(newHistory.length - 1);
+        const itemsToAdd = Array.isArray(item) ? item : [item];
+        const finalHistory = [...newHistory, ...itemsToAdd];
+        
+        // A single action can result in multiple items, but should be one history step.
+        // Let's wrap multi-item updates in a single history entry for simplicity of undo/redo
+        if (Array.isArray(item)) {
+             const updatedHistory = history.slice(0, historyIndex + 1);
+             updatedHistory.push(...item);
+             setHistory(updatedHistory);
+             setHistoryIndex(updatedHistory.length -1);
+        } else {
+            const newHistory = history.slice(0, historyIndex + 1);
+            newHistory.push(item);
+            setHistory(newHistory);
+            setHistoryIndex(newHistory.length - 1);
+        }
+    }
+    
+    const setHistoryState = (items: (Path | Token)[]) => {
+        const newHistory = history.slice(0, historyIndex + 1);
+        const nonPathItems = newHistory.filter(item => (item as any).id);
+        const finalHistory = [...nonPathItems, ...items];
+        setHistory(finalHistory);
+        setHistoryIndex(finalHistory.length - 1);
     }
 
     const undo = () => {
@@ -122,7 +143,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         for(let i = currentState.length - 1; i >= 0; i--) {
             const item = currentState[i] as any;
             if(item.points) { // It's a path
-                newPaths.unshift(item);
+                 if (!newPaths.some(p => JSON.stringify(p) === JSON.stringify(item))) {
+                    newPaths.unshift(item);
+                }
             } else if (item.id && !tokenIds.has(item.id)) { // It's a token
                 newTokens.unshift(item as Token);
                 tokenIds.add(item.id);
@@ -208,9 +231,15 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
     const handleErase = (point: Point) => {
         const eraseRadius = 20; 
-        setPaths(currentPaths => currentPaths.filter(path => 
+        const remainingPaths = paths.filter(path => 
             !path.points.some(p => Math.sqrt(Math.pow(p.x - point.x, 2) + Math.pow(p.y - point.y, 2)) < eraseRadius)
-        ));
+        );
+        const newHistoryState = [...tokens, ...remainingPaths];
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(...newHistoryState.filter(item => !history.includes(item)));
+        
+        setHistory(newHistoryState);
+        setHistoryIndex(newHistoryState.length - 1);
     };
 
     const updateToken = (tokenId: string, updates: Partial<Token>) => {
@@ -222,7 +251,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
     const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => updateToken(tokenId, { visible: isVisible });
     const handleTokenDelete = (tokenId: string) => {
-        setTokens(current => current.filter(token => token.id !== tokenId));
         const newHistory = history.filter((item: any) => item.id !== tokenId);
         setHistory(newHistory);
         setHistoryIndex(newHistory.length -1);
