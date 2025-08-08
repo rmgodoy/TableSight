@@ -355,7 +355,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     size: 1, // Lights don't have a physical size in the same way
                     torch: {
                         enabled: true,
-                        radius: light.range
+                        radius: light.range / 2
                     }
                 }));
 
@@ -544,3 +544,5 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         </>
     );
 }
+
+    
