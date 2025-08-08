@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -30,6 +30,7 @@ interface TokenPanelProps {
     onTokenNameChange: (tokenId: string, newName: string) => void;
     onTokenColorChange: (tokenId: string, color: string) => void;
     onTokenIconChange: (tokenId: string, iconUrl: string) => void;
+    onTokenSizeChange: (tokenId: string, size: number) => void;
     onTokenTorchToggle: (tokenId: string) => void;
     onTokenTorchRadiusChange: (tokenId: string, radius: number) => void;
     sessionId: string;
@@ -44,6 +45,7 @@ export function TokenPanel({
     onTokenNameChange, 
     onTokenColorChange, 
     onTokenIconChange,
+    onTokenSizeChange,
     onTokenTorchToggle,
     onTokenTorchRadiusChange,
     sessionId,
@@ -152,26 +154,46 @@ export function TokenPanel({
                                             </Button>
                                         </div>
                                     </div>
-                                    <div className="pl-10 flex flex-col items-start gap-2">
-                                        <Button variant="ghost" className="h-8 px-2 justify-start" onClick={() => onTokenTorchToggle(token.id)}>
-                                            <Flame className={cn("h-4 w-4 mr-2", token.torch.enabled ? "text-orange-500" : "text-muted-foreground")} />
-                                            <span className={cn(token.torch.enabled ? "text-primary" : "text-muted-foreground")}>Torch</span>
-                                        </Button>
-                                        
-                                        {token.torch.enabled && (
-                                        <div className="flex items-center gap-2 w-full">
-                                            <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, Math.max(1, token.torch.radius - 1))}><Minus/></Button>
-                                            <Input
-                                                type="number"
-                                                min={1}
-                                                max={999}
-                                                value={token.torch.radius}
-                                                onChange={(e) => onTokenTorchRadiusChange(token.id, parseInt(e.target.value, 10) || 1)}
-                                                className="h-8 w-full text-center"
-                                            />
-                                            <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, token.torch.radius + 1)}><Plus/></Button>
+                                    <div className="pl-10 flex flex-col items-start gap-4">
+                                        <div className='flex flex-col gap-2 w-full'>
+                                            <Button variant="ghost" className="h-8 px-2 justify-start" onClick={() => onTokenTorchToggle(token.id)}>
+                                                <Flame className={cn("h-4 w-4 mr-2", token.torch.enabled ? "text-orange-500" : "text-muted-foreground")} />
+                                                <span className={cn(token.torch.enabled ? "text-primary" : "text-muted-foreground")}>Torch</span>
+                                            </Button>
+                                            
+                                            {token.torch.enabled && (
+                                            <div className="flex items-center gap-2 w-full">
+                                                <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, Math.max(1, token.torch.radius - 1))}><Minus/></Button>
+                                                <Input
+                                                    type="number"
+                                                    min={1}
+                                                    max={999}
+                                                    value={token.torch.radius}
+                                                    onChange={(e) => onTokenTorchRadiusChange(token.id, parseInt(e.target.value, 10) || 1)}
+                                                    className="h-8 w-full text-center"
+                                                />
+                                                <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, token.torch.radius + 1)}><Plus/></Button>
+                                            </div>
+                                            )}
                                         </div>
-                                        )}
+                                        <div className='flex flex-col gap-2 w-full'>
+                                            <div className='flex items-center text-muted-foreground'>
+                                                <Scaling className="h-4 w-4 mr-2" />
+                                                <span>Size</span>
+                                            </div>
+                                             <div className="flex items-center gap-2 w-full">
+                                                <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenSizeChange(token.id, Math.max(1, token.size - 1))}><Minus/></Button>
+                                                <Input
+                                                    type="number"
+                                                    min={1}
+                                                    max={20}
+                                                    value={token.size}
+                                                    onChange={(e) => onTokenSizeChange(token.id, parseInt(e.target.value, 10) || 1)}
+                                                    className="h-8 w-full text-center"
+                                                />
+                                                <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenSizeChange(token.id, token.size + 1)}><Plus/></Button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </li>
                             ))}

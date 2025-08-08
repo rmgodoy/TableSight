@@ -20,6 +20,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       // Backwards compatibility
       const updatedTokens = (gameState.tokens || []).map(t => ({
         ...t,
+        size: t.size || 1,
         torch: t.torch || { enabled: false, radius: 5 }
       }));
       const updatedPaths = (gameState.paths || []).map(p => {
@@ -42,12 +43,6 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       console.error("Failed to parse game state from localStorage", error);
     }
   }, []);
-
-  const handleStorageChange = useCallback((event: StorageEvent) => {
-    if (event.key === storageKey) {
-      applyState(event.newValue);
-    }
-  }, [storageKey, applyState]);
 
   useEffect(() => {
     if (!sessionId) return;

@@ -188,14 +188,8 @@ export function MapGrid({
 
   useEffect(() => {
     if (isPlayerView) {
-      const sessionId = window.location.hash.substring(1);
-      const storageKey = `tabletop-alchemist-session-${sessionId}`;
-      const savedStateRaw = localStorage.getItem(storageKey);
-      if (savedStateRaw) {
-        const savedState = JSON.parse(savedStateRaw);
-        setActiveZoom(savedState.playerZoom || 1);
-        setActivePan(savedState.playerPan || { x: 0, y: 0 });
-      }
+      setActiveZoom(zoom);
+      setActivePan(pan);
     } else {
       setActiveZoom(zoom);
       setActivePan(pan);
@@ -229,7 +223,7 @@ export function MapGrid({
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isPlayerView) return;
 
-    if (selectedTool === 'pan' || e.button === 2 || (e.button === 0 && (e.altKey || e.metaKey || e.ctrlKey))) {
+    if (e.button === 2 || (e.button === 0 && (e.altKey || e.metaKey || e.ctrlKey))) {
         setIsPanning(true);
         panStartRef.current = { x: e.clientX - activePan.x, y: e.clientY - activePan.y };
         e.preventDefault();
@@ -303,12 +297,13 @@ export function MapGrid({
   const handleGlobalMouseMove = (e: MouseEvent) => {
     if (!draggingToken || !onTokenMove || !dragOffset) return;
     const point = getTransformedPoint(e);
+    const tokenSizeInPixels = draggingToken.size * cellSize;
     const ghostX = point.x - dragOffset.x;
     const ghostY = point.y - dragOffset.y;
     setGhostPosition({ x: ghostX, y: ghostY });
     
-    const dropX = Math.floor((ghostX + cellSize / 2) / cellSize);
-    const dropY = Math.floor((ghostY + cellSize / 2) / cellSize);
+    const dropX = Math.floor((ghostX + tokenSizeInPixels / 2) / cellSize);
+    const dropY = Math.floor((ghostY + tokenSizeInPixels / 2) / cellSize);
     setDropTargetCell({ x: dropX, y: dropY });
   };
   
@@ -316,11 +311,12 @@ export function MapGrid({
     if (!draggingToken || !onTokenMove || !dragOffset) return;
 
     const point = getTransformedPoint(e);
+    const tokenSizeInPixels = draggingToken.size * cellSize;
     const ghostX = point.x - dragOffset.x;
     const ghostY = point.y - dragOffset.y;
     
-    const x = Math.floor((ghostX + cellSize / 2) / cellSize);
-    const y = Math.floor((ghostY + cellSize / 2) / cellSize);
+    const x = Math.floor((ghostX + tokenSizeInPixels / 2) / cellSize);
+    const y = Math.floor((ghostY + tokenSizeInPixels / 2) / cellSize);
 
     onTokenMove(draggingToken.id, x, y);
     setDraggingToken(null);
@@ -389,19 +385,23 @@ export function MapGrid({
     return (
        <div
         className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center"
+          "rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center"
         )}
         style={{ 
           backgroundColor: token.color, 
-          backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none'
+          backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none',
+          width: '100%',
+          height: '100%',
         }}
        >
          {!token.iconUrl && (
-             token.type === 'PC' ? (
+             <div style={{transform: `scale(${token.size * 0.5})`}}>
+             {token.type === 'PC' ? (
                  <CircleUserRound className="text-white/80" />
              ) : (
                  <Shield className="text-white/80" />
-             )
+             )}
+             </div>
          )}
        </div>
     );
@@ -425,9 +425,10 @@ export function MapGrid({
       
       const lightTokens = isPlayerView ? tokens.filter(t => t.visible) : tokens;
       return lightTokens.filter(t => t.torch.enabled).map(token => {
+          const tokenPixelSize = token.size * cellSize;
           const lightSource = { 
-              x: (token.x * cellSize + cellSize / 2) * activeZoom + activePan.x, 
-              y: (token.y * cellSize + cellSize / 2) * activeZoom + activePan.y
+              x: (token.x * cellSize + tokenPixelSize / 2) * activeZoom + activePan.x, 
+              y: (token.y * cellSize + tokenPixelSize / 2) * activeZoom + activePan.y
           };
           const torchRadiusInPixels = token.torch.radius * cellSize * activeZoom;
           
@@ -485,14 +486,14 @@ export function MapGrid({
                 )}
             </svg>
             <div className="absolute inset-0">
-                {dropTargetCell && !isPlayerView && (
+                {dropTargetCell && !isPlayerView && draggingToken && (
                   <div
                     className="absolute bg-primary/20 border-2 border-dashed border-primary"
                     style={{
                       left: dropTargetCell.x * cellSize,
                       top: dropTargetCell.y * cellSize,
-                      width: cellSize,
-                      height: cellSize,
+                      width: draggingToken.size * cellSize,
+                      height: draggingToken.size * cellSize,
                     }}
                   />
                 )}
@@ -509,8 +510,8 @@ export function MapGrid({
                         style={{
                             left: token.x * cellSize,
                             top: token.y * cellSize,
-                            width: cellSize,
-                            height: cellSize,
+                            width: token.size * cellSize,
+                            height: token.size * cellSize,
                         }}
                     >
                         {renderToken(token)}
@@ -522,8 +523,8 @@ export function MapGrid({
                         style={{
                             left: ghostPosition.x,
                             top: ghostPosition.y,
-                            width: cellSize,
-                            height: cellSize,
+                            width: draggingToken.size * cellSize,
+                            height: draggingToken.size * cellSize,
                         }}
                     >
                         {renderToken(draggingToken)}
@@ -554,9 +555,8 @@ export function MapGrid({
       className={cn(
         "w-full h-full relative",
         isPlayerView ? "bg-transparent" : "bg-background",
-         !isPlayerView && (selectedTool === 'pan' || isPanning) && "cursor-grab",
          !isPlayerView && isPanning && "cursor-grabbing",
-         !isPlayerView && !isPanning && selectedTool !== 'pan' && {
+         !isPlayerView && !isPanning && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
             'cursor-default': selectedTool === 'select',
             'cursor-cell': selectedTool === 'wall' || selectedTool === 'detail',

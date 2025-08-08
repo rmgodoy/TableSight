@@ -33,6 +33,7 @@ export type Token = {
   visible: boolean;
   color: string;
   iconUrl?: string;
+  size: number;
   torch: {
     enabled: boolean;
     radius: number;
@@ -140,7 +141,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 if (e.key === 'z') {
                     e.preventDefault();
                     undo();
-                } else if (e.key === 'y') {
+                } else if (e.key === 'y' || (e.shiftKey && e.key === 'z')) {
                     e.preventDefault();
                     redo();
                 }
@@ -193,6 +194,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 const gameState: GameState = JSON.parse(savedState);
                 const updatedTokens = (gameState.tokens || []).map(t => ({
                   ...t,
+                  size: t.size || 1,
                   torch: t.torch || { enabled: false, radius: 5 }
                 }));
                 const updatedPaths = (gameState.paths || []).map(p => {
@@ -229,6 +231,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 id: `pc-${Date.now()}`,
                 name: `PC ${tokens.filter(t => t.type === 'PC').length + 1}`,
                 x, y, type: 'PC' as const, visible: true, color: '#3b82f6',
+                size: 1,
                 torch: { enabled: false, radius: 5 },
             };
         }
@@ -237,6 +240,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 id: `enemy-${Date.now()}`,
                 name: `Enemy ${tokens.filter(t => t.type === 'Enemy').length + 1}`,
                 x, y, type: 'Enemy' as const, visible: false, color: '#ef4444',
+                size: 1,
                 torch: { enabled: false, radius: 5 },
             };
         }
@@ -285,6 +289,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const handleTokenNameChange = (tokenId: string, newName: string) => updateToken(tokenId, { name: newName });
     const handleTokenColorChange = (tokenId: string, newColor: string) => updateToken(tokenId, { color: newColor });
     const handleTokenIconChange = (tokenId: string, newIconUrl: string) => updateToken(tokenId, { iconUrl: newIconUrl });
+    const handleTokenSizeChange = (tokenId: string, size: number) => updateToken(tokenId, { size });
     const handleTokenTorchToggle = (tokenId: string) => {
         const token = tokens.find(t => t.id === tokenId);
         if(token) updateToken(tokenId, { torch: { ...token.torch, enabled: !token.torch.enabled } });
@@ -398,6 +403,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     onTokenNameChange={handleTokenNameChange}
                     onTokenColorChange={handleTokenColorChange}
                     onTokenIconChange={handleTokenIconChange}
+                    onTokenSizeChange={handleTokenSizeChange}
                     onTokenTorchToggle={handleTokenTorchToggle}
                     onTokenTorchRadiusChange={handleTokenTorchRadiusChange}
                     sessionId={sessionId}
