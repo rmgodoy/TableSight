@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, Grid, EyeOff, Brush, PenLine } from 'lucide-react';
+import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { GmSidebar } from '@/components/gm-sidebar';
 import { TokenPanel } from '@/components/token-panel';
@@ -13,11 +13,15 @@ import { Slider } from './ui/slider';
 import { Label } from './ui/label';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+
 
 export type Tool = 'select' | 'wall' | 'detail' | 'erase' | 'add-pc' | 'add-enemy';
+export type EraseMode = 'line' | 'brush';
 
 export type Point = { x: number; y: number };
 export type Path = {
+    id: string;
     points: Point[];
     color: string;
     width: number;
@@ -49,6 +53,12 @@ export type GameState = {
     playerPan?: { x: number, y: number };
 };
 
+// Represents a single state in the history for undo/redo
+type HistoryState = {
+    paths: Path[];
+    tokens: Token[];
+}
+
 const colorPalette = [
     '#000000', '#ef4444', '#f97316', '#eab308',
     '#84cc16', '#22c55e', '#14b8a6', '#06b6d4',
@@ -57,15 +67,19 @@ const colorPalette = [
 
 
 export default function GmView({ sessionId }: { sessionId: string }) {
-    const [history, setHistory] = useState<(Path | Token)[]>([]);
+    const [history, setHistory] = useState<HistoryState[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
 
     const [showGrid, setShowGrid] = useState(true);
     const [selectedTool, setSelectedTool] = useState<Tool>('select');
+    const [eraseMode, setEraseMode] = useState<EraseMode>('line');
     const [brushColor, setBrushColor] = useState('#000000');
     const [brushSize, setBrushSize] = useState(10);
+    const [eraseBrushSize, setEraseBrushSize] = useState(20);
+    
     const [tokens, setTokens] = useState<Token[]>([]);
     const [paths, setPaths] = useState<Path[]>([]);
+
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [playerZoom, setPlayerZoom] = useState(1);
@@ -97,42 +111,23 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }
     }, [storageKey, toast, tokens, paths, zoom, pan, playerPan, playerZoom]);
 
-    const addToHistory = (item: Path | Token | (Path | Token)[]) => {
+    const recordHistory = (newPaths: Path[], newTokens: Token[]) => {
         const newHistory = history.slice(0, historyIndex + 1);
-        const itemsToAdd = Array.isArray(item) ? item : [item];
-        const finalHistory = [...newHistory, ...itemsToAdd];
-        
-        // A single action can result in multiple items, but should be one history step.
-        // Let's wrap multi-item updates in a single history entry for simplicity of undo/redo
-        if (Array.isArray(item)) {
-             const updatedHistory = history.slice(0, historyIndex + 1);
-             updatedHistory.push(...item);
-             setHistory(updatedHistory);
-             setHistoryIndex(updatedHistory.length -1);
-        } else {
-            const newHistory = history.slice(0, historyIndex + 1);
-            newHistory.push(item);
-            setHistory(newHistory);
-            setHistoryIndex(newHistory.length - 1);
-        }
-    }
-    
-    const setHistoryState = (items: (Path | Token)[]) => {
-        const newHistory = history.slice(0, historyIndex + 1);
-        const nonPathItems = newHistory.filter(item => (item as any).id);
-        const finalHistory = [...nonPathItems, ...items];
-        setHistory(finalHistory);
-        setHistoryIndex(finalHistory.length - 1);
+        newHistory.push({ paths: newPaths, tokens: newTokens });
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
     }
 
     const undo = useCallback(() => {
-        if (historyIndex < 0) return;
-        setHistoryIndex(prev => prev - 1);
+        if (historyIndex > 0) {
+            setHistoryIndex(prev => prev - 1);
+        }
     }, [historyIndex]);
 
     const redo = useCallback(() => {
-        if (historyIndex > history.length - 2) return;
-        setHistoryIndex(prev => prev + 1);
+        if (historyIndex < history.length - 1) {
+            setHistoryIndex(prev => prev + 1);
+        }
     }, [history, historyIndex]);
 
     useEffect(() => {
@@ -154,37 +149,26 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         };
     }, [undo, redo]);
 
+    // This effect synchronizes the component state (paths, tokens) with the current point in history
     useEffect(() => {
-        const currentState = history.slice(0, historyIndex + 1);
-        const newPaths: Path[] = [];
-        const newTokens: Token[] = [];
-        const tokenIds = new Set();
-        
-        // Iterate backwards to get the latest state of each token
-        for(let i = currentState.length - 1; i >= 0; i--) {
-            const item = currentState[i] as any;
-            if(item.points) { // It's a path
-                 if (!newPaths.some(p => JSON.stringify(p) === JSON.stringify(item))) {
-                    newPaths.unshift(item);
-                }
-            } else if (item.id && !tokenIds.has(item.id)) { // It's a token
-                newTokens.unshift(item as Token);
-                tokenIds.add(item.id);
-            }
+        if(historyIndex >= 0 && history[historyIndex]) {
+            const { paths: historyPaths, tokens: historyTokens } = history[historyIndex];
+            setPaths(historyPaths);
+            setTokens(historyTokens);
         }
-
-        setPaths(newPaths);
-        setTokens(newTokens);
     }, [history, historyIndex]);
     
     // This effect synchronizes the local state to localStorage.
     // It's debounced to avoid excessive writes.
     useEffect(() => {
+        // Only run if there is something in the history
+        if(history.length === 0) return;
+
         const handler = setTimeout(() => {
             updateGameState();
         }, 500); // Debounce time in ms
         return () => clearTimeout(handler);
-    }, [tokens, paths, zoom, pan, playerPan, playerZoom, updateGameState]);
+    }, [tokens, paths, zoom, pan, playerPan, playerZoom, updateGameState, history.length]);
 
 
     useEffect(() => {
@@ -192,32 +176,33 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             const savedState = localStorage.getItem(storageKey);
             if (savedState) {
                 const gameState: GameState = JSON.parse(savedState);
-                const updatedTokens = (gameState.tokens || []).map(t => ({
+                const loadedPaths = (gameState.paths || []).map(p => ({
+                    ...p,
+                    id: p.id || `path-${Math.random()}` 
+                }));
+                const loadedTokens = (gameState.tokens || []).map(t => ({
                   ...t,
                   size: t.size || 1,
                   torch: t.torch || { enabled: false, radius: 5 }
                 }));
-                const updatedPaths = (gameState.paths || []).map(p => {
-                    if (Array.isArray(p)) {
-                        return { points: p, color: '#000000', width: 10, blocksLight: true };
-                    }
-                    if (typeof p.blocksLight === 'undefined') {
-                        return { ...p, blocksLight: true };
-                    }
-                    if (typeof p.width === 'undefined') {
-                        return { ...p, width: 10 };
-                    }
-                    return p;
-                });
                 
-                const initialHistory = [...updatedPaths, ...updatedTokens];
+                setPaths(loadedPaths);
+                setTokens(loadedTokens);
+
+                // Initialize history with the loaded state
+                const initialHistory: HistoryState[] = [{ paths: loadedPaths, tokens: loadedTokens }];
                 setHistory(initialHistory);
-                setHistoryIndex(initialHistory.length -1);
+                setHistoryIndex(0);
 
                 if (gameState.zoom) setZoom(gameState.zoom);
                 if (gameState.pan) setPan(gameState.pan);
                 if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
                 if (gameState.playerPan) setPlayerPan(gameState.playerPan);
+            } else {
+                 // If no saved state, initialize with an empty state
+                const initialState: HistoryState = { paths: [], tokens: [] };
+                setHistory([initialState]);
+                setHistoryIndex(0);
             }
         } catch (error) {
             console.error("Failed to load game state from localStorage", error);
@@ -245,46 +230,57 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             };
         }
         if (newToken) {
-            addToHistory(newToken);
+            const newTokens = [...tokens, newToken];
+            setTokens(newTokens);
+            recordHistory(paths, newTokens);
         }
     };
 
-    const handleNewPath = (path: Path) => {
-        addToHistory(path);
+    const handleNewPath = (path: Omit<Path, 'id'>) => {
+        const newPath = { ...path, id: `path-${Date.now()}` };
+        const newPaths = [...paths, newPath];
+        setPaths(newPaths);
+        recordHistory(newPaths, tokens);
     };
 
-    const handleErase = (point: Point) => {
-        const eraseRadius = 20; // This can be adjusted or made dynamic
-        const currentPaths = history.filter(item => (item as any).points) as Path[];
-        const currentTokens = history.filter(item => (item as any).id);
-
+    const handleEraseLine = (point: Point) => {
+        const eraseRadius = 20;
         const isPointInRadius = (p1: Point, p2: Point, radius: number) => {
              return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)) < radius;
         }
 
-        const remainingPaths = currentPaths.filter(path => 
+        const remainingPaths = paths.filter(path => 
             !path.points.some(p => isPointInRadius(p, point, eraseRadius))
         );
-
-        const newHistoryState = [...currentTokens, ...remainingPaths];
-        setHistory(newHistoryState);
-        setHistoryIndex(newHistoryState.length - 1);
-    };
-
-
-    const updateToken = (tokenId: string, updates: Partial<Token>) => {
-        const currentToken = tokens.find(t => t.id === tokenId);
-        if (currentToken) {
-            addToHistory({ ...currentToken, ...updates });
+        
+        if(remainingPaths.length < paths.length) {
+            setPaths(remainingPaths);
+            recordHistory(remainingPaths, tokens);
         }
     };
 
-    const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => updateToken(tokenId, { visible: isVisible });
+    const handleEraseBrush = (updatedPaths: Path[]) => {
+        setPaths(updatedPaths);
+        recordHistory(updatedPaths, tokens);
+    };
+
+    const updateToken = (tokenId: string, updates: Partial<Token>) => {
+        let newTokens = [...tokens];
+        const tokenIndex = newTokens.findIndex(t => t.id === tokenId);
+        if (tokenIndex !== -1) {
+            newTokens[tokenIndex] = { ...newTokens[tokenIndex], ...updates };
+            setTokens(newTokens);
+            recordHistory(paths, newTokens);
+        }
+    };
+    
     const handleTokenDelete = (tokenId: string) => {
-        const newHistory = history.filter((item: any) => item.id !== tokenId);
-        setHistory(newHistory);
-        setHistoryIndex(newHistory.length -1);
+        const newTokens = tokens.filter(t => t.id !== tokenId);
+        setTokens(newTokens);
+        recordHistory(paths, newTokens);
     }
+
+    const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => updateToken(tokenId, { visible: isVisible });
     const handleTokenMove = (tokenId: string, x: number, y: number) => updateToken(tokenId, { x, y });
     const handleTokenNameChange = (tokenId: string, newName: string) => updateToken(tokenId, { name: newName });
     const handleTokenColorChange = (tokenId: string, newColor: string) => updateToken(tokenId, { color: newColor });
@@ -373,6 +369,34 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     </Card>
                 )}
 
+                 {selectedTool === 'erase' && (
+                    <Card className="absolute top-2 left-24 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-4">
+                        <CardContent className="p-2 flex items-center gap-4">
+                           <ToggleGroup type="single" value={eraseMode} onValueChange={(value: EraseMode) => value && setEraseMode(value)}>
+                                <ToggleGroupItem value="line" aria-label="Erase whole line">
+                                    <Trash className="h-4 w-4" />
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value="brush" aria-label="Erase with brush">
+                                    <Paintbrush className="h-4 w-4" />
+                                </ToggleGroupItem>
+                            </ToggleGroup>
+                            
+                            {eraseMode === 'brush' && (
+                                <div className='flex items-center gap-2'>
+                                    <Label className="text-sm font-medium">Eraser Size</Label>
+                                    <Slider
+                                        id="eraser-size-slider"
+                                        min={5} max={100} step={1}
+                                        value={[eraseBrushSize]}
+                                        onValueChange={(value) => setEraseBrushSize(value[0])}
+                                        className="w-32"
+                                    />
+                                    <span className='text-sm font-bold w-8 text-center'>{eraseBrushSize}</span>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
 
                 <div className="flex-1 relative overflow-hidden">
                     <MapGrid 
@@ -380,12 +404,15 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         tokens={tokens}
                         paths={paths}
                         onMapClick={handleMapClick} 
-                        onErase={handleErase}
+                        onEraseLine={handleEraseLine}
+                        onEraseBrush={handleEraseBrush}
                         onNewPath={handleNewPath}
                         selectedTool={selectedTool}
+                        eraseMode={eraseMode}
                         onTokenMove={handleTokenMove}
                         brushColor={brushColor}
                         brushSize={brushSize}
+                        eraseBrushSize={eraseBrushSize}
                         zoom={zoom}
                         pan={pan}
                         onZoomChange={setZoom}
@@ -414,3 +441,5 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         </div>
     );
 }
+
+    

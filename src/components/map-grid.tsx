@@ -2,22 +2,25 @@
 'use client';
 
 import { CircleUserRound, Shield } from 'lucide-react';
-import type { Token, Tool, Path, Point } from './gm-view';
+import type { Token, Tool, Path, Point, EraseMode } from './gm-view';
 import { cn } from '@/lib/utils';
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 
 interface MapGridProps {
   showGrid: boolean;
   tokens: Token[];
   paths: Path[];
   onMapClick: (x: number, y: number) => void;
-  onNewPath: (path: Path) => void;
-  onErase: (point: Point) => void;
+  onNewPath: (path: Omit<Path, 'id'>) => void;
+  onEraseLine: (point: Point) => void;
+  onEraseBrush: (updatedPaths: Path[]) => void;
   selectedTool: Tool;
+  eraseMode: EraseMode;
   onTokenMove?: (tokenId: string, x: number, y: number) => void;
   isPlayerView?: boolean;
   brushColor?: string;
   brushSize?: number;
+  eraseBrushSize?: number;
   zoom?: number;
   pan?: { x: number; y: number };
   onZoomChange?: (zoom: number) => void;
@@ -160,12 +163,15 @@ export function MapGrid({
   paths,
   onMapClick, 
   onNewPath,
-  onErase,
+  onEraseLine,
+  onEraseBrush,
   selectedTool,
+  eraseMode,
   onTokenMove,
   isPlayerView = false,
   brushColor = '#000000',
   brushSize = 10,
+  eraseBrushSize = 20,
   zoom = 1,
   pan = { x: 0, y: 0 },
   onZoomChange,
@@ -178,8 +184,11 @@ export function MapGrid({
   const [ghostPosition, setGhostPosition] = useState<Point | null>(null);
   const [dragOffset, setDragOffset] = useState<Point | null>(null);
   const [dropTargetCell, setDropTargetCell] = useState<Point | null>(null);
+  
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
+  const isErasingRef = useRef(false);
+
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0 });
@@ -243,7 +252,12 @@ export function MapGrid({
       setIsDrawing(true);
       setCurrentPath([point]);
     } else if (selectedTool === 'erase') {
-        onErase(point);
+        if (eraseMode === 'line') {
+            onEraseLine(point);
+        } else {
+            isErasingRef.current = true;
+            eraseWithBrush(point);
+        }
     } else if (selectedTool === 'add-pc' || selectedTool === 'add-enemy') {
         const gridX = Math.floor(point.x / cellSize);
         const gridY = Math.floor(point.y / cellSize);
@@ -263,8 +277,12 @@ export function MapGrid({
       return;
     }
 
-    if (!isDrawing) return;
-    setCurrentPath(prevPath => [...prevPath, getTransformedPoint(e)]);
+    const point = getTransformedPoint(e);
+    if (isDrawing) {
+        setCurrentPath(prevPath => [...prevPath, point]);
+    } else if (isErasingRef.current && eraseMode === 'brush') {
+        eraseWithBrush(point);
+    }
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -285,7 +303,46 @@ export function MapGrid({
     }
     setIsDrawing(false);
     setCurrentPath([]);
+    isErasingRef.current = false;
   };
+
+  const eraseWithBrush = useCallback((erasePoint: Point) => {
+    const distanceSq = (p1: Point, p2: Point) => (p1.x - p2.x)**2 + (p1.y - p2.y)**2;
+
+    const newPaths: Path[] = [];
+    let changed = false;
+
+    paths.forEach(path => {
+        let currentSegment: Point[] = [];
+        for (const point of path.points) {
+            if (distanceSq(point, erasePoint) > (eraseBrushSize / activeZoom)**2) {
+                currentSegment.push(point);
+            } else {
+                if (currentSegment.length > 1) {
+                    newPaths.push({ ...path, id: `${path.id}-split-${Math.random()}`, points: currentSegment });
+                    changed = true;
+                }
+                currentSegment = [];
+            }
+        }
+        if (currentSegment.length > 1) {
+            newPaths.push({ ...path, id: `${path.id}-split-${Math.random()}`, points: currentSegment });
+        } else if (currentSegment.length === 1 && path.points.length > 1) {
+            // This case handles when the erase splits the path perfectly
+        } else if (currentSegment.length === 0 && path.points.length > 0) {
+            // Path was fully erased
+             changed = true;
+        } else {
+            // No change to this path
+            newPaths.push(path);
+        }
+    });
+
+    if(changed) {
+        onEraseBrush(newPaths);
+    }
+  }, [paths, eraseBrushSize, onEraseBrush, activeZoom]);
+
 
   const handleTokenMouseDown = (e: React.MouseEvent<HTMLDivElement>, token: Token) => {
     if (isPlayerView || (selectedTool !== 'select') || !onTokenMove) return;
@@ -304,11 +361,11 @@ export function MapGrid({
   const handleGlobalMouseMove = (e: MouseEvent) => {
     if (!draggingToken || !onTokenMove || !dragOffset) return;
     const point = getTransformedPoint(e);
-    const tokenSizeInPixels = draggingToken.size * cellSize;
     const ghostX = point.x - dragOffset.x;
     const ghostY = point.y - dragOffset.y;
     setGhostPosition({ x: ghostX, y: ghostY });
     
+    const tokenSizeInPixels = draggingToken.size * cellSize;
     const dropX = Math.floor((ghostX + tokenSizeInPixels / 2) / cellSize);
     const dropY = Math.floor((ghostY + tokenSizeInPixels / 2) / cellSize);
     setDropTargetCell({ x: dropX, y: dropY });
@@ -318,10 +375,10 @@ export function MapGrid({
     if (!draggingToken || !onTokenMove || !dragOffset) return;
 
     const point = getTransformedPoint(e);
-    const tokenSizeInPixels = draggingToken.size * cellSize;
     const ghostX = point.x - dragOffset.x;
     const ghostY = point.y - dragOffset.y;
     
+    const tokenSizeInPixels = draggingToken.size * cellSize;
     const x = Math.floor((ghostX + tokenSizeInPixels / 2) / cellSize);
     const y = Math.floor((ghostY + tokenSizeInPixels / 2) / cellSize);
 
@@ -471,9 +528,9 @@ export function MapGrid({
           }}
         >
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-                {paths.map((path, i) => (
+                {paths.map((path) => (
                     <path
-                        key={i}
+                        key={path.id}
                         d={getSvgPathFromPoints(path.points)}
                         stroke={path.color}
                         strokeWidth={path.width}
@@ -567,15 +624,18 @@ export function MapGrid({
          !isPlayerView && !isPanning && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
             'cursor-default': selectedTool === 'select',
-            'cursor-cell': selectedTool === 'wall' || selectedTool === 'detail',
-            'cursor-help': selectedTool === 'erase',
+            'cursor-cell': selectedTool === 'wall' || selectedTool === 'detail' || (selectedTool === 'erase' && eraseMode === 'brush'),
+            'cursor-not-allowed': selectedTool === 'erase' && eraseMode === 'line',
         }
       )}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={(e) => {
-          if (!isPlayerView && isDrawing) handleMouseUp(e);
+          if (!isPlayerView) {
+              if (isDrawing) handleMouseUp(e);
+              if (isErasingRef.current) isErasingRef.current = false;
+          }
           if (isPanning) setIsPanning(false);
       }}
       onWheel={handleWheel}
@@ -636,3 +696,5 @@ export function MapGrid({
     </div>
   );
 }
+
+    

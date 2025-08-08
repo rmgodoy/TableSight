@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MapGrid } from '@/components/map-grid';
 import { Eye } from 'lucide-react';
-import type { GameState, Path, Token } from './gm-view';
+import type { GameState, Path, Token, EraseMode } from './gm-view';
 
 export default function PlayerView({ sessionId }: { sessionId: string }) {
   const [tokens, setTokens] = useState<Token[]>([]);
@@ -12,6 +12,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const storageKey = `tabletop-alchemist-session-${sessionId}`;
+  const [eraseMode, setEraseMode] = useState<EraseMode>('line');
 
   const applyState = useCallback((savedState: string | null) => {
     if (!savedState) return;
@@ -23,20 +24,13 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
         size: t.size || 1,
         torch: t.torch || { enabled: false, radius: 5 }
       }));
-      const updatedPaths = (gameState.paths || []).map(p => {
-        if (Array.isArray(p)) {
-            return { points: p, color: '#000000', width: 10, blocksLight: true };
-        }
-         if (typeof p.blocksLight === 'undefined') {
-            return { ...p, blocksLight: true };
-        }
-        if (typeof p.width === 'undefined') {
-            return { ...p, width: 10 };
-        }
-        return p;
-      });
+       const loadedPaths = (gameState.paths || []).map(p => ({
+            ...p,
+            id: p.id || `path-${Math.random()}` 
+       }));
+
       setTokens(updatedTokens);
-      setPaths(updatedPaths);
+      setPaths(loadedPaths);
       setZoom(gameState.playerZoom || 1);
       setPan(gameState.playerPan || { x: 0, y: 0 });
     } catch (error) {
@@ -73,8 +67,10 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
           paths={paths}
           onMapClick={() => {}} 
           onNewPath={() => {}}
-          onErase={() => {}}
+          onEraseLine={() => {}}
+          onEraseBrush={() => {}}
           selectedTool="select" 
+          eraseMode={eraseMode}
           isPlayerView={true}
           zoom={zoom}
           pan={pan}
@@ -90,3 +86,5 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     </div>
   );
 }
+
+    
