@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import Link from 'next/link';
 import { Separator } from './ui/separator';
+import { Label } from './ui/label';
 
 interface TokenPanelProps {
     tokens: Token[];
@@ -110,18 +111,34 @@ export function TokenPanel({
                                                     </div>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-2">
-                                                    <div className='flex items-center gap-2'>
-                                                        <input
-                                                            type="color"
-                                                            value={token.color}
-                                                            onChange={(e) => onTokenColorChange(token.id, e.target.value)}
-                                                            className="w-10 h-10 border-none cursor-pointer"
-                                                            title="Change token color"
-                                                        />
-                                                        <Separator orientation='vertical' className='h-8' />
-                                                        <div>
-                                                            <input type="file" accept="image/*" className='hidden' id={`file-input-${token.id}`} onChange={(e) => handleIconUpload(token.id, e)}/>
-                                                            <Button onClick={() => document.getElementById(`file-input-${token.id}`)?.click()}>Upload Icon</Button>
+                                                    <div className='flex items-center gap-4'>
+                                                        <div className='flex flex-col gap-2 items-center'>
+                                                            <Label>Color</Label>
+                                                            <input
+                                                                type="color"
+                                                                value={token.color}
+                                                                onChange={(e) => onTokenColorChange(token.id, e.target.value)}
+                                                                className="w-10 h-10 border-none cursor-pointer"
+                                                                title="Change token color"
+                                                            />
+                                                        </div>
+                                                        <Separator orientation='vertical' className='h-16' />
+                                                        <div className='flex flex-col gap-2 items-start'>
+                                                             <div>
+                                                                <input type="file" accept="image/*" className='hidden' id={`file-input-${token.id}`} onChange={(e) => handleIconUpload(token.id, e)}/>
+                                                                <Button onClick={() => document.getElementById(`file-input-${token.id}`)?.click()}>Upload Icon</Button>
+                                                            </div>
+                                                            <div className='flex items-center gap-2'>
+                                                                <Label>Size</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    min={1}
+                                                                    max={20}
+                                                                    value={token.size}
+                                                                    onChange={(e) => onTokenSizeChange(token.id, parseInt(e.target.value, 10) || 1)}
+                                                                    className="h-8 w-20 text-center"
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </PopoverContent>
@@ -175,24 +192,6 @@ export function TokenPanel({
                                                 <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, token.torch.radius + 1)}><Plus/></Button>
                                             </div>
                                             )}
-                                        </div>
-                                        <div className='flex flex-col gap-2 w-full'>
-                                            <div className='flex items-center text-muted-foreground'>
-                                                <Scaling className="h-4 w-4 mr-2" />
-                                                <span>Size</span>
-                                            </div>
-                                             <div className="flex items-center gap-2 w-full">
-                                                <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenSizeChange(token.id, Math.max(1, token.size - 1))}><Minus/></Button>
-                                                <Input
-                                                    type="number"
-                                                    min={1}
-                                                    max={20}
-                                                    value={token.size}
-                                                    onChange={(e) => onTokenSizeChange(token.id, parseInt(e.target.value, 10) || 1)}
-                                                    className="h-8 w-full text-center"
-                                                />
-                                                <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenSizeChange(token.id, token.size + 1)}><Plus/></Button>
-                                            </div>
                                         </div>
                                     </div>
                                 </li>
