@@ -152,14 +152,14 @@ export function TokenPanel({
                                             </Button>
                                         </div>
                                     </div>
-                                    <div className="pl-10 flex items-center gap-2">
+                                    <div className="pl-10 flex flex-col items-start gap-2">
                                         <Button variant="ghost" className="h-8 px-2 justify-start" onClick={() => onTokenTorchToggle(token.id)}>
                                             <Flame className={cn("h-4 w-4 mr-2", token.torch.enabled ? "text-orange-500" : "text-muted-foreground")} />
                                             <span className={cn(token.torch.enabled ? "text-primary" : "text-muted-foreground")}>Torch</span>
                                         </Button>
                                         
                                         {token.torch.enabled && (
-                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 w-full">
                                             <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, Math.max(1, token.torch.radius - 1))}><Minus/></Button>
                                             <Input
                                                 type="number"
