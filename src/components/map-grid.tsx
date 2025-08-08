@@ -175,6 +175,7 @@ export function MapGrid({
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
   const [ghostPosition, setGhostPosition] = useState<Point | null>(null);
+  const [dragOffset, setDragOffset] = useState<Point | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
@@ -275,18 +276,19 @@ export function MapGrid({
     
     setDraggingToken(token);
     const point = getTransformedPoint(e);
-    setGhostPosition({
-        x: point.x - (token.x * cellSize + cellSize / 2),
-        y: point.y - (token.y * cellSize + cellSize / 2),
+    setDragOffset({
+        x: point.x - (token.x * cellSize),
+        y: point.y - (token.y * cellSize),
     });
+    setGhostPosition({ x: token.x * cellSize, y: token.y * cellSize });
   };
 
   const handleGlobalMouseMove = (e: MouseEvent) => {
-    if (!draggingToken || !onTokenMove) return;
+    if (!draggingToken || !onTokenMove || !dragOffset) return;
     const point = getTransformedPoint(e);
     setGhostPosition({
-      x: point.x - ghostPosition!.x,
-      y: point.y - ghostPosition!.y,
+      x: point.x - dragOffset.x,
+      y: point.y - dragOffset.y,
     });
   };
   
@@ -294,12 +296,13 @@ export function MapGrid({
     if (!draggingToken || !onTokenMove) return;
 
     const point = getTransformedPoint(e);
-    const x = Math.floor(point.x / cellSize);
-    const y = Math.floor(point.y / cellSize);
+    const x = Math.floor((point.x - (dragOffset?.x || 0)) / cellSize);
+    const y = Math.floor((point.y - (dragOffset?.y || 0)) / cellSize);
 
     onTokenMove(draggingToken.id, x, y);
     setDraggingToken(null);
     setGhostPosition(null);
+    setDragOffset(null);
   };
 
   useEffect(() => {
@@ -315,7 +318,7 @@ export function MapGrid({
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [draggingToken, pan, zoom]);
+  }, [draggingToken, pan, zoom, dragOffset]);
 
   useEffect(() => {
     const handleSpacebarPan = (e: KeyboardEvent) => {
@@ -484,7 +487,6 @@ export function MapGrid({
                             top: ghostPosition.y,
                             width: cellSize,
                             height: cellSize,
-                            transform: `translate(${draggingToken.x * cellSize}px, ${draggingToken.y * cellSize}px)`
                         }}
                     >
                         {renderToken(draggingToken)}
@@ -589,3 +591,5 @@ export function MapGrid({
     </div>
   );
 }
+
+    
