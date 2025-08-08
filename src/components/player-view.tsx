@@ -38,7 +38,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       setPaths(updatedPaths);
       setZoom(gameState.playerZoom || 1);
       setPan(gameState.playerPan || { x: 0, y: 0 });
-    } catch (error) => {
+    } catch (error) {
       console.error("Failed to parse game state from localStorage", error);
     }
   }, []);
