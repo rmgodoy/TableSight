@@ -192,13 +192,13 @@ export function TokenPanel({
                             </Button>
                         </div>
                     <div className='grid grid-cols-2 gap-2'>
-                       <Button variant="outline" onClick={syncPlayerView}><Eye className="mr-2" /> Sync Player View</Button>
-                       <Button variant="outline" onClick={matchPlayerView}><Users className="mr-2" /> Match Player View</Button>
+                       <Button variant="outline" onClick={syncPlayerView}><Eye className="mr-2 h-4 w-4" /> Sync View</Button>
+                       <Button variant="outline" onClick={matchPlayerView}><Users className="mr-2 h-4 w-4" /> Match View</Button>
                     </div>
 
                     <Separator />
                      <div className='grid grid-cols-2 gap-2'>
-                        <Button variant="outline" asChild><Link href="/"><Home className="mr-2" /> Home</Link></Button>
+                        <Button variant="outline" asChild><Link href="/"><Home className="mr-2 h-4 w-4" /> Home</Link></Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="destructive">End Session</Button>
