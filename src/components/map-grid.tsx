@@ -548,7 +548,7 @@ export function MapGrid({
           }}
         >
             {backgroundImage && (
-                <img src={backgroundImage} className="absolute inset-0 w-full h-auto object-contain pointer-events-none" alt="Game Map Background" />
+                <img src={backgroundImage} className="absolute top-0 left-0 pointer-events-none" alt="Game Map Background" />
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                 {paths.map((path) => (
