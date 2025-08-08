@@ -347,15 +347,15 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                  const newLightTokens: Token[] = (data.lights || []).map((light: any, index: number) => ({
                     id: `light-${Date.now()}-${index}`,
                     name: `Light ${index + 1}`,
-                    x: light.position.x,
-                    y: light.position.y,
+                    x: light.position.x * pixelsPerGrid,
+                    y: light.position.y * pixelsPerGrid,
                     type: 'Light' as const,
                     visible: false, // Lights are not directly visible, they just emit light
                     color: '#fBBF24', // Not really used, but good to have
                     size: 1, // Lights don't have a physical size in the same way
                     torch: {
                         enabled: true,
-                        radius: light.range / 2
+                        radius: (light.range / 2) * pixelsPerGrid
                     }
                 }));
 
@@ -544,5 +544,3 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         </>
     );
 }
-
-    

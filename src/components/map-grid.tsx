@@ -522,7 +522,7 @@ export function MapGrid({
   const screenSpaceLightPolygons = useMemo(() => {
       if (!isPlayerView && !showFogOfWar) return [];
       
-      const lightTokens = isPlayerView ? tokens.filter(t => t.visible) : tokens;
+      const lightTokens = tokens;
       return lightTokens.filter(t => t.torch.enabled).map(token => {
           const tokenPixelSize = token.size * cellSize;
           let lightSource: Point;
