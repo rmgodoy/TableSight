@@ -100,7 +100,8 @@ function calculateVisibilityPolygon(
         const angle = Math.atan2(point.y - lightSource.y, point.x - lightSource.x);
         uniqueAngles.push(angle, angle - 1e-5, angle + 1e-5);
     }
-
+    
+    // Add "filler" rays at regular intervals to prevent light leaks
     const FILLER_ANGLE_STEP = Math.PI / 180 * 5; 
     for (let i = 0; i < 2 * Math.PI; i += FILLER_ANGLE_STEP) {
       uniqueAngles.push(i);
@@ -187,12 +188,18 @@ export function MapGrid({
   const [activePan, setActivePan] = useState(pan);
 
   useEffect(() => {
+    // For GM view, always sync with props
+    if (!isPlayerView) {
+      setActiveZoom(zoom);
+      setActivePan(pan);
+    }
+  }, [isPlayerView, zoom, pan]);
+
+  useEffect(() => {
+    // For Player view, we only want to accept prop changes, not local ones
     if (isPlayerView) {
-      setActiveZoom(zoom);
-      setActivePan(pan);
-    } else {
-      setActiveZoom(zoom);
-      setActivePan(pan);
+       setActiveZoom(zoom);
+       setActivePan(pan);
     }
   }, [isPlayerView, zoom, pan]);
   
@@ -343,14 +350,14 @@ export function MapGrid({
 
   useEffect(() => {
     const handleSpacebarPan = (e: KeyboardEvent) => {
-        if(isPlayerView || selectedTool === 'pan') return;
+        if(isPlayerView) return;
         if(e.key === ' ' && !isPanning) {
             e.preventDefault();
             setIsPanning(true);
         }
     };
     const handleSpacebarUp = (e: KeyboardEvent) => {
-        if(isPlayerView || selectedTool === 'pan') return;
+        if(isPlayerView) return;
         if(e.key === ' ' && isPanning) {
             setIsPanning(false);
         }
@@ -361,7 +368,7 @@ export function MapGrid({
         window.removeEventListener('keydown', handleSpacebarPan);
         window.removeEventListener('keyup', handleSpacebarUp);
     }
-  }, [isPanning, selectedTool, isPlayerView]);
+  }, [isPanning, isPlayerView]);
 
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -446,7 +453,7 @@ export function MapGrid({
 
           return calculateVisibilityPolygon(lightSource, screenSpaceSegments, screenBounds, torchRadiusInPixels);
       });
-  }, [isPlayerView, showFogOfWar, tokens, wallSegments, activePan, activeZoom, cellSize, mapDimensions]);
+  }, [isPlayerView, showFogOfWar, tokens, wallSegments, activePan, activeZoom, cellSize]);
 
 
   const MapContent = () => {
@@ -629,5 +636,3 @@ export function MapGrid({
     </div>
   );
 }
-
-    
