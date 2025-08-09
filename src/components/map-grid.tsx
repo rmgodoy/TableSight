@@ -512,11 +512,11 @@ export function MapGrid({
         .filter(p => p.blocksLight)
         .forEach(path => {
             for (let i = 0; i < path.points.length - 1; i++) {
-                segments.push({ a: { x: path.points[i].x * cellSize, y: path.points[i].y * cellSize }, b: { x: path.points[i+1].x * cellSize, y: path.points[i+1].y * cellSize }, width: path.width });
+                segments.push({ a: path.points[i], b: path.points[i+1], width: path.width });
             }
         });
     return segments;
-  }, [paths, cellSize]);
+  }, [paths]);
 
 
   const screenSpaceLightPolygons = useMemo(() => {
@@ -524,7 +524,6 @@ export function MapGrid({
       
       const lightTokens = tokens;
       return lightTokens.filter(t => t.torch.enabled).map(token => {
-          const tokenPixelSize = token.size * cellSize;
           let lightSource: Point;
 
           if (token.type === 'Light') {
@@ -533,6 +532,7 @@ export function MapGrid({
                   y: token.y * cellSize,
               };
           } else {
+              const tokenPixelSize = token.size * cellSize;
               lightSource = { 
                   x: (token.x * cellSize + tokenPixelSize / 2), 
                   y: (token.y * cellSize + tokenPixelSize / 2)
@@ -584,7 +584,7 @@ export function MapGrid({
                 {paths.map((path) => (
                     <path
                         key={path.id}
-                        d={getSvgPathFromPoints(path.points.map(p => ({ x: p.x * cellSize, y: p.y * cellSize })))}
+                        d={getSvgPathFromPoints(path.points)}
                         stroke={path.color}
                         strokeWidth={path.width}
                         fill="none"
@@ -618,8 +618,8 @@ export function MapGrid({
                 {renderTokens.map(token => {
                     const tokenSize = token.type === 'Light' ? cellSize : token.size * cellSize;
                     const tokenPos = {
-                         x: token.x * cellSize - (token.type === 'Light' ? tokenSize / 2 : 0),
-                         y: token.y * cellSize - (token.type === 'Light' ? tokenSize / 2 : 0)
+                         x: token.type === 'Light' ? (token.x * cellSize) - (tokenSize / 2) : (token.x * cellSize),
+                         y: token.type === 'Light' ? (token.y * cellSize) - (tokenSize / 2) : (token.y * cellSize),
                     }
 
                     return (

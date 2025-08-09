@@ -339,7 +339,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 const newBackgroundImage = `data:image/webp;base64,${data.image}`;
                 const newWalls: Path[] = (data.line_of_sight || []).map((wall: any, index: number) => ({
                     id: `wall-${Date.now()}-${index}`,
-                    points: wall.map((p: {x: number, y: number}) => ({ x: p.x, y: p.y })),
+                    points: wall.map((p: {x: number, y: number}) => ({ x: p.x * pixelsPerGrid, y: p.y * pixelsPerGrid })),
                     color: '#000000',
                     width: 5,
                     blocksLight: true
@@ -347,15 +347,15 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                  const newLightTokens: Token[] = (data.lights || []).map((light: any, index: number) => ({
                     id: `light-${Date.now()}-${index}`,
                     name: `Light ${index + 1}`,
-                    x: light.position.x * pixelsPerGrid,
-                    y: light.position.y * pixelsPerGrid,
+                    x: light.position.x, // These are already in grid coordinates, not pixels
+                    y: light.position.y,
                     type: 'Light' as const,
                     visible: false, // Lights are not directly visible, they just emit light
                     color: '#fBBF24', // Not really used, but good to have
                     size: 1, // Lights don't have a physical size in the same way
                     torch: {
                         enabled: true,
-                        radius: (light.range / 2) * pixelsPerGrid
+                        radius: light.range / 2
                     }
                 }));
 
