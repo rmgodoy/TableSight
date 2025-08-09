@@ -107,7 +107,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const pendingImportFile = useRef<File | null>(null);
 
 
-    const recordHistory = useCallback((newState: Omit<HistoryState, 'paths' | 'tokens' | 'backgroundImage' | 'cellSize'> & Partial<HistoryState>) => {
+    const recordHistory = useCallback((newState: Partial<HistoryState>) => {
         setHistory(prevHistory => {
             const newHistory = prevHistory.slice(0, historyIndex + 1);
             const currentState = newHistory[newHistory.length -1] || {paths: [], tokens: [], backgroundImage: null, cellSize: 40};
@@ -340,7 +340,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 
                 const newWalls: Path[] = (data.line_of_sight || []).map((wall: any, index: number) => ({
                     id: `wall-${Date.now()}-${index}`,
-                    points: wall.map((p: {x: number, y: number}) => ({ x: p.x, y: p.y })),
+                    points: wall.map((p: {x: number, y: number}) => ({ x: p.x * pixelsPerGrid, y: p.y * pixelsPerGrid })),
                     color: '#000000',
                     width: 5,
                     blocksLight: true,
@@ -355,7 +355,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     
                     portalWalls.push({
                         id: portalWallId,
-                        points: portal.bounds.map((p: {x: number, y: number}) => ({ x: p.x, y: p.y })),
+                        points: portal.bounds.map((p: {x: number, y: number}) => ({ x: p.x * pixelsPerGrid, y: p.y * pixelsPerGrid })),
                         color: '#ff0000', // Distinct color for portals
                         width: 5,
                         blocksLight: true, // Portals are closed by default
@@ -365,8 +365,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     portalTokens.push({
                         id: `portal-token-${Date.now()}-${index}`,
                         name: `Portal ${index + 1}`,
-                        x: portal.position.x,
-                        y: portal.position.y,
+                        x: portal.position.x * pixelsPerGrid,
+                        y: portal.position.y * pixelsPerGrid,
                         type: 'Portal' as const,
                         visible: false, // Not visible to players
                         color: '#ff0000',
@@ -379,8 +379,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                  const newLightTokens: Token[] = (data.lights || []).map((light: any, index: number) => ({
                     id: `light-${Date.now()}-${index}`,
                     name: `Light ${index + 1}`,
-                    x: light.position.x, // These are in grid coordinates, need conversion
-                    y: light.position.y,
+                    x: light.position.x * pixelsPerGrid, 
+                    y: light.position.y * pixelsPerGrid,
                     type: 'Light' as const,
                     visible: false, // Lights are not directly visible, they just emit light
                     color: '#fBBF24', // Not really used, but good to have
