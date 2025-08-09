@@ -24,11 +24,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import type { Point } from '@/lib/raycasting';
 
 export type Tool = 'select' | 'wall' | 'detail' | 'erase' | 'add-pc' | 'add-enemy';
 export type EraseMode = 'line' | 'brush';
 
-export type Point = { x: number; y: number };
 export type Path = {
     id: string;
     points: Point[];
@@ -301,17 +301,24 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     }
     
     const handlePortalToggle = (portalTokenId: string) => {
-        const portalToken = tokens.find(t => t.id === portalTokenId);
+        const newHistory = history.slice(0, historyIndex + 1);
+        const currentState = newHistory[newHistory.length - 1];
+        if (!currentState) return;
+
+        const portalToken = currentState.tokens.find(t => t.id === portalTokenId);
         if (!portalToken || !portalToken.controls) return;
 
-        const newPaths = paths.map(p => {
+        const newPaths = currentState.paths.map(p => {
             if (p.id === portalToken.controls) {
                 return { ...p, blocksLight: !p.blocksLight };
             }
             return p;
         });
-        
-        recordHistory({ paths: newPaths });
+
+        const newState = { ...currentState, paths: newPaths };
+        newHistory.push(newState);
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
     };
 
     const handleZoom = (delta: number) => setZoom(prevZoom => Math.max(0.1, Math.min(5, prevZoom + delta)));
