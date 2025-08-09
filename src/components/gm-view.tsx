@@ -107,12 +107,18 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const pendingImportFile = useRef<File | null>(null);
 
 
-    const recordHistory = (newState: HistoryState) => {
-        const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push(newState);
-        setHistory(newHistory);
-        setHistoryIndex(newHistory.length - 1);
-    }
+    const recordHistory = useCallback((newState: Omit<HistoryState, 'paths' | 'tokens' | 'backgroundImage' | 'cellSize'> & Partial<HistoryState>) => {
+        setHistory(prevHistory => {
+            const newHistory = prevHistory.slice(0, historyIndex + 1);
+            const currentState = newHistory[newHistory.length -1] || {paths: [], tokens: [], backgroundImage: null, cellSize: 40};
+            newHistory.push({
+                ...currentState,
+                ...newState
+            });
+            return newHistory;
+        });
+        setHistoryIndex(prev => prev + 1);
+    }, [historyIndex]);
     
     const saveState = useCallback((stateToSave: GameState) => {
          try {
@@ -241,16 +247,16 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             };
         }
         if (newToken) {
-            recordHistory({ ...currentHistoryState, tokens: [...tokens, newToken]});
+            recordHistory({ tokens: [...tokens, newToken]});
         }
     };
 
-    const handleNewPath = (path: Omit<Path, 'id' | 'isPortal'>) => {
+    const handleNewPath = useCallback((path: Omit<Path, 'id' | 'isPortal'>) => {
         const newPath = { ...path, id: `path-${Date.now()}`, isPortal: false };
-        recordHistory({ ...currentHistoryState, paths: [...paths, newPath]});
-    };
+        recordHistory({ paths: [...paths, newPath]});
+    }, [paths, recordHistory]);
 
-    const handleEraseLine = (point: Point) => {
+    const handleEraseLine = useCallback((point: Point) => {
         const eraseRadius = 20;
         const isPointInRadius = (p1: Point, p2: Point, radius: number) => {
              return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)) < radius;
@@ -261,22 +267,22 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         );
         
         if(remainingPaths.length < paths.length) {
-            recordHistory({ ...currentHistoryState, paths: remainingPaths });
+            recordHistory({ paths: remainingPaths });
         }
-    };
+    }, [paths, recordHistory]);
 
-    const handleEraseBrush = (updatedPaths: Path[]) => {
-        recordHistory({ ...currentHistoryState, paths: updatedPaths });
-    };
+    const handleEraseBrush = useCallback((updatedPaths: Path[]) => {
+        recordHistory({ paths: updatedPaths });
+    }, [recordHistory]);
 
-    const updateToken = (tokenId: string, updates: Partial<Token>) => {
+    const updateToken = useCallback((tokenId: string, updates: Partial<Token>) => {
         const newTokens = tokens.map(t => t.id === tokenId ? { ...t, ...updates } : t);
-        recordHistory({ ...currentHistoryState, tokens: newTokens });
-    };
+        recordHistory({ tokens: newTokens });
+    }, [tokens, recordHistory]);
     
     const handleTokenDelete = (tokenId: string) => {
         const newTokens = tokens.filter(t => t.id !== tokenId);
-        recordHistory({ ...currentHistoryState, tokens: newTokens });
+        recordHistory({ tokens: newTokens });
     }
 
     const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => updateToken(tokenId, { visible: isVisible });
@@ -305,7 +311,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             return p;
         });
         
-        recordHistory({ ...currentHistoryState, paths: newPaths });
+        recordHistory({ paths: newPaths });
     };
 
     const handleZoom = (delta: number) => setZoom(prevZoom => Math.max(0.1, Math.min(5, prevZoom + delta)));

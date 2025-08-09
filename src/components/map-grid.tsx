@@ -336,8 +336,10 @@ export function MapGrid({
 
     paths.forEach(path => {
         let currentSegment: Point[] = [];
+        const pathScale = path.isPortal ? cellSize : 1;
         for (const point of path.points) {
-            if (distanceSq(point, erasePoint) > (eraseBrushSize / activeZoom)**2) {
+             const scaledPoint = { x: point.x * pathScale, y: point.y * pathScale };
+            if (distanceSq(scaledPoint, erasePoint) > (eraseBrushSize / activeZoom)**2) {
                 currentSegment.push(point);
             } else {
                 if (currentSegment.length > 1) {
@@ -363,7 +365,7 @@ export function MapGrid({
     if(changed) {
         onEraseBrush(newPaths);
     }
-  }, [paths, eraseBrushSize, onEraseBrush, activeZoom]);
+  }, [paths, eraseBrushSize, onEraseBrush, activeZoom, cellSize]);
 
 
   const handleTokenMouseDown = (e: React.MouseEvent<HTMLDivElement>, token: Token) => {
@@ -522,10 +524,11 @@ export function MapGrid({
      paths
         .filter(p => p.blocksLight)
         .forEach(path => {
+            const scale = path.isPortal ? cellSize : 1;
             for (let i = 0; i < path.points.length - 1; i++) {
                 segments.push({ 
-                    a: { x: path.points[i].x * cellSize, y: path.points[i].y * cellSize }, 
-                    b: { x: path.points[i+1].x * cellSize, y: path.points[i+1].y * cellSize }, 
+                    a: { x: path.points[i].x * scale, y: path.points[i].y * scale }, 
+                    b: { x: path.points[i+1].x * scale, y: path.points[i+1].y * scale }, 
                     width: path.width 
                 });
             }
@@ -536,7 +539,8 @@ export function MapGrid({
   const screenSpaceLightPolygons = useMemo(() => {
       if (!isPlayerView && !showFogOfWar) return [];
       
-      const lightTokens = tokens;
+      const lightTokens = tokens.filter(t => isPlayerView ? t.visible || t.type === 'Light' : true);
+
       return lightTokens.filter(t => t.torch.enabled).map(token => {
           let lightSource: Point;
           
@@ -547,7 +551,7 @@ export function MapGrid({
                   y: (token.y * cellSize + tokenPixelSize / 2)
               };
           } else {
-             // For Light and Portal tokens, position is already pixel based from import
+             // For Light and Portal tokens, position is already grid based
              lightSource = {
                  x: token.x * cellSize,
                  y: token.y * cellSize
