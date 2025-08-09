@@ -526,11 +526,10 @@ export function MapGrid({
      paths
         .filter(p => p.blocksLight)
         .forEach(path => {
-            const scale = 1; // All paths are now in pixel space
             for (let i = 0; i < path.points.length - 1; i++) {
                 segments.push({ 
-                    a: { x: path.points[i].x * scale, y: path.points[i].y * scale }, 
-                    b: { x: path.points[i+1].x * scale, y: path.points[i+1].y * scale }, 
+                    a: { x: path.points[i].x, y: path.points[i].y }, 
+                    b: { x: path.points[i+1].x, y: path.points[i+1].y }, 
                     width: path.width 
                 });
             }
@@ -591,6 +590,11 @@ export function MapGrid({
       renderTokens = tokens.filter(t => t.visible && t.type !== 'Light' && t.type !== 'Portal');
     }
     
+    let renderPaths = paths;
+    if (isPlayerView) {
+        renderPaths = paths.filter(p => !p.isPortal);
+    }
+    
     return (
         <div 
           className='absolute inset-0 origin-top-left'
@@ -603,12 +607,11 @@ export function MapGrid({
                 <img src={backgroundImage} className="absolute top-0 left-0 pointer-events-none w-auto h-auto max-w-none max-h-none" alt="Game Map Background" />
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-                {paths.map((path) => {
-                    const scale = 1; // All paths are now in pixel space
+                {renderPaths.map((path) => {
                     return (
                         <path
                             key={path.id}
-                            d={getSvgPathFromPoints(path.points, scale)}
+                            d={getSvgPathFromPoints(path.points, 1)}
                             stroke={path.color}
                             strokeWidth={path.width}
                             fill="none"
