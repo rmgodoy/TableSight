@@ -75,7 +75,7 @@ export function calculateVisibilityPolygon(
     }
     
     // Add "filler" rays at regular intervals to prevent light leaks
-    const FILLER_ANGLE_STEP = Math.PI / 180 * 5; 
+    const FILLER_ANGLE_STEP = Math.PI / 180 * 0.05; 
     for (let i = 0; i < 2 * Math.PI; i += FILLER_ANGLE_STEP) {
       uniqueAngles.push(i);
     }
