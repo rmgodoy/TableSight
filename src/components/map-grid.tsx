@@ -336,7 +336,7 @@ export function MapGrid({
 
     paths.forEach(path => {
         let currentSegment: Point[] = [];
-        const pathScale = path.isPortal ? cellSize : 1;
+        const pathScale = 1; // All paths are now in pixel space
         for (const point of path.points) {
              const scaledPoint = { x: point.x * pathScale, y: point.y * pathScale };
             if (distanceSq(scaledPoint, erasePoint) > (eraseBrushSize / activeZoom)**2) {
@@ -350,7 +350,7 @@ export function MapGrid({
             }
         }
         if (currentSegment.length > 1) {
-            newPaths.push({ ...path, id: `${path.id}-split-${Math.random()}`, points: currentSegment });
+            newPaths.push({ ...path, id: path.points.length === currentSegment.length ? path.id : `${path.id}-split-${Math.random()}`, points: currentSegment });
         } else if (currentSegment.length === 1 && path.points.length > 1) {
             // This case handles when the erase splits the path perfectly
         } else if (currentSegment.length === 0 && path.points.length > 0) {
@@ -358,14 +358,16 @@ export function MapGrid({
              changed = true;
         } else {
             // No change to this path
-            newPaths.push(path);
+            if(!changed && path.points.length === currentSegment.length) {
+                newPaths.push(path);
+            }
         }
     });
 
     if(changed) {
         onEraseBrush(newPaths);
     }
-  }, [paths, eraseBrushSize, onEraseBrush, activeZoom, cellSize]);
+  }, [paths, eraseBrushSize, onEraseBrush, activeZoom]);
 
 
   const handleTokenMouseDown = (e: React.MouseEvent<HTMLDivElement>, token: Token) => {
@@ -524,7 +526,7 @@ export function MapGrid({
      paths
         .filter(p => p.blocksLight)
         .forEach(path => {
-            const scale = path.isPortal ? cellSize : 1;
+            const scale = 1; // All paths are now in pixel space
             for (let i = 0; i < path.points.length - 1; i++) {
                 segments.push({ 
                     a: { x: path.points[i].x * scale, y: path.points[i].y * scale }, 
@@ -534,7 +536,7 @@ export function MapGrid({
             }
         });
     return segments;
-  }, [paths, cellSize]);
+  }, [paths]);
 
   const screenSpaceLightPolygons = useMemo(() => {
       if (!isPlayerView && !showFogOfWar) return [];
@@ -551,10 +553,10 @@ export function MapGrid({
                   y: (token.y * cellSize + tokenPixelSize / 2)
               };
           } else {
-             // For Light and Portal tokens, position is already grid based
+             // For Light and Portal tokens, position is already in pixels
              lightSource = {
-                 x: token.x * cellSize,
-                 y: token.y * cellSize
+                 x: token.x,
+                 y: token.y
              }
           }
 
@@ -602,7 +604,7 @@ export function MapGrid({
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                 {paths.map((path) => {
-                    const scale = path.isPortal ? cellSize : 1;
+                    const scale = 1; // All paths are now in pixel space
                     return (
                         <path
                             key={path.id}
@@ -653,8 +655,8 @@ export function MapGrid({
                     } else { // Light or Portal
                          tokenSize = cellSize;
                          tokenPos = {
-                            x: token.x * cellSize - tokenSize / 2,
-                            y: token.y * cellSize - tokenSize / 2,
+                            x: token.x - tokenSize / 2,
+                            y: token.y - tokenSize / 2,
                          }
                     }
 
