@@ -35,6 +35,7 @@ export type Path = {
     color: string;
     width: number;
     blocksLight: boolean;
+    isPortal?: boolean;
 };
 
 export type Token = {
@@ -42,7 +43,7 @@ export type Token = {
   name: string;
   x: number;
   y: number;
-  type: 'PC' | 'Enemy' | 'Light';
+  type: 'PC' | 'Enemy' | 'Light' | 'Portal';
   visible: boolean;
   color: string;
   iconUrl?: string;
@@ -51,6 +52,7 @@ export type Token = {
     enabled: boolean;
     radius: number;
   };
+  controls?: string; // ID of the path this token controls (for portals)
 };
 
 export type GameState = {
@@ -90,10 +92,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [brushSize, setBrushSize] = useState(5);
     const [eraseBrushSize, setEraseBrushSize] = useState(20);
     
-    const [tokens, setTokens] = useState<Token[]>([]);
-    const [paths, setPaths] = useState<Path[]>([]);
-    const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
-    const [cellSize, setCellSize] = useState(40);
+    // Derived state from history
+    const currentHistoryState = history[historyIndex] || { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
+    const { paths, tokens, backgroundImage, cellSize } = currentHistoryState;
 
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -106,20 +107,16 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const pendingImportFile = useRef<File | null>(null);
 
 
-    const updateGameState = useCallback((newState: Partial<GameState> = {}) => {
-        const fullState: GameState = { 
-            tokens, 
-            paths, 
-            zoom, 
-            pan,
-            playerZoom,
-            playerPan,
-            backgroundImage,
-            cellSize,
-            ...newState 
-        };
-        try {
-            localStorage.setItem(storageKey, JSON.stringify(fullState));
+    const recordHistory = (newState: HistoryState) => {
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(newState);
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+    }
+    
+    const saveState = useCallback((stateToSave: GameState) => {
+         try {
+            localStorage.setItem(storageKey, JSON.stringify(stateToSave));
         } catch (error) {
             console.error("Failed to save game state to localStorage", error);
             toast({
@@ -128,14 +125,30 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 variant: "destructive"
             });
         }
-    }, [storageKey, toast, tokens, paths, zoom, pan, playerPan, playerZoom, backgroundImage, cellSize]);
+    }, [storageKey, toast]);
 
-    const recordHistory = (newPaths: Path[], newTokens: Token[], newBackgroundImage: string | null, newCellSize: number) => {
-        const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push({ paths: newPaths, tokens: newTokens, backgroundImage: newBackgroundImage, cellSize: newCellSize });
-        setHistory(newHistory);
-        setHistoryIndex(newHistory.length - 1);
-    }
+    // This effect synchronizes the component state to localStorage.
+    // It's debounced to avoid excessive writes.
+    useEffect(() => {
+        // Only run if there is something in the history
+        if(history.length === 0) return;
+
+        const handler = setTimeout(() => {
+             const fullState: GameState = { 
+                tokens, 
+                paths, 
+                zoom, 
+                pan,
+                playerZoom,
+                playerPan,
+                backgroundImage,
+                cellSize,
+            };
+            saveState(fullState);
+        }, 500); // Debounce time in ms
+        return () => clearTimeout(handler);
+    }, [tokens, paths, backgroundImage, cellSize, zoom, pan, playerPan, playerZoom, saveState, history.length]);
+
 
     const undo = useCallback(() => {
         if (historyIndex > 0) {
@@ -167,31 +180,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             window.removeEventListener('keydown', handleKeyDown);
         };
     }, [undo, redo]);
-
-    // This effect synchronizes the component state (paths, tokens) with the current point in history
-    useEffect(() => {
-        if(historyIndex >= 0 && history[historyIndex]) {
-            const { paths: historyPaths, tokens: historyTokens, backgroundImage: historyBg, cellSize: historyCellSize } = history[historyIndex];
-            setPaths(historyPaths);
-            setTokens(historyTokens);
-            setBackgroundImage(historyBg);
-            setCellSize(historyCellSize);
-        }
-    }, [history, historyIndex]);
     
-    // This effect synchronizes the local state to localStorage.
-    // It's debounced to avoid excessive writes.
-    useEffect(() => {
-        // Only run if there is something in the history
-        if(history.length === 0) return;
-
-        const handler = setTimeout(() => {
-            updateGameState();
-        }, 500); // Debounce time in ms
-        return () => clearTimeout(handler);
-    }, [tokens, paths, backgroundImage, cellSize, zoom, pan, playerPan, playerZoom, updateGameState, history.length]);
-
-
     useEffect(() => {
         try {
             const savedState = localStorage.getItem(storageKey);
@@ -199,7 +188,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 const gameState: GameState = JSON.parse(savedState);
                 const loadedPaths = (gameState.paths || []).map(p => ({
                     ...p,
-                    id: p.id || `path-${Math.random()}` 
+                    id: p.id || `path-${Math.random()}`,
+                    isPortal: p.isPortal || false,
                 }));
                 const loadedTokens = (gameState.tokens || []).map(t => ({
                   ...t,
@@ -210,14 +200,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 const loadedBg = gameState.backgroundImage || null;
                 const loadedCellSize = gameState.cellSize || 40;
                 
-                setPaths(loadedPaths);
-                setTokens(loadedTokens);
-                setBackgroundImage(loadedBg);
-                setCellSize(loadedCellSize);
-
                 // Initialize history with the loaded state
-                const initialHistory: HistoryState = [{ paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize }];
-                setHistory(initialHistory);
+                const initialHistory: HistoryState = { paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize };
+                setHistory([initialHistory]);
                 setHistoryIndex(0);
 
                 if (gameState.zoom) setZoom(gameState.zoom);
@@ -256,15 +241,13 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             };
         }
         if (newToken) {
-            const newTokens = [...tokens, newToken];
-            recordHistory(paths, newTokens, backgroundImage, cellSize);
+            recordHistory({ ...currentHistoryState, tokens: [...tokens, newToken]});
         }
     };
 
-    const handleNewPath = (path: Omit<Path, 'id'>) => {
-        const newPath = { ...path, id: `path-${Date.now()}` };
-        const newPaths = [...paths, newPath];
-        recordHistory(newPaths, tokens, backgroundImage, cellSize);
+    const handleNewPath = (path: Omit<Path, 'id' | 'isPortal'>) => {
+        const newPath = { ...path, id: `path-${Date.now()}`, isPortal: false };
+        recordHistory({ ...currentHistoryState, paths: [...paths, newPath]});
     };
 
     const handleEraseLine = (point: Point) => {
@@ -278,30 +261,26 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         );
         
         if(remainingPaths.length < paths.length) {
-            recordHistory(remainingPaths, tokens, backgroundImage, cellSize);
+            recordHistory({ ...currentHistoryState, paths: remainingPaths });
         }
     };
 
     const handleEraseBrush = (updatedPaths: Path[]) => {
-        recordHistory(updatedPaths, tokens, backgroundImage, cellSize);
+        recordHistory({ ...currentHistoryState, paths: updatedPaths });
     };
 
     const updateToken = (tokenId: string, updates: Partial<Token>) => {
-        let newTokens = [...tokens];
-        const tokenIndex = newTokens.findIndex(t => t.id === tokenId);
-        if (tokenIndex !== -1) {
-            newTokens[tokenIndex] = { ...newTokens[tokenIndex], ...updates };
-            recordHistory(paths, newTokens, backgroundImage, cellSize);
-        }
+        const newTokens = tokens.map(t => t.id === tokenId ? { ...t, ...updates } : t);
+        recordHistory({ ...currentHistoryState, tokens: newTokens });
     };
     
     const handleTokenDelete = (tokenId: string) => {
         const newTokens = tokens.filter(t => t.id !== tokenId);
-        recordHistory(paths, newTokens, backgroundImage, cellSize);
+        recordHistory({ ...currentHistoryState, tokens: newTokens });
     }
 
     const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => updateToken(tokenId, { visible: isVisible });
-    const handleTokenMove = (tokenId: string, x: number, y: number) => updateToken(tokenId, { x, y });
+    const handleTokenMove = (tokenId:string, x: number, y: number) => updateToken(tokenId, { x, y });
     const handleTokenNameChange = (tokenId: string, newName: string) => updateToken(tokenId, { name: newName });
     const handleTokenColorChange = (tokenId: string, newColor: string) => updateToken(tokenId, { color: newColor });
     const handleTokenIconChange = (tokenId: string, newIconUrl: string) => updateToken(tokenId, { iconUrl: newIconUrl });
@@ -314,13 +293,28 @@ export default function GmView({ sessionId }: { sessionId: string }) {
          const token = tokens.find(t => t.id === tokenId);
         if(token) updateToken(tokenId, { torch: { ...token.torch, radius } });
     }
+    
+    const handlePortalToggle = (portalTokenId: string) => {
+        const portalToken = tokens.find(t => t.id === portalTokenId);
+        if (!portalToken || !portalToken.controls) return;
+
+        const newPaths = paths.map(p => {
+            if (p.id === portalToken.controls) {
+                return { ...p, blocksLight: !p.blocksLight };
+            }
+            return p;
+        });
+        
+        recordHistory({ ...currentHistoryState, paths: newPaths });
+    };
 
     const handleZoom = (delta: number) => setZoom(prevZoom => Math.max(0.1, Math.min(5, prevZoom + delta)));
     const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); }
     const syncPlayerView = () => {
         setPlayerPan(pan);
         setPlayerZoom(zoom);
-        updateGameState({ playerPan: pan, playerZoom: zoom });
+        const fullState: GameState = { ...currentHistoryState, playerPan: pan, playerZoom: zoom, zoom, pan };
+        saveState(fullState);
         toast({ title: "Player View Synced!", description: "The player's view now matches yours." });
     };
     const matchPlayerView = () => { setPan(playerPan); setZoom(playerZoom); };
@@ -337,34 +331,68 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
                 const pixelsPerGrid = data.resolution.pixels_per_grid;
                 const newBackgroundImage = `data:image/webp;base64,${data.image}`;
+                
                 const newWalls: Path[] = (data.line_of_sight || []).map((wall: any, index: number) => ({
                     id: `wall-${Date.now()}-${index}`,
-                    points: wall.map((p: {x: number, y: number}) => ({ x: p.x * pixelsPerGrid, y: p.y * pixelsPerGrid })),
+                    points: wall.map((p: {x: number, y: number}) => ({ x: p.x, y: p.y })),
                     color: '#000000',
                     width: 5,
-                    blocksLight: true
+                    blocksLight: true,
+                    isPortal: false,
                 }));
+                
+                const portalWalls: Path[] = [];
+                const portalTokens: Token[] = [];
+
+                (data.portals || []).forEach((portal: any, index: number) => {
+                    const portalWallId = `portal-wall-${Date.now()}-${index}`;
+                    
+                    portalWalls.push({
+                        id: portalWallId,
+                        points: portal.bounds.map((p: {x: number, y: number}) => ({ x: p.x, y: p.y })),
+                        color: '#ff0000', // Distinct color for portals
+                        width: 5,
+                        blocksLight: true, // Portals are closed by default
+                        isPortal: true,
+                    });
+
+                    portalTokens.push({
+                        id: `portal-token-${Date.now()}-${index}`,
+                        name: `Portal ${index + 1}`,
+                        x: portal.position.x,
+                        y: portal.position.y,
+                        type: 'Portal' as const,
+                        visible: false, // Not visible to players
+                        color: '#ff0000',
+                        size: 1,
+                        torch: { enabled: false, radius: 0 },
+                        controls: portalWallId,
+                    });
+                });
+
                  const newLightTokens: Token[] = (data.lights || []).map((light: any, index: number) => ({
                     id: `light-${Date.now()}-${index}`,
                     name: `Light ${index + 1}`,
-                    x: light.position.x, // These are already in grid coordinates, not pixels
+                    x: light.position.x, // These are in grid coordinates, need conversion
                     y: light.position.y,
                     type: 'Light' as const,
                     visible: false, // Lights are not directly visible, they just emit light
                     color: '#fBBF24', // Not really used, but good to have
-                    size: 1, // Lights don't have a physical size in the same way
+                    size: 1,
                     torch: {
                         enabled: true,
-                        radius: light.range / 2
+                        radius: light.range / 2 // This is in grid units
                     }
                 }));
 
+                const finalPaths = [...newWalls, ...portalWalls];
+                const finalTokens = [...newLightTokens, ...portalTokens];
+                
                 // Reset state and load new map
                 setPan({ x: 0, y: 0 });
                 setZoom(1);
-                setBackgroundImage(newBackgroundImage);
                 
-                recordHistory(newWalls, newLightTokens, newBackgroundImage, pixelsPerGrid);
+                recordHistory({ paths: finalPaths, tokens: finalTokens, backgroundImage: newBackgroundImage, cellSize: pixelsPerGrid });
 
                 toast({ title: "Map Imported!", description: `${file.name} was successfully imported.` });
 
@@ -509,6 +537,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                             onEraseBrush={handleEraseBrush}
                             onNewPath={handleNewPath}
                             onTokenTorchToggle={handleTokenTorchToggle}
+                            onPortalToggle={handlePortalToggle}
                             selectedTool={selectedTool}
                             eraseMode={eraseMode}
                             onTokenMove={handleTokenMove}
@@ -526,7 +555,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
                 <aside className="w-80 h-full flex flex-col p-4 gap-4 border-l border-border bg-card z-20">
                     <TokenPanel 
-                        tokens={tokens.filter(t => t.type !== 'Light')} 
+                        tokens={tokens.filter(t => t.type !== 'Light' && t.type !== 'Portal')} 
                         onVisibilityChange={handleTokenVisibilityChange}
                         onTokenDelete={handleTokenDelete}
                         onTokenNameChange={handleTokenNameChange}

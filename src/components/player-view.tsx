@@ -28,7 +28,8 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       }));
        const loadedPaths = (gameState.paths || []).map(p => ({
             ...p,
-            id: p.id || `path-${Math.random()}` 
+            id: p.id || `path-${Math.random()}`,
+            isPortal: p.isPortal || false,
        }));
 
       setTokens(updatedTokens);
@@ -74,6 +75,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
           onEraseLine={() => {}}
           onEraseBrush={() => {}}
           onTokenTorchToggle={() => {}}
+          onPortalToggle={() => {}}
           selectedTool="select" 
           eraseMode={'line'}
           isPlayerView={true}

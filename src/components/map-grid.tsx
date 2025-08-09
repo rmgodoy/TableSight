@@ -1,7 +1,7 @@
 
 'use client';
 
-import { CircleUserRound, Shield, Lightbulb } from 'lucide-react';
+import { CircleUserRound, Shield, Lightbulb, DoorClosed, DoorOpen } from 'lucide-react';
 import type { Token, Tool, Path, Point, EraseMode } from './gm-view';
 import { cn } from '@/lib/utils';
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
@@ -13,10 +13,11 @@ interface MapGridProps {
   backgroundImage: string | null;
   cellSize: number;
   onMapClick: (x: number, y: number) => void;
-  onNewPath: (path: Omit<Path, 'id'>) => void;
+  onNewPath: (path: Omit<Path, 'id' | 'isPortal'>) => void;
   onEraseLine: (point: Point) => void;
   onEraseBrush: (updatedPaths: Path[]) => void;
   onTokenTorchToggle: (tokenId: string) => void;
+  onPortalToggle: (tokenId: string) => void;
   selectedTool: Tool;
   eraseMode: EraseMode;
   onTokenMove?: (tokenId: string, x: number, y: number) => void;
@@ -31,9 +32,9 @@ interface MapGridProps {
   showFogOfWar?: boolean;
 }
 
-function getSvgPathFromPoints(points: Point[]) {
+function getSvgPathFromPoints(points: Point[], scale: number = 1) {
   if (points.length === 0) return '';
-  return `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+  return `M ${points[0].x * scale} ${points[0].y * scale} ` + points.slice(1).map(p => `L ${p.x * scale} ${p.y * scale}`).join(' ');
 }
 
 function getIntersection(ray_p1: Point, ray_p2: Point, seg_p1: Point, seg_p2: Point): Point | null {
@@ -171,6 +172,7 @@ export function MapGrid({
   onEraseLine,
   onEraseBrush,
   onTokenTorchToggle,
+  onPortalToggle,
   selectedTool,
   eraseMode,
   onTokenMove,
@@ -365,14 +367,18 @@ export function MapGrid({
 
 
   const handleTokenMouseDown = (e: React.MouseEvent<HTMLDivElement>, token: Token) => {
-    if (isPlayerView || (selectedTool !== 'select' && token.type !== 'Light') || !onTokenMove) return;
+    if (isPlayerView || !onTokenMove) return;
     e.stopPropagation(); 
     
     if (token.type === 'Light' && selectedTool === 'select') {
         onTokenTorchToggle(token.id);
         return;
     }
-    if (selectedTool !== 'select') return;
+    if (token.type === 'Portal' && selectedTool === 'select') {
+        onPortalToggle(token.id);
+        return;
+    }
+    if (selectedTool !== 'select' || token.type === 'Light' || token.type === 'Portal') return;
     
     setDraggingToken(token);
     const point = getTransformedPoint(e);
@@ -472,9 +478,14 @@ export function MapGrid({
   }
 
   const renderToken = (token: Token) => {
+    const portalWall = paths.find(p => p.id === token.controls);
+
     const iconContent = () => {
         if (token.type === 'Light') {
           return <Lightbulb className={cn("text-white/80 transition-colors", token.torch.enabled && "text-yellow-300")}/>
+        }
+        if (token.type === 'Portal') {
+          return portalWall?.blocksLight ? <DoorClosed className="text-red-300" /> : <DoorOpen className="text-green-300"/>;
         }
         if (token.iconUrl) return null;
         if (token.type === 'PC') {
@@ -490,10 +501,10 @@ export function MapGrid({
        <div
         className={cn(
           "rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center",
-           token.type === 'Light' && 'cursor-pointer'
+           (token.type === 'Light' || token.type === 'Portal') && 'cursor-pointer'
         )}
         style={{ 
-          backgroundColor: token.type === 'Light' ? 'transparent' : token.color, 
+          backgroundColor: (token.type === 'Light' || token.type === 'Portal') ? 'transparent' : token.color, 
           backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none',
           width: '100%',
           height: '100%',
@@ -512,12 +523,15 @@ export function MapGrid({
         .filter(p => p.blocksLight)
         .forEach(path => {
             for (let i = 0; i < path.points.length - 1; i++) {
-                segments.push({ a: path.points[i], b: path.points[i+1], width: path.width });
+                segments.push({ 
+                    a: { x: path.points[i].x * cellSize, y: path.points[i].y * cellSize }, 
+                    b: { x: path.points[i+1].x * cellSize, y: path.points[i+1].y * cellSize }, 
+                    width: path.width 
+                });
             }
         });
     return segments;
-  }, [paths]);
-
+  }, [paths, cellSize]);
 
   const screenSpaceLightPolygons = useMemo(() => {
       if (!isPlayerView && !showFogOfWar) return [];
@@ -525,19 +539,21 @@ export function MapGrid({
       const lightTokens = tokens;
       return lightTokens.filter(t => t.torch.enabled).map(token => {
           let lightSource: Point;
-
-          if (token.type === 'Light') {
-              lightSource = { 
-                  x: token.x * cellSize,
-                  y: token.y * cellSize,
-              };
-          } else {
-              const tokenPixelSize = token.size * cellSize;
+          
+          if (token.type === 'PC' || token.type === 'Enemy') {
+               const tokenPixelSize = token.size * cellSize;
               lightSource = { 
                   x: (token.x * cellSize + tokenPixelSize / 2), 
                   y: (token.y * cellSize + tokenPixelSize / 2)
               };
+          } else {
+             // For Light and Portal tokens, position is already pixel based from import
+             lightSource = {
+                 x: token.x * cellSize,
+                 y: token.y * cellSize
+             }
           }
+
           const torchRadiusInPixels = token.torch.radius * cellSize;
           
           const screenSpaceSegments = wallSegments.map(seg => ({
@@ -566,7 +582,7 @@ export function MapGrid({
   const MapContent = () => {
     let renderTokens = tokens;
     if (isPlayerView) {
-      renderTokens = tokens.filter(t => t.visible && t.type !== 'Light');
+      renderTokens = tokens.filter(t => t.visible && t.type !== 'Light' && t.type !== 'Portal');
     }
     
     return (
@@ -581,17 +597,22 @@ export function MapGrid({
                 <img src={backgroundImage} className="absolute top-0 left-0 pointer-events-none w-auto h-auto max-w-none max-h-none" alt="Game Map Background" />
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-                {paths.map((path) => (
-                    <path
-                        key={path.id}
-                        d={getSvgPathFromPoints(path.points)}
-                        stroke={path.color}
-                        strokeWidth={path.width}
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                ))}
+                {paths.map((path) => {
+                    const scale = path.isPortal ? cellSize : 1;
+                    return (
+                        <path
+                            key={path.id}
+                            d={getSvgPathFromPoints(path.points, scale)}
+                            stroke={path.color}
+                            strokeWidth={path.width}
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeDasharray={path.isPortal ? '10,10' : undefined}
+                            className={cn(path.isPortal && !path.blocksLight && "opacity-50")}
+                        />
+                    )
+                })}
                 {!isPlayerView && isDrawing && currentPath.length > 0 && (
                     <path
                         d={getSvgPathFromPoints(currentPath)}
@@ -616,10 +637,21 @@ export function MapGrid({
                   />
                 )}
                 {renderTokens.map(token => {
-                    const tokenSize = token.type === 'Light' ? cellSize : token.size * cellSize;
-                    const tokenPos = {
-                         x: token.type === 'Light' ? (token.x * cellSize) - (tokenSize / 2) : (token.x * cellSize),
-                         y: token.type === 'Light' ? (token.y * cellSize) - (tokenSize / 2) : (token.y * cellSize),
+                    let tokenSize = cellSize;
+                    let tokenPos = { x: 0, y: 0 };
+                    
+                    if(token.type === 'PC' || token.type === 'Enemy') {
+                        tokenSize = token.size * cellSize;
+                        tokenPos = {
+                            x: token.x * cellSize,
+                            y: token.y * cellSize,
+                        }
+                    } else { // Light or Portal
+                         tokenSize = cellSize;
+                         tokenPos = {
+                            x: token.x * cellSize - tokenSize / 2,
+                            y: token.y * cellSize - tokenSize / 2,
+                         }
                     }
 
                     return (
