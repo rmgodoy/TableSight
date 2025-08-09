@@ -73,11 +73,30 @@ export function calculateVisibilityPolygon(
         const angle = Math.atan2(point.y - lightSource.y, point.x - lightSource.x);
         uniqueAngles.push(angle, angle - 1e-5, angle + 1e-5);
     }
-    
-    // Add "filler" rays at regular intervals to prevent light leaks
-    const FILLER_ANGLE_STEP = Math.PI / 180 * 0.05; 
-    for (let i = 0; i < 2 * Math.PI; i += FILLER_ANGLE_STEP) {
-      uniqueAngles.push(i);
+
+    // New: Smartly add rays for long segments instead of filler rays
+    const RAYS_PER_PIXEL = 0.1; // Cast one ray for every X pixels of arc length
+    for (const segment of segments) {
+        const distA = Math.hypot(segment.a.x - lightSource.x, segment.a.y - lightSource.y);
+        const distB = Math.hypot(segment.b.x - lightSource.x, segment.b.y - lightSource.y);
+
+        const angleA = Math.atan2(segment.a.y - lightSource.y, segment.a.x - lightSource.x);
+        const angleB = Math.atan2(segment.b.y - lightSource.y, segment.b.x - lightSource.x);
+
+        let angleDiff = angleB - angleA;
+        if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+        if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+        const avgDist = (distA + distB) / 2;
+        const arcLength = Math.abs(angleDiff) * avgDist;
+        const numRays = Math.ceil(arcLength * RAYS_PER_PIXEL);
+
+        if (numRays > 1) {
+            for (let i = 1; i < numRays; i++) {
+                const fraction = i / numRays;
+                uniqueAngles.push(angleA + angleDiff * fraction);
+            }
+        }
     }
     
     const intersects: Point[] = [];
