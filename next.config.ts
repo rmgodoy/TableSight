@@ -1,22 +1,31 @@
-import type {NextConfig} from 'next';
+import type { NextConfig } from "next";
+
+const repoName = 'TableSight';
+const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
-  output: 'export',
-  basePath: '/nextn',
-  /* config options here */
+  output: "export",
+  assetPrefix: isProd ? `/${repoName}/` : "",
+  basePath: isProd ? `/${repoName}` : "",
   typescript: {
     ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
   },
   images: {
     unoptimized: true,
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "placehold.co",
+        port: "",
+        pathname: "/**",
       },
     ],
+  },
+  devIndicators: {
+    allowedDevOrigins: ["https://*.cloudworkstations.dev"],
   },
 };
 
