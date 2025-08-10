@@ -3,7 +3,7 @@
 
 import type { Path } from '@/components/gm-view';
 import type { Point } from '@/lib/raycasting';
-import union from 'polygon-clipping';
+import polygonClipping from 'polygon-clipping';
 
 // The polygon-clipping library expects points in [x, y] tuple format.
 type PolygonPoint = [number, number];
@@ -40,7 +40,7 @@ export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id'> | nul
         );
 
         // Use the spread operator to pass all polygons to the union function.
-        const mergedMultiPolygon = union(...multiPolygons);
+        const mergedMultiPolygon = polygonClipping.union(...multiPolygons);
 
         if (mergedMultiPolygon.length === 0 || mergedMultiPolygon[0].length === 0) {
             console.error("Polygon clipping returned an empty result.");
