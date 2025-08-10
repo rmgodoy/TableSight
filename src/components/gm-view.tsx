@@ -28,7 +28,7 @@ import type { Point } from '@/lib/raycasting';
 import { Switch } from './ui/switch';
 import { mergeShapes, pathIntersects } from '@/lib/shape-merger';
 
-export type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'erase' | 'add-pc' | 'add-enemy';
+export type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'erase' | 'add-pc' | 'add-enemy' | 'portal';
 export type EraseMode = 'line' | 'brush';
 export type DrawMode = 'wall' | 'detail';
 
@@ -256,12 +256,35 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     };
 
     const handleNewPath = useCallback(async (path: Omit<Path, 'id' | 'isPortal'>) => {
+        const isPortalTool = selectedTool === 'portal';
         const newPathData: Path = { 
             ...path, 
             id: `path-${Date.now()}`, 
-            isPortal: false,
-            blocksLight: drawMode === 'wall' 
+            isPortal: isPortalTool,
+            blocksLight: isPortalTool || drawMode === 'wall'
         };
+
+        const newTokens = [...tokens];
+        if (isPortalTool && newPathData.points.length > 0) {
+            // Find center of portal to place token
+            const { x: totalX, y: totalY } = newPathData.points.reduce((acc, p) => ({x: acc.x + p.x, y: acc.y + p.y}), {x: 0, y: 0});
+            const centerX = totalX / newPathData.points.length;
+            const centerY = totalY / newPathData.points.length;
+
+            const portalToken: Token = {
+                id: `portal-token-${Date.now()}`,
+                name: `Portal ${tokens.filter(t => t.type === 'Portal').length + 1}`,
+                x: centerX,
+                y: centerY,
+                type: 'Portal',
+                visible: false, // Not visible to players by default
+                color: '#ff00ff', // A distinct color for portal controls
+                size: 1,
+                torch: { enabled: false, radius: 0 },
+                controls: newPathData.id,
+            };
+            newTokens.push(portalToken);
+        }
     
         if (smartMode && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'draw')) {
             const intersectingPaths = paths.filter(p =>
@@ -279,19 +302,19 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     };
                     const intersectingPathIds = new Set(intersectingPaths.map(p => p.id));
                     const remainingPaths = paths.filter(p => !intersectingPathIds.has(p.id));
-                    recordHistory({ paths: [...remainingPaths, mergedPath] });
+                    recordHistory({ paths: [...remainingPaths, mergedPath], tokens: newTokens });
                 } else {
                     // Merging failed, just add the new path
-                    recordHistory({ paths: [...paths, newPathData] });
+                    recordHistory({ paths: [...paths, newPathData], tokens: newTokens });
                 }
             } else {
                  // No intersections, just add the new path
-                 recordHistory({ paths: [...paths, newPathData] });
+                 recordHistory({ paths: [...paths, newPathData], tokens: newTokens });
             }
         } else {
-             recordHistory({ paths: [...paths, newPathData] });
+             recordHistory({ paths: [...paths, newPathData], tokens: newTokens });
         }
-    }, [paths, recordHistory, drawMode, smartMode, selectedTool]);
+    }, [paths, tokens, recordHistory, drawMode, smartMode, selectedTool]);
 
     const handleEraseLine = useCallback((point: Point) => {
         const eraseRadius = 20; // proximity to consider a click "on" the line
@@ -350,7 +373,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         if(token) updateToken(tokenId, { torch: { ...token.torch, radius } });
     }
     
-    const handlePortalToggle = (portalTokenId: string) => {
+    const handlePortalToggle = useCallback((portalTokenId: string) => {
         const newHistory = history.slice(0, historyIndex + 1);
         const currentState = newHistory[newHistory.length - 1];
         if (!currentState) return;
@@ -369,7 +392,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         newHistory.push(newState);
         setHistory(newHistory);
         setHistoryIndex(newHistory.length - 1);
-    };
+    }, [history, historyIndex]);
 
     const handleZoom = (delta: number) => setZoom(prevZoom => Math.max(0.1, Math.min(5, prevZoom + delta)));
     const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); }

@@ -163,7 +163,7 @@ export function MapGrid({
     
     const point = getTransformedPoint(e);
 
-    if (selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle') {
+    if (selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'portal') {
       setIsDrawing(true);
       drawingStartPoint.current = point;
       setCurrentPath([point]);
@@ -199,7 +199,7 @@ export function MapGrid({
 
     const point = getTransformedPoint(e);
     if (isDrawing && drawingStartPoint.current) {
-        if(selectedTool === 'draw') {
+        if(selectedTool === 'draw' || selectedTool === 'portal') {
              setCurrentPath(prevPath => [...prevPath, point]);
         } else if(selectedTool === 'rectangle') {
             const start = drawingStartPoint.current;
@@ -240,7 +240,7 @@ export function MapGrid({
     if (isDrawing && currentPath.length > 0) {
       onNewPath({ 
           points: currentPath, 
-          color: brushColor,
+          color: selectedTool === 'portal' ? '#ff00ff' : brushColor,
           width: brushSize,
           blocksLight: drawMode === 'wall'
       });
@@ -508,7 +508,7 @@ export function MapGrid({
       });
   }, [isPlayerView, showFogOfWar, tokens, wallSegments, activePan, activeZoom, cellSize]);
 
-  const isBrushToolActive = !isPlayerView && (selectedTool === 'draw' || (selectedTool === 'erase' && eraseMode === 'brush'));
+  const isBrushToolActive = !isPlayerView && (selectedTool === 'draw' || selectedTool === 'portal' || (selectedTool === 'erase' && eraseMode === 'brush'));
   const currentBrushSize = selectedTool === 'erase' ? eraseBrushSize : brushSize;
 
   const MapContent = () => {
@@ -553,11 +553,12 @@ export function MapGrid({
                 {!isPlayerView && isDrawing && currentPath.length > 0 && (
                     <path
                         d={getSvgPathFromPoints(currentPath)}
-                        stroke={brushColor}
+                        stroke={selectedTool === 'portal' ? '#ff00ff' : brushColor}
                         strokeWidth={brushSize}
                         fill={selectedTool === 'rectangle' || selectedTool === 'circle' ? 'transparent' : 'none'}
                         strokeLinecap="round"
                         strokeLinejoin="round"
+                        strokeDasharray={selectedTool === 'portal' ? '10,10' : undefined}
                     />
                 )}
             </svg>
