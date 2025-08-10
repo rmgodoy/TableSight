@@ -509,6 +509,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     };
     
     const isDrawingTool = selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle';
+    const isPortalTool = selectedTool === 'portal';
 
     return (
         <>
@@ -546,28 +547,34 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         </Button>
                     </div>
 
-                    {isDrawingTool && (
+                    {(isDrawingTool || isPortalTool) && (
                         <Card className="absolute top-2 left-24 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-4">
                             <CardContent className="p-2 flex items-center gap-4">
-                                <ToggleGroup type="single" value={drawMode} onValueChange={(value: DrawMode) => value && setDrawMode(value)}>
-                                    <ToggleGroupItem value="wall" aria-label="Draw as walls">
-                                        <Waves className="h-4 w-4" />
-                                        <span className="ml-2">Wall</span>
-                                    </ToggleGroupItem>
-                                    <ToggleGroupItem value="detail" aria-label="Draw as details">
-                                        <PenLine className="h-4 w-4" />
-                                         <span className="ml-2">Detail</span>
-                                    </ToggleGroupItem>
-                                </ToggleGroup>
-                                
+                                {isDrawingTool && (
+                                     <ToggleGroup type="single" value={drawMode} onValueChange={(value: DrawMode) => value && setDrawMode(value)}>
+                                        <ToggleGroupItem value="wall" aria-label="Draw as walls">
+                                            <Waves className="h-4 w-4" />
+                                            <span className="ml-2">Wall</span>
+                                        </ToggleGroupItem>
+                                        <ToggleGroupItem value="detail" aria-label="Draw as details">
+                                            <PenLine className="h-4 w-4" />
+                                             <span className="ml-2">Detail</span>
+                                        </ToggleGroupItem>
+                                    </ToggleGroup>
+                                )}
+                               
                                 <div className="flex items-center space-x-2">
                                     <Switch id="snap-to-grid" checked={snapToGrid} onCheckedChange={setSnapToGrid}/>
                                     <Label htmlFor="snap-to-grid">Snap</Label>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                    <Switch id="smart-mode" checked={smartMode} onCheckedChange={setSmartMode}/>
-                                    <Label htmlFor="smart-mode">Smart</Label>
-                                </div>
+
+                                {isDrawingTool && (
+                                     <div className="flex items-center space-x-2">
+                                        <Switch id="smart-mode" checked={smartMode} onCheckedChange={setSmartMode}/>
+                                        <Label htmlFor="smart-mode">Smart</Label>
+                                    </div>
+                                )}
+                               
 
                                 <div className='flex items-center gap-2'>
                                     <Label className="text-sm font-medium">Size</Label>
@@ -580,31 +587,34 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                                     />
                                     <span className='text-sm font-bold w-8 text-center'>{brushSize}</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Label className="text-sm font-medium">Color</Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button style={{backgroundColor: brushColor}} className="w-8 h-8 rounded-md border-2 border-border" />
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0 border-none">
-                                            <div className="grid grid-cols-6 gap-1 p-1 bg-card rounded-md">
-                                            {colorPalette.map(color => (
-                                                <button
-                                                    key={color}
-                                                    type="button"
-                                                    className={cn(
-                                                        "w-8 h-8 rounded-md border-2 transition-all",
-                                                        brushColor === color ? 'border-primary' : 'border-transparent hover:border-muted-foreground/50'
-                                                    )}
-                                                    style={{ backgroundColor: color }}
-                                                    onClick={() => setBrushColor(color)}
-                                                    aria-label={`Select color ${color}`}
-                                                />
-                                            ))}
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
+
+                                {isDrawingTool && (
+                                     <div className="flex items-center gap-2">
+                                        <Label className="text-sm font-medium">Color</Label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button style={{backgroundColor: brushColor}} className="w-8 h-8 rounded-md border-2 border-border" />
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0 border-none">
+                                                <div className="grid grid-cols-6 gap-1 p-1 bg-card rounded-md">
+                                                {colorPalette.map(color => (
+                                                    <button
+                                                        key={color}
+                                                        type="button"
+                                                        className={cn(
+                                                            "w-8 h-8 rounded-md border-2 transition-all",
+                                                            brushColor === color ? 'border-primary' : 'border-transparent hover:border-muted-foreground/50'
+                                                        )}
+                                                        style={{ backgroundColor: color }}
+                                                        onClick={() => setBrushColor(color)}
+                                                        aria-label={`Select color ${color}`}
+                                                    />
+                                                ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     )}

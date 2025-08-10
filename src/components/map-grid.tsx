@@ -237,7 +237,7 @@ export function MapGrid({
     
     if (isPlayerView) return;
 
-    if (isDrawing && currentPath.length > 0) {
+    if (isDrawing && currentPath.length > 1) {
       onNewPath({ 
           points: currentPath, 
           color: selectedTool === 'portal' ? '#ff00ff' : brushColor,
@@ -326,7 +326,6 @@ export function MapGrid({
     setGhostPosition({ x: ghostX, y: ghostY });
     
     // Calculate the snapped drop position for the visual indicator
-    const tokenSizeInPixels = draggingToken.size * cellSize;
     const dropX = Math.round((ghostX) / cellSize);
     const dropY = Math.round((ghostY) / cellSize);
     setDropTargetCell({ x: dropX, y: dropY });
@@ -531,7 +530,7 @@ export function MapGrid({
           }}
         >
             {backgroundImage && (
-                <img src={backgroundImage} className="absolute top-0 left-0 pointer-events-none w-auto h-auto max-w-none max-h-none" alt="Game Map Background" />
+                <img src={backgroundImage} className="absolute top-0 left-0 pointer-events-none w-auto h-auto max-w-none max-h-none" alt="Game Map Background" onDragStart={(e) => e.preventDefault()}/>
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                 {renderPaths.filter(p => p.points.length > 1).map((path) => {
