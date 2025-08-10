@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb, Grid3x3, Waves } from 'lucide-react';
+import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb, Grid3x3, Waves, BrainCircuit } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { GmSidebar } from '@/components/gm-sidebar';
 import { TokenPanel } from '@/components/token-panel';
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import type { Point } from '@/lib/raycasting';
 import { Switch } from './ui/switch';
+import { mergeShapes } from '@/lib/shape-merger';
 
 export type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'erase' | 'add-pc' | 'add-enemy';
 export type EraseMode = 'line' | 'brush';
@@ -89,6 +90,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
     const [showGrid, setShowGrid] = useState(true);
     const [snapToGrid, setSnapToGrid] = useState(true);
+    const [smartMode, setSmartMode] = useState(false);
     const [selectedTool, setSelectedTool] = useState<Tool>('select');
     const [eraseMode, setEraseMode] = useState<EraseMode>('line');
     const [drawMode, setDrawMode] = useState<DrawMode>('wall');
@@ -253,15 +255,35 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }
     };
 
-    const handleNewPath = useCallback((path: Omit<Path, 'id' | 'isPortal'>) => {
-        const newPath = { 
+    const handleNewPath = useCallback(async (path: Omit<Path, 'id' | 'isPortal'>) => {
+        const newPathData = { 
             ...path, 
             id: `path-${Date.now()}`, 
             isPortal: false,
             blocksLight: drawMode === 'wall' 
         };
-        recordHistory({ paths: [...paths, newPath]});
-    }, [paths, recordHistory, drawMode]);
+
+        if (smartMode) {
+            const pathsToMerge = paths.filter(p => p.blocksLight === newPathData.blocksLight);
+            const otherPaths = paths.filter(p => p.blocksLight !== newPathData.blocksLight);
+
+            const mergedPathData = await mergeShapes([...pathsToMerge, newPathData]);
+
+            if (mergedPathData) {
+                 const mergedPath = {
+                    ...mergedPathData,
+                    id: `path-${Date.now()}-merged`,
+                 }
+                 recordHistory({ paths: [...otherPaths, mergedPath] });
+            } else {
+                // Merging failed, just add the new path
+                recordHistory({ paths: [...paths, newPathData] });
+            }
+
+        } else {
+             recordHistory({ paths: [...paths, newPathData] });
+        }
+    }, [paths, recordHistory, drawMode, smartMode]);
 
     const handleEraseLine = useCallback((point: Point) => {
         const eraseRadius = 20; // proximity to consider a click "on" the line
@@ -501,11 +523,15 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                                 
                                 <div className="flex items-center space-x-2">
                                     <Switch id="snap-to-grid" checked={snapToGrid} onCheckedChange={setSnapToGrid}/>
-                                    <Label htmlFor="snap-to-grid">Snap to Grid</Label>
+                                    <Label htmlFor="snap-to-grid">Snap</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="smart-mode" checked={smartMode} onCheckedChange={setSmartMode}/>
+                                    <Label htmlFor="smart-mode">Smart</Label>
                                 </div>
 
                                 <div className='flex items-center gap-2'>
-                                    <Label className="text-sm font-medium">Brush Size</Label>
+                                    <Label className="text-sm font-medium">Size</Label>
                                     <Slider
                                         id="brush-size-slider"
                                         min={2} max={50} step={1}
@@ -623,4 +649,3 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         </>
     );
 }
-
