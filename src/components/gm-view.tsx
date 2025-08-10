@@ -91,7 +91,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [snapToGrid, setSnapToGrid] = useState(true);
     const [selectedTool, setSelectedTool] = useState<Tool>('select');
     const [eraseMode, setEraseMode] = useState<EraseMode>('line');
-    const [drawMode, setDrawMode] = useState<DrawMode>('wall' | 'detail');
+    const [drawMode, setDrawMode] = useState<DrawMode>('wall');
     const [brushColor, setBrushColor] = useState('#000000');
     const [brushSize, setBrushSize] = useState(5);
     const [eraseBrushSize, setEraseBrushSize] = useState(20);
@@ -253,7 +253,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }
     };
 
-    const handleNewPath = useCallback((path: Omit<Path, 'id' | 'isPortal' | 'blocksLight'>) => {
+    const handleNewPath = useCallback((path: Omit<Path, 'id' | 'isPortal'>) => {
         const newPath = { 
             ...path, 
             id: `path-${Date.now()}`, 
@@ -264,16 +264,29 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     }, [paths, recordHistory, drawMode]);
 
     const handleEraseLine = useCallback((point: Point) => {
-        const eraseRadius = 20;
-        const isPointInRadius = (p1: Point, p2: Point, radius: number) => {
-             return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)) < radius;
-        }
-
-        const remainingPaths = paths.filter(path => 
-            !path.points.some(p => isPointInRadius(p, point, eraseRadius))
-        );
+        const eraseRadius = 20; // proximity to consider a click "on" the line
         
-        if(remainingPaths.length < paths.length) {
+        const distSq = (v: Point, w: Point) => (v.x - w.x)**2 + (v.y - w.y)**2;
+        
+        const distToSegmentSq = (p: Point, v: Point, w: Point) => {
+            const l2 = distSq(v, w);
+            if (l2 === 0) return distSq(p, v);
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return distSq(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
+        };
+    
+        const pathToErase = paths.find(path => {
+            for (let i = 0; i < path.points.length - 1; i++) {
+                if (distToSegmentSq(point, path.points[i], path.points[i+1]) < eraseRadius * eraseRadius) {
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        if (pathToErase) {
+            const remainingPaths = paths.filter(path => path.id !== pathToErase.id);
             recordHistory({ paths: remainingPaths });
         }
     }, [paths, recordHistory]);
@@ -611,4 +624,3 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     );
 }
 
-    

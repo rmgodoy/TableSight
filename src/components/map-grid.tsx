@@ -530,18 +530,17 @@ export function MapGrid({
                 {renderPaths.map((path) => {
                     const pathD = getSvgPathFromPoints(path.points, 1);
                     return (
-                        <g key={path.id}>
-                            <path
-                                d={pathD}
-                                stroke={path.color}
-                                strokeWidth={path.width}
-                                fill="none"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeDasharray={path.isPortal ? '10,10' : undefined}
-                                className={cn(path.isPortal && !path.blocksLight && "opacity-50")}
-                            />
-                        </g>
+                        <path
+                            key={path.id}
+                            d={pathD}
+                            stroke={path.color}
+                            strokeWidth={path.width}
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeDasharray={path.isPortal ? '10,10' : undefined}
+                            className={cn(path.isPortal && !path.blocksLight && "opacity-50")}
+                        />
                     )
                 })}
                 {!isPlayerView && isDrawing && currentPath.length > 0 && (
