@@ -129,14 +129,17 @@ export function MapGrid({
   }, [snapToGrid, cellSize]);
 
 
-  const getTransformedPoint = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
+  const getTransformedPoint = (
+    e: React.MouseEvent<HTMLDivElement> | MouseEvent, 
+    applySnapping: boolean = true
+  ): Point => {
     if (!containerRef.current) return { x: 0, y: 0 };
     const rect = containerRef.current.getBoundingClientRect();
     const point = {
       x: (e.clientX - rect.left - activePan.x) / activeZoom,
       y: (e.clientY - rect.top - activePan.y) / activeZoom,
     };
-    return snapToGrid ? getSnappedPoint(point) : point;
+    return (snapToGrid && applySnapping) ? getSnappedPoint(point) : point;
   }
 
   const getScreenPoint = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
@@ -305,7 +308,8 @@ export function MapGrid({
     if (selectedTool !== 'select' || token.type === 'Light' || token.type === 'Portal') return;
     
     setDraggingToken(token);
-    const point = getTransformedPoint(e);
+    // Use non-snapped points for smooth drag offset calculation
+    const point = getTransformedPoint(e, false);
     setDragOffset({
         x: point.x - (token.x * cellSize),
         y: point.y - (token.y * cellSize),
@@ -315,27 +319,30 @@ export function MapGrid({
 
   const handleGlobalMouseMove = (e: MouseEvent) => {
     if (!draggingToken || !onTokenMove || !dragOffset) return;
-    const point = getTransformedPoint(e);
+    // Use non-snapped points for smooth ghost positioning
+    const point = getTransformedPoint(e, false);
     const ghostX = point.x - dragOffset.x;
     const ghostY = point.y - dragOffset.y;
     setGhostPosition({ x: ghostX, y: ghostY });
     
+    // Calculate the snapped drop position for the visual indicator
     const tokenSizeInPixels = draggingToken.size * cellSize;
-    const dropX = Math.floor((ghostX + tokenSizeInPixels / 2) / cellSize);
-    const dropY = Math.floor((ghostY + tokenSizeInPixels / 2) / cellSize);
+    const dropX = Math.round((ghostX) / cellSize);
+    const dropY = Math.round((ghostY) / cellSize);
     setDropTargetCell({ x: dropX, y: dropY });
   };
   
   const handleGlobalMouseUp = (e: MouseEvent) => {
     if (!draggingToken || !onTokenMove || !dragOffset) return;
-
-    const point = getTransformedPoint(e);
+    
+    // Use non-snapped points for final calculation
+    const point = getTransformedPoint(e, false);
     const ghostX = point.x - dragOffset.x;
     const ghostY = point.y - dragOffset.y;
     
-    const tokenSizeInPixels = draggingToken.size * cellSize;
-    const x = Math.floor((ghostX + tokenSizeInPixels / 2) / cellSize);
-    const y = Math.floor((ghostY + tokenSizeInPixels / 2) / cellSize);
+    // Snap the final position to the grid
+    const x = Math.round(ghostX / cellSize);
+    const y = Math.round(ghostY / cellSize);
 
     onTokenMove(draggingToken.id, x, y);
     setDraggingToken(null);
@@ -358,7 +365,7 @@ export function MapGrid({
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draggingToken, pan, zoom, dragOffset, snapToGrid]);
+  }, [draggingToken, pan, zoom, dragOffset]);
 
   useEffect(() => {
     const handleSpacebarPan = (e: KeyboardEvent) => {
@@ -527,7 +534,7 @@ export function MapGrid({
                 <img src={backgroundImage} className="absolute top-0 left-0 pointer-events-none w-auto h-auto max-w-none max-h-none" alt="Game Map Background" />
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-                {renderPaths.map((path) => {
+                {renderPaths.filter(p => p.points.length > 1).map((path) => {
                     const pathD = getSvgPathFromPoints(path.points, 1);
                     return (
                         <path
@@ -736,3 +743,4 @@ export function MapGrid({
     </div>
   );
 }
+
