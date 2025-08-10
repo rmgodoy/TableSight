@@ -58,7 +58,8 @@ export function TokenPanel({
 
      useEffect(() => {
         if (typeof window !== 'undefined') {
-            setPlayerUrl(`${window.location.origin}/player#${sessionId}`);
+            const basePath = process.env.NODE_ENV === 'production' ? '/TableSight' : '';
+            setPlayerUrl(`${window.location.origin}${basePath}/player#${sessionId}`);
         }
     }, [sessionId]);
 
