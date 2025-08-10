@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MapGrid } from '@/components/map-grid';
 import { Eye } from 'lucide-react';
-import type { GameState, Path, Token, EraseMode } from './gm-view';
+import type { GameState, Path, Token, EraseMode, DrawMode } from './gm-view';
 
 export default function PlayerView({ sessionId }: { sessionId: string }) {
   const [tokens, setTokens] = useState<Token[]>([]);
@@ -66,6 +66,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
       <div className="w-full h-full">
         <MapGrid 
           showGrid={true} 
+          snapToGrid={false}
           tokens={tokens}
           paths={paths}
           backgroundImage={backgroundImage}
@@ -76,8 +77,9 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
           onEraseBrush={() => {}}
           onTokenTorchToggle={() => {}}
           onPortalToggle={() => {}}
-          selectedTool="select" 
-          eraseMode={'line'}
+          selectedTool="select"
+          drawMode="wall"
+          eraseMode={'line' as EraseMode}
           isPlayerView={true}
           zoom={zoom}
           pan={pan}

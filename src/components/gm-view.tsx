@@ -25,7 +25,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { Point } from '@/lib/raycasting';
-import { P2PService } from '@/lib/p2p';
 import { Switch } from './ui/switch';
 
 export type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'erase' | 'add-pc' | 'add-enemy';
@@ -85,8 +84,6 @@ const colorPalette = [
 
 
 export default function GmView({ sessionId }: { sessionId: string }) {
-    const p2pService = useRef<P2PService | null>(null);
-
     const [history, setHistory] = useState<HistoryState[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
 
@@ -127,90 +124,52 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         setHistoryIndex(prev => prev + 1);
     }, [historyIndex]);
     
-    // This effect handles initializing the session from localStorage and setting up the P2P service.
-    // It should only run once on mount.
+    // This effect handles initializing the session from localStorage
     useEffect(() => {
-        let isMounted = true;
+        try {
+            const savedState = localStorage.getItem(storageKey);
+            if (savedState) {
+                const gameState: GameState = JSON.parse(savedState);
+                const loadedPaths = (gameState.paths || []).map(p => ({
+                    ...p,
+                    id: p.id || `path-${Math.random()}`,
+                    isPortal: p.isPortal || false,
+                }));
+                const loadedTokens = (gameState.tokens || []).map(t => ({
+                    ...t,
+                    type: t.type || (t.id.startsWith('pc-') ? 'PC' : 'Enemy'),
+                    size: t.size || 1,
+                    torch: t.torch || { enabled: false, radius: 5 }
+                }));
+                const loadedBg = gameState.backgroundImage || null;
+                const loadedCellSize = gameState.cellSize || 40;
+                
+                const initialHistory: HistoryState = { paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize };
+                setHistory([initialHistory]);
+                setHistoryIndex(0);
 
-        const loadFromLocalStorage = () => {
-             try {
-                const savedState = localStorage.getItem(storageKey);
-                if (savedState) {
-                    const gameState: GameState = JSON.parse(savedState);
-                     const loadedPaths = (gameState.paths || []).map(p => ({
-                        ...p,
-                        id: p.id || `path-${Math.random()}`,
-                        isPortal: p.isPortal || false,
-                    }));
-                    const loadedTokens = (gameState.tokens || []).map(t => ({
-                      ...t,
-                      type: t.type || (t.id.startsWith('pc-') ? 'PC' : 'Enemy'),
-                      size: t.size || 1,
-                      torch: t.torch || { enabled: false, radius: 5 }
-                    }));
-                    const loadedBg = gameState.backgroundImage || null;
-                    const loadedCellSize = gameState.cellSize || 40;
-                    
-                    const initialHistory: HistoryState = { paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize };
-                    setHistory([initialHistory]);
-                    setHistoryIndex(0);
-
-                    if (gameState.zoom) setZoom(gameState.zoom);
-                    if (gameState.pan) setPan(gameState.pan);
-                    if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
-                    if (gameState.playerPan) setPlayerPan(gameState.playerPan);
-                } else {
-                    const initialState: HistoryState = { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
-                    setHistory([initialState]);
-                    setHistoryIndex(0);
-                }
-            } catch (error) {
-                console.error("Failed to load game state from localStorage", error);
-                 const initialState: HistoryState = { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
+                if (gameState.zoom) setZoom(gameState.zoom);
+                if (gameState.pan) setPan(gameState.pan);
+                if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
+                if (gameState.playerPan) setPlayerPan(gameState.playerPan);
+            } else {
+                const initialState: HistoryState = { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
                 setHistory([initialState]);
                 setHistoryIndex(0);
             }
+        } catch (error) {
+            console.error("Failed to load game state from localStorage", error);
+                const initialState: HistoryState = { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
+            setHistory([initialState]);
+            setHistoryIndex(0);
         }
-        
-        loadFromLocalStorage();
-
-        p2pService.current = new P2PService();
-        p2pService.current.init(sessionId, {
-            onOpen: (peerId) => {
-                if (!isMounted) return;
-                console.log('GM PeerJS ID:', peerId);
-                 toast({ title: "Session Started", description: "Ready for players to join." });
-            },
-            onConnection: (conn) => {
-                 if (!isMounted) return;
-                 console.log('Player connected:', conn.peer);
-                 toast({ title: "Player Joined!", description: `Player ${conn.peer.slice(0,6)} has joined the session.` });
-                 // Send the current state to the new player
-                 const fullState = { ...currentHistoryState, playerPan, playerZoom, zoom, pan };
-                 p2pService.current?.send(fullState);
-            },
-            onError: (err) => {
-                 if (!isMounted) return;
-                 console.error('PeerJS Error:', err);
-                 toast({ title: "Connection Error", description: err.message, variant: "destructive" });
-            },
-            onDisconnected: () => {
-                if (!isMounted) return;
-                toast({ title: "Disconnected", description: "Attempting to reconnect to the server...", variant: "destructive" });
-            }
-        });
-
-        return () => {
-            isMounted = false;
-            p2pService.current?.destroy();
-        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId, toast]);
+    }, [sessionId]);
 
 
-    // This effect synchronizes the component state to peers and localStorage.
+    // This effect synchronizes the component state to localStorage.
     useEffect(() => {
-        // Don't save or send state if history is not yet initialized
+        // Don't save if history is not yet initialized
         if (historyIndex < 0) return;
 
         const fullState: GameState = { 
@@ -221,10 +180,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             playerPan,
         };
 
-        // Send to peers
-        p2pService.current?.send(fullState);
-
-        // Save to localStorage (debounced)
         const handler = setTimeout(() => {
              try {
                 localStorage.setItem(storageKey, JSON.stringify(fullState));
@@ -373,7 +328,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const syncPlayerView = () => {
         setPlayerPan(pan);
         setPlayerZoom(zoom);
-        // The main useEffect will handle sending the update
         toast({ title: "Player View Synced!", description: "The player's view now matches yours." });
     };
     const matchPlayerView = () => { setPan(playerPan); setZoom(playerZoom); };
