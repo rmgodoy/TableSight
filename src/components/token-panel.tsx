@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -90,6 +90,7 @@ export function TokenPanel({
         if (token.type === 'PC') return <CircleUserRound className="text-white/80" />;
         if (token.type === 'Enemy') return <Shield className="text-white/80" />;
         if (token.type === 'Light') return <Lightbulb className={cn("text-white/80", token.torch.enabled && "text-yellow-300")} />;
+        if (token.type === 'Portal') return <DoorClosed className="text-red-300" />;
         return null;
     }
 
@@ -109,11 +110,11 @@ export function TokenPanel({
                                     <div className="flex items-center gap-2">
                                         <div className="flex items-center gap-2 flex-1 min-w-0">
                                             <Popover>
-                                                <PopoverTrigger asChild disabled={token.type === 'Light'}>
+                                                <PopoverTrigger asChild disabled={token.type === 'Light' || token.type === 'Portal'}>
                                                      <div
                                                         className={cn(
                                                             "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg shrink-0 bg-cover bg-center",
-                                                            token.type !== 'Light' && "cursor-pointer"
+                                                            (token.type !== 'Light' && token.type !== 'Portal') && "cursor-pointer"
                                                         )}
                                                         style={{ backgroundColor: token.color, backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none' }}
                                                     >
@@ -158,11 +159,11 @@ export function TokenPanel({
                                                 value={token.name} 
                                                 onChange={(e) => onTokenNameChange(token.id, e.target.value)}
                                                 aria-label="Token name"
-                                                disabled={token.type === 'Light'}
+                                                disabled={token.type === 'Light' || token.type === 'Portal'}
                                             />
                                         </div>
                                         <div className="flex items-center shrink-0">
-                                            {token.type !== 'Light' && (
+                                            {token.type !== 'Light' && token.type !== 'Portal' && (
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon"
@@ -185,29 +186,31 @@ export function TokenPanel({
                                             </Button>
                                         </div>
                                     </div>
-                                    <div className="pl-10 flex flex-col items-start gap-4">
-                                        <div className='flex flex-col gap-2 w-full'>
-                                            <Button variant="ghost" className="h-8 px-2 justify-start" onClick={() => onTokenTorchToggle(token.id)}>
-                                                <Flame className={cn("h-4 w-4 mr-2", token.torch.enabled ? "text-orange-500" : "text-muted-foreground")} />
-                                                <span className={cn(token.torch.enabled ? "text-primary" : "text-muted-foreground")}>Torch</span>
-                                            </Button>
-                                            
-                                            {token.torch.enabled && (
-                                            <div className="flex items-center gap-2 w-full">
-                                                <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, Math.max(1, token.torch.radius - 1))}><Minus/></Button>
-                                                <Input
-                                                    type="number"
-                                                    min={1}
-                                                    max={999}
-                                                    value={token.torch.radius}
-                                                    onChange={(e) => onTokenTorchRadiusChange(token.id, parseInt(e.target.value, 10) || 1)}
-                                                    className="h-8 w-full text-center"
-                                                />
-                                                <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, token.torch.radius + 1)}><Plus/></Button>
+                                    {(token.type === 'PC' || token.type === 'Enemy') && (
+                                        <div className="pl-10 flex flex-col items-start gap-4">
+                                            <div className='flex flex-col gap-2 w-full'>
+                                                <Button variant="ghost" className="h-8 px-2 justify-start" onClick={() => onTokenTorchToggle(token.id)}>
+                                                    <Flame className={cn("h-4 w-4 mr-2", token.torch.enabled ? "text-orange-500" : "text-muted-foreground")} />
+                                                    <span className={cn(token.torch.enabled ? "text-primary" : "text-muted-foreground")}>Torch</span>
+                                                </Button>
+                                                
+                                                {token.torch.enabled && (
+                                                <div className="flex items-center gap-2 w-full">
+                                                    <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, Math.max(1, token.torch.radius - 1))}><Minus/></Button>
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        max={999}
+                                                        value={token.torch.radius}
+                                                        onChange={(e) => onTokenTorchRadiusChange(token.id, parseInt(e.target.value, 10) || 1)}
+                                                        className="h-8 w-full text-center"
+                                                    />
+                                                    <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, token.torch.radius + 1)}><Plus/></Button>
+                                                </div>
+                                                )}
                                             </div>
-                                            )}
                                         </div>
-                                    </div>
+                                    )}
                                 </li>
                             ))}
                         </ul>

@@ -354,8 +354,16 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     }, [tokens, recordHistory]);
     
     const handleTokenDelete = (tokenId: string) => {
+        const tokenToDelete = tokens.find(t => t.id === tokenId);
+        let newPaths = paths;
+        
+        // If it's a portal token, also delete its controlled path
+        if (tokenToDelete && tokenToDelete.type === 'Portal' && tokenToDelete.controls) {
+            newPaths = paths.filter(p => p.id !== tokenToDelete.controls);
+        }
+
         const newTokens = tokens.filter(t => t.id !== tokenId);
-        recordHistory({ tokens: newTokens });
+        recordHistory({ tokens: newTokens, paths: newPaths });
     }
 
     const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => updateToken(tokenId, { visible: isVisible });
@@ -662,7 +670,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
                 <aside className="w-80 h-full flex flex-col p-4 gap-4 border-l border-border bg-card z-20">
                     <TokenPanel 
-                        tokens={tokens.filter(t => t.type !== 'Light' && t.type !== 'Portal')} 
+                        tokens={tokens.filter(t => t.type !== 'Light')} 
                         onVisibilityChange={handleTokenVisibilityChange}
                         onTokenDelete={handleTokenDelete}
                         onTokenNameChange={handleTokenNameChange}
