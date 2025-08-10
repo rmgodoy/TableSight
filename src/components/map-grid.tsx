@@ -675,6 +675,7 @@ export function MapGrid({
        }}
       onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
       >
       
       {isPlayerView ? (
@@ -744,3 +745,5 @@ export function MapGrid({
   );
 }
 
+
+    
