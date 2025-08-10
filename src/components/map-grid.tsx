@@ -541,9 +541,6 @@ export function MapGrid({
                                 strokeDasharray={path.isPortal ? '10,10' : undefined}
                                 className={cn(path.isPortal && !path.blocksLight && "opacity-50")}
                             />
-                            {!isPlayerView && path.points.map((p, i) => (
-                                <circle key={i} cx={p.x} cy={p.y} r={path.width/2 + 2} fill={path.color} />
-                            ))}
                         </g>
                     )
                 })}
