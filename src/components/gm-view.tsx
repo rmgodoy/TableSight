@@ -91,7 +91,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [snapToGrid, setSnapToGrid] = useState(true);
     const [selectedTool, setSelectedTool] = useState<Tool>('select');
     const [eraseMode, setEraseMode] = useState<EraseMode>('line');
-    const [drawMode, setDrawMode] = useState<DrawMode>('wall');
+    const [drawMode, setDrawMode] = useState<DrawMode>('wall' | 'detail');
     const [brushColor, setBrushColor] = useState('#000000');
     const [brushSize, setBrushSize] = useState(5);
     const [eraseBrushSize, setEraseBrushSize] = useState(20);
@@ -253,10 +253,15 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }
     };
 
-    const handleNewPath = useCallback((path: Omit<Path, 'id' | 'isPortal'>) => {
-        const newPath = { ...path, id: `path-${Date.now()}`, isPortal: false };
+    const handleNewPath = useCallback((path: Omit<Path, 'id' | 'isPortal' | 'blocksLight'>) => {
+        const newPath = { 
+            ...path, 
+            id: `path-${Date.now()}`, 
+            isPortal: false,
+            blocksLight: drawMode === 'wall' 
+        };
         recordHistory({ paths: [...paths, newPath]});
-    }, [paths, recordHistory]);
+    }, [paths, recordHistory, drawMode]);
 
     const handleEraseLine = useCallback((point: Point) => {
         const eraseRadius = 20;
@@ -605,3 +610,5 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         </>
     );
 }
+
+    
