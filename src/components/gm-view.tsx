@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import type { Point } from '@/lib/raycasting';
 import { Switch } from './ui/switch';
-import { mergeShapes } from '@/lib/shape-merger';
+import { mergeShapes, pathIntersects } from '@/lib/shape-merger';
 
 export type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'erase' | 'add-pc' | 'add-enemy';
 export type EraseMode = 'line' | 'brush';
@@ -256,34 +256,42 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     };
 
     const handleNewPath = useCallback(async (path: Omit<Path, 'id' | 'isPortal'>) => {
-        const newPathData = { 
+        const newPathData: Path = { 
             ...path, 
             id: `path-${Date.now()}`, 
             isPortal: false,
             blocksLight: drawMode === 'wall' 
         };
-
-        if (smartMode) {
-            const pathsToMerge = paths.filter(p => p.blocksLight === newPathData.blocksLight);
-            const otherPaths = paths.filter(p => p.blocksLight !== newPathData.blocksLight);
-
-            const mergedPathData = await mergeShapes([...pathsToMerge, newPathData]);
-
-            if (mergedPathData) {
-                 const mergedPath = {
-                    ...mergedPathData,
-                    id: `path-${Date.now()}-merged`,
-                 }
-                 recordHistory({ paths: [...otherPaths, mergedPath] });
+    
+        if (smartMode && (selectedTool === 'rectangle' || selectedTool === 'circle')) {
+            const intersectingPaths = paths.filter(p =>
+                p.blocksLight === newPathData.blocksLight && pathIntersects(p, newPathData)
+            );
+    
+            if (intersectingPaths.length > 0) {
+                const pathsToMerge = [...intersectingPaths, newPathData];
+                const mergedPathData = await mergeShapes(pathsToMerge);
+    
+                if (mergedPathData) {
+                    const mergedPath = {
+                        ...mergedPathData,
+                        id: `path-${Date.now()}-merged`,
+                    };
+                    const intersectingPathIds = new Set(intersectingPaths.map(p => p.id));
+                    const remainingPaths = paths.filter(p => !intersectingPathIds.has(p.id));
+                    recordHistory({ paths: [...remainingPaths, mergedPath] });
+                } else {
+                    // Merging failed, just add the new path
+                    recordHistory({ paths: [...paths, newPathData] });
+                }
             } else {
-                // Merging failed, just add the new path
-                recordHistory({ paths: [...paths, newPathData] });
+                 // No intersections, just add the new path
+                 recordHistory({ paths: [...paths, newPathData] });
             }
-
         } else {
              recordHistory({ paths: [...paths, newPathData] });
         }
-    }, [paths, recordHistory, drawMode, smartMode]);
+    }, [paths, recordHistory, drawMode, smartMode, selectedTool]);
 
     const handleEraseLine = useCallback((point: Point) => {
         const eraseRadius = 20; // proximity to consider a click "on" the line
