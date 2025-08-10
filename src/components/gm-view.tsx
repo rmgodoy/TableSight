@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb } from 'lucide-react';
+import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb, Grid3x3, Waves } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { GmSidebar } from '@/components/gm-sidebar';
 import { TokenPanel } from '@/components/token-panel';
@@ -25,9 +25,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { Point } from '@/lib/raycasting';
+import { P2PService } from '@/lib/p2p';
+import { Switch } from './ui/switch';
 
-export type Tool = 'select' | 'wall' | 'detail' | 'erase' | 'add-pc' | 'add-enemy';
+export type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'erase' | 'add-pc' | 'add-enemy';
 export type EraseMode = 'line' | 'brush';
+export type DrawMode = 'wall' | 'detail';
 
 export type Path = {
     id: string;
@@ -82,12 +85,16 @@ const colorPalette = [
 
 
 export default function GmView({ sessionId }: { sessionId: string }) {
+    const p2pService = useRef<P2PService | null>(null);
+
     const [history, setHistory] = useState<HistoryState[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
 
     const [showGrid, setShowGrid] = useState(true);
+    const [snapToGrid, setSnapToGrid] = useState(true);
     const [selectedTool, setSelectedTool] = useState<Tool>('select');
     const [eraseMode, setEraseMode] = useState<EraseMode>('line');
+    const [drawMode, setDrawMode] = useState<DrawMode>('wall');
     const [brushColor, setBrushColor] = useState('#000000');
     const [brushSize, setBrushSize] = useState(5);
     const [eraseBrushSize, setEraseBrushSize] = useState(20);
@@ -120,40 +127,119 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         setHistoryIndex(prev => prev + 1);
     }, [historyIndex]);
     
-    const saveState = useCallback((stateToSave: GameState) => {
-         try {
-            localStorage.setItem(storageKey, JSON.stringify(stateToSave));
-        } catch (error) {
-            console.error("Failed to save game state to localStorage", error);
-            toast({
-                title: "Error",
-                description: "Could not save game state. Your browser might be in private mode or storage is full.",
-                variant: "destructive"
-            });
-        }
-    }, [storageKey, toast]);
-
-    // This effect synchronizes the component state to localStorage.
-    // It's debounced to avoid excessive writes.
+    // This effect handles initializing the session from localStorage and setting up the P2P service.
+    // It should only run once on mount.
     useEffect(() => {
-        // Only run if there is something in the history
-        if(history.length === 0) return;
+        let isMounted = true;
 
+        const loadFromLocalStorage = () => {
+             try {
+                const savedState = localStorage.getItem(storageKey);
+                if (savedState) {
+                    const gameState: GameState = JSON.parse(savedState);
+                     const loadedPaths = (gameState.paths || []).map(p => ({
+                        ...p,
+                        id: p.id || `path-${Math.random()}`,
+                        isPortal: p.isPortal || false,
+                    }));
+                    const loadedTokens = (gameState.tokens || []).map(t => ({
+                      ...t,
+                      type: t.type || (t.id.startsWith('pc-') ? 'PC' : 'Enemy'),
+                      size: t.size || 1,
+                      torch: t.torch || { enabled: false, radius: 5 }
+                    }));
+                    const loadedBg = gameState.backgroundImage || null;
+                    const loadedCellSize = gameState.cellSize || 40;
+                    
+                    const initialHistory: HistoryState = { paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize };
+                    setHistory([initialHistory]);
+                    setHistoryIndex(0);
+
+                    if (gameState.zoom) setZoom(gameState.zoom);
+                    if (gameState.pan) setPan(gameState.pan);
+                    if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
+                    if (gameState.playerPan) setPlayerPan(gameState.playerPan);
+                } else {
+                    const initialState: HistoryState = { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
+                    setHistory([initialState]);
+                    setHistoryIndex(0);
+                }
+            } catch (error) {
+                console.error("Failed to load game state from localStorage", error);
+                 const initialState: HistoryState = { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
+                setHistory([initialState]);
+                setHistoryIndex(0);
+            }
+        }
+        
+        loadFromLocalStorage();
+
+        p2pService.current = new P2PService();
+        p2pService.current.init(sessionId, {
+            onOpen: (peerId) => {
+                if (!isMounted) return;
+                console.log('GM PeerJS ID:', peerId);
+                 toast({ title: "Session Started", description: "Ready for players to join." });
+            },
+            onConnection: (conn) => {
+                 if (!isMounted) return;
+                 console.log('Player connected:', conn.peer);
+                 toast({ title: "Player Joined!", description: `Player ${conn.peer.slice(0,6)} has joined the session.` });
+                 // Send the current state to the new player
+                 const fullState = { ...currentHistoryState, playerPan, playerZoom, zoom, pan };
+                 p2pService.current?.send(fullState);
+            },
+            onError: (err) => {
+                 if (!isMounted) return;
+                 console.error('PeerJS Error:', err);
+                 toast({ title: "Connection Error", description: err.message, variant: "destructive" });
+            },
+            onDisconnected: () => {
+                if (!isMounted) return;
+                toast({ title: "Disconnected", description: "Attempting to reconnect to the server...", variant: "destructive" });
+            }
+        });
+
+        return () => {
+            isMounted = false;
+            p2pService.current?.destroy();
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sessionId, toast]);
+
+
+    // This effect synchronizes the component state to peers and localStorage.
+    useEffect(() => {
+        // Don't save or send state if history is not yet initialized
+        if (historyIndex < 0) return;
+
+        const fullState: GameState = { 
+            ...currentHistoryState, 
+            zoom, 
+            pan,
+            playerZoom,
+            playerPan,
+        };
+
+        // Send to peers
+        p2pService.current?.send(fullState);
+
+        // Save to localStorage (debounced)
         const handler = setTimeout(() => {
-             const fullState: GameState = { 
-                tokens, 
-                paths, 
-                zoom, 
-                pan,
-                playerZoom,
-                playerPan,
-                backgroundImage,
-                cellSize,
-            };
-            saveState(fullState);
-        }, 500); // Debounce time in ms
+             try {
+                localStorage.setItem(storageKey, JSON.stringify(fullState));
+            } catch (error) {
+                console.error("Failed to save game state to localStorage", error);
+                toast({
+                    title: "Error",
+                    description: "Could not save game state. Your browser might be in private mode or storage is full.",
+                    variant: "destructive"
+                });
+            }
+        }, 500);
+
         return () => clearTimeout(handler);
-    }, [tokens, paths, backgroundImage, cellSize, zoom, pan, playerPan, playerZoom, saveState, history.length]);
+    }, [currentHistoryState, zoom, pan, playerZoom, playerPan, historyIndex, storageKey, toast]);
 
 
     const undo = useCallback(() => {
@@ -186,45 +272,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             window.removeEventListener('keydown', handleKeyDown);
         };
     }, [undo, redo]);
-    
-    useEffect(() => {
-        try {
-            const savedState = localStorage.getItem(storageKey);
-            if (savedState) {
-                const gameState: GameState = JSON.parse(savedState);
-                const loadedPaths = (gameState.paths || []).map(p => ({
-                    ...p,
-                    id: p.id || `path-${Math.random()}`,
-                    isPortal: p.isPortal || false,
-                }));
-                const loadedTokens = (gameState.tokens || []).map(t => ({
-                  ...t,
-                  type: t.type || (t.id.startsWith('pc-') ? 'PC' : 'Enemy'),
-                  size: t.size || 1,
-                  torch: t.torch || { enabled: false, radius: 5 }
-                }));
-                const loadedBg = gameState.backgroundImage || null;
-                const loadedCellSize = gameState.cellSize || 40;
-                
-                // Initialize history with the loaded state
-                const initialHistory: HistoryState = { paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize };
-                setHistory([initialHistory]);
-                setHistoryIndex(0);
-
-                if (gameState.zoom) setZoom(gameState.zoom);
-                if (gameState.pan) setPan(gameState.pan);
-                if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
-                if (gameState.playerPan) setPlayerPan(gameState.playerPan);
-            } else {
-                 // If no saved state, initialize with an empty state
-                const initialState: HistoryState = { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
-                setHistory([initialState]);
-                setHistoryIndex(0);
-            }
-        } catch (error) {
-            console.error("Failed to load game state from localStorage", error);
-        }
-    }, [storageKey]);
 
     const handleMapClick = (x: number, y: number) => {
         let newToken: Token | null = null;
@@ -326,8 +373,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const syncPlayerView = () => {
         setPlayerPan(pan);
         setPlayerZoom(zoom);
-        const fullState: GameState = { ...currentHistoryState, playerPan: pan, playerZoom: zoom, zoom, pan };
-        saveState(fullState);
+        // The main useEffect will handle sending the update
         toast({ title: "Player View Synced!", description: "The player's view now matches yours." });
     };
     const matchPlayerView = () => { setPan(playerPan); setZoom(playerZoom); };
@@ -428,6 +474,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         pendingImportFile.current = file;
         setImportAlertOpen(true);
     };
+    
+    const isDrawingTool = selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle';
 
     return (
         <>
@@ -465,11 +513,26 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         </Button>
                     </div>
 
-                    {(selectedTool === 'wall' || selectedTool === 'detail') && (
+                    {isDrawingTool && (
                         <Card className="absolute top-2 left-24 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-4">
                             <CardContent className="p-2 flex items-center gap-4">
+                                <ToggleGroup type="single" value={drawMode} onValueChange={(value: DrawMode) => value && setDrawMode(value)}>
+                                    <ToggleGroupItem value="wall" aria-label="Draw as walls">
+                                        <Waves className="h-4 w-4" />
+                                        <span className="ml-2">Wall</span>
+                                    </ToggleGroupItem>
+                                    <ToggleGroupItem value="detail" aria-label="Draw as details">
+                                        <PenLine className="h-4 w-4" />
+                                         <span className="ml-2">Detail</span>
+                                    </ToggleGroupItem>
+                                </ToggleGroup>
+                                
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="snap-to-grid" checked={snapToGrid} onCheckedChange={setSnapToGrid}/>
+                                    <Label htmlFor="snap-to-grid">Snap to Grid</Label>
+                                </div>
+
                                 <div className='flex items-center gap-2'>
-                                    {selectedTool === 'wall' ? <Brush/> : <PenLine />}
                                     <Label className="text-sm font-medium">Brush Size</Label>
                                     <Slider
                                         id="brush-size-slider"
@@ -541,6 +604,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     <div className="flex-1 relative overflow-hidden">
                         <MapGrid 
                             showGrid={showGrid} 
+                            snapToGrid={snapToGrid}
                             tokens={tokens}
                             paths={paths}
                             backgroundImage={backgroundImage}
@@ -553,6 +617,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                             onPortalToggle={handlePortalToggle}
                             selectedTool={selectedTool}
                             eraseMode={eraseMode}
+                            drawMode={drawMode}
                             onTokenMove={handleTokenMove}
                             brushColor={brushColor}
                             brushSize={brushSize}

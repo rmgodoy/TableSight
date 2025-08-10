@@ -2,7 +2,7 @@
 'use client';
 
 import { CircleUserRound, Shield, Lightbulb, DoorClosed, DoorOpen } from 'lucide-react';
-import type { Token, Tool, Path, EraseMode } from './gm-view';
+import type { Token, Tool, Path, EraseMode, DrawMode } from './gm-view';
 import type { Point } from '@/lib/raycasting';
 import { calculateVisibilityPolygon } from '@/lib/raycasting';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 
 interface MapGridProps {
   showGrid: boolean;
+  snapToGrid: boolean;
   tokens: Token[];
   paths: Path[];
   backgroundImage: string | null;
@@ -22,6 +23,7 @@ interface MapGridProps {
   onPortalToggle: (tokenId: string) => void;
   selectedTool: Tool;
   eraseMode: EraseMode;
+  drawMode: DrawMode;
   onTokenMove?: (tokenId: string, x: number, y: number) => void;
   isPlayerView?: boolean;
   brushColor?: string;
@@ -41,6 +43,7 @@ function getSvgPathFromPoints(points: Point[], scale: number = 1) {
 
 export function MapGrid({ 
   showGrid, 
+  snapToGrid,
   tokens, 
   paths,
   backgroundImage,
@@ -53,6 +56,7 @@ export function MapGrid({
   onPortalToggle,
   selectedTool,
   eraseMode,
+  drawMode,
   onTokenMove,
   isPlayerView = false,
   brushColor = '#000000',
@@ -82,6 +86,8 @@ export function MapGrid({
   const [activePan, setActivePan] = useState(pan);
 
   const [cursorPosition, setCursorPosition] = useState<Point | null>(null);
+  
+  const drawingStartPoint = useRef<Point | null>(null);
 
   useEffect(() => {
     // For GM view, always sync with props
@@ -113,14 +119,24 @@ export function MapGrid({
     window.addEventListener('resize', updateMapDimensions);
     return () => window.removeEventListener('resize', updateMapDimensions);
   }, []);
+  
+  const getSnappedPoint = useCallback((point: Point): Point => {
+    if (!snapToGrid) return point;
+    return {
+      x: Math.round(point.x / cellSize) * cellSize,
+      y: Math.round(point.y / cellSize) * cellSize,
+    };
+  }, [snapToGrid, cellSize]);
+
 
   const getTransformedPoint = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
     if (!containerRef.current) return { x: 0, y: 0 };
     const rect = containerRef.current.getBoundingClientRect();
-    return {
+    const point = {
       x: (e.clientX - rect.left - activePan.x) / activeZoom,
       y: (e.clientY - rect.top - activePan.y) / activeZoom,
     };
+    return snapToGrid ? getSnappedPoint(point) : point;
   }
 
   const getScreenPoint = (e: React.MouseEvent<HTMLDivElement> | MouseEvent): Point => {
@@ -144,8 +160,9 @@ export function MapGrid({
     
     const point = getTransformedPoint(e);
 
-    if (selectedTool === 'wall' || selectedTool === 'detail') {
+    if (selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle') {
       setIsDrawing(true);
+      drawingStartPoint.current = point;
       setCurrentPath([point]);
     } else if (selectedTool === 'erase') {
         if (eraseMode === 'line') {
@@ -178,8 +195,32 @@ export function MapGrid({
     }
 
     const point = getTransformedPoint(e);
-    if (isDrawing) {
-        setCurrentPath(prevPath => [...prevPath, point]);
+    if (isDrawing && drawingStartPoint.current) {
+        if(selectedTool === 'draw') {
+             setCurrentPath(prevPath => [...prevPath, point]);
+        } else if(selectedTool === 'rectangle') {
+            const start = drawingStartPoint.current;
+            setCurrentPath([
+                start,
+                { x: point.x, y: start.y },
+                point,
+                { x: start.x, y: point.y },
+                start
+            ]);
+        } else if(selectedTool === 'circle') {
+            const start = drawingStartPoint.current;
+            const radius = Math.hypot(point.x - start.x, point.y - start.y);
+            const circlePoints: Point[] = [];
+            const segments = 60; // More segments for a smoother circle
+            for(let i=0; i <= segments; i++) {
+                const angle = (i / segments) * 2 * Math.PI;
+                circlePoints.push({
+                    x: start.x + radius * Math.cos(angle),
+                    y: start.y + radius * Math.sin(angle),
+                });
+            }
+            setCurrentPath(circlePoints);
+        }
     } else if (isErasingRef.current && eraseMode === 'brush') {
         eraseWithBrush(point);
     }
@@ -198,11 +239,12 @@ export function MapGrid({
           points: currentPath, 
           color: brushColor,
           width: brushSize,
-          blocksLight: selectedTool === 'wall'
+          blocksLight: drawMode === 'wall'
       });
     }
     setIsDrawing(false);
     setCurrentPath([]);
+    drawingStartPoint.current = null;
     isErasingRef.current = false;
   };
 
@@ -316,7 +358,7 @@ export function MapGrid({
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draggingToken, pan, zoom, dragOffset]);
+  }, [draggingToken, pan, zoom, dragOffset, snapToGrid]);
 
   useEffect(() => {
     const handleSpacebarPan = (e: KeyboardEvent) => {
@@ -459,7 +501,7 @@ export function MapGrid({
       });
   }, [isPlayerView, showFogOfWar, tokens, wallSegments, activePan, activeZoom, cellSize]);
 
-  const isBrushToolActive = !isPlayerView && (selectedTool === 'wall' || selectedTool === 'detail' || (selectedTool === 'erase' && eraseMode === 'brush'));
+  const isBrushToolActive = !isPlayerView && (selectedTool === 'draw' || (selectedTool === 'erase' && eraseMode === 'brush'));
   const currentBrushSize = selectedTool === 'erase' ? eraseBrushSize : brushSize;
 
   const MapContent = () => {
@@ -486,18 +528,23 @@ export function MapGrid({
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                 {renderPaths.map((path) => {
+                    const pathD = getSvgPathFromPoints(path.points, 1);
                     return (
-                        <path
-                            key={path.id}
-                            d={getSvgPathFromPoints(path.points, 1)}
-                            stroke={path.color}
-                            strokeWidth={path.width}
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeDasharray={path.isPortal ? '10,10' : undefined}
-                            className={cn(path.isPortal && !path.blocksLight && "opacity-50")}
-                        />
+                        <g key={path.id}>
+                            <path
+                                d={pathD}
+                                stroke={path.color}
+                                strokeWidth={path.width}
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeDasharray={path.isPortal ? '10,10' : undefined}
+                                className={cn(path.isPortal && !path.blocksLight && "opacity-50")}
+                            />
+                            {!isPlayerView && path.points.map((p, i) => (
+                                <circle key={i} cx={p.x} cy={p.y} r={path.width/2 + 2} fill={path.color} />
+                            ))}
+                        </g>
                     )
                 })}
                 {!isPlayerView && isDrawing && currentPath.length > 0 && (
@@ -505,7 +552,7 @@ export function MapGrid({
                         d={getSvgPathFromPoints(currentPath)}
                         stroke={brushColor}
                         strokeWidth={brushSize}
-                        fill="none"
+                        fill={selectedTool === 'rectangle' || selectedTool === 'circle' ? 'transparent' : 'none'}
                         strokeLinecap="round"
                         strokeLinejoin="round"
                     />
@@ -601,9 +648,9 @@ export function MapGrid({
         isPlayerView ? "bg-transparent" : "bg-background",
          !isPlayerView && isPanning && "cursor-grabbing",
          !isPlayerView && !isPanning && {
-            'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy',
+            'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy' || selectedTool === 'rectangle' || selectedTool === 'circle',
             'cursor-default': selectedTool === 'select',
-            'cursor-none': isBrushToolActive,
+            'cursor-none': isBrushToolActive || selectedTool === 'draw',
             'cursor-not-allowed': selectedTool === 'erase' && eraseMode === 'line',
         }
       )}
