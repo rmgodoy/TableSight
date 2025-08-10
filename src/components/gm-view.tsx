@@ -263,7 +263,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             blocksLight: drawMode === 'wall' 
         };
     
-        if (smartMode && (selectedTool === 'rectangle' || selectedTool === 'circle')) {
+        if (smartMode && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'draw')) {
             const intersectingPaths = paths.filter(p =>
                 p.blocksLight === newPathData.blocksLight && pathIntersects(p, newPathData)
             );
