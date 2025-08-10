@@ -75,6 +75,7 @@ export function MapGrid({
   const [dropTargetCell, setDropTargetCell] = useState<Point | null>(null);
   
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isDrawingPortal, setIsDrawingPortal] = useState(false);
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
   const isErasingRef = useRef(false);
 
@@ -152,24 +153,7 @@ export function MapGrid({
   }
   
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPlayerView || e.button !== 0) return;
-
-    if (selectedTool === 'portal' && drawingStartPoint.current) {
-        const endPoint = getTransformedPoint(e);
-        const finalPath = [drawingStartPoint.current, endPoint];
-        if (finalPath.length > 1) {
-            onNewPath({ 
-                points: finalPath, 
-                color: '#ff00ff',
-                width: brushSize,
-                blocksLight: true
-            });
-        }
-        setIsDrawing(false);
-        setCurrentPath([]);
-        drawingStartPoint.current = null;
-        return;
-    }
+    if (isPlayerView || e.button !== 0 || isDrawingPortal) return;
     
     if (selectedTool === 'add-pc' || selectedTool === 'add-enemy') {
         const point = getTransformedPoint(e);
@@ -193,16 +177,34 @@ export function MapGrid({
 
     const point = getTransformedPoint(e);
 
+    if (selectedTool === 'portal') {
+        if (isDrawingPortal && drawingStartPoint.current) {
+            // This is the second click, finalize the portal
+            const finalPath = [drawingStartPoint.current, point];
+            if (finalPath.length > 1) {
+                onNewPath({ 
+                    points: finalPath, 
+                    color: '#ff00ff',
+                    width: brushSize,
+                    blocksLight: true
+                });
+            }
+            setIsDrawingPortal(false);
+            setCurrentPath([]);
+            drawingStartPoint.current = null;
+        } else {
+            // This is the first click, start the portal line
+            setIsDrawingPortal(true);
+            drawingStartPoint.current = point;
+            setCurrentPath([point, point]);
+        }
+        return; // Prevent other tools from activating
+    }
+
     if (selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle') {
       setIsDrawing(true);
       drawingStartPoint.current = point;
       setCurrentPath([point]);
-    } else if (selectedTool === 'portal') {
-        if (!drawingStartPoint.current) {
-            drawingStartPoint.current = point;
-            setIsDrawing(true);
-            setCurrentPath([point, point]);
-        }
     } else if (selectedTool === 'erase') {
         if (eraseMode === 'line') {
             onEraseLine(point);
@@ -230,11 +232,15 @@ export function MapGrid({
     }
 
     const point = getTransformedPoint(e);
+
+    if (isDrawingPortal && drawingStartPoint.current) {
+        setCurrentPath([drawingStartPoint.current, point]);
+        return;
+    }
+
     if (isDrawing && drawingStartPoint.current) {
         if(selectedTool === 'draw') {
              setCurrentPath(prevPath => [...prevPath, point]);
-        } else if (selectedTool === 'portal') {
-             setCurrentPath([drawingStartPoint.current, point]);
         } else if(selectedTool === 'rectangle') {
             const start = drawingStartPoint.current;
             setCurrentPath([
@@ -271,8 +277,8 @@ export function MapGrid({
     
     if (isPlayerView || e.button !== 0) return;
     
-    if (selectedTool === 'portal') {
-        // Portal logic is handled in handleMapClick to allow for two-point drawing
+    if (isDrawingPortal) {
+        // Portal logic is now handled in handleMouseDown to allow for two-point drawing
         return;
     }
 
@@ -588,7 +594,7 @@ export function MapGrid({
                         />
                     )
                 })}
-                {!isPlayerView && isDrawing && currentPath.length > 0 && (
+                {!isPlayerView && (isDrawing || isDrawingPortal) && currentPath.length > 0 && (
                     <path
                         d={getSvgPathFromPoints(currentPath)}
                         stroke={selectedTool === 'portal' ? '#ff00ff' : brushColor}
@@ -784,8 +790,3 @@ export function MapGrid({
     </div>
   );
 }
-
-
-    
-
-      
