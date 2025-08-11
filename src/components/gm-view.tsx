@@ -678,7 +678,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     </div>
                 </main>
 
-                <aside className="w-80 h-full flex flex-col p-4 gap-4 border-l border-border bg-card z-20">
+                <aside className="w-80 h-full flex flex-col p-4 gap-4 border-l border-border bg-card z-20 overflow-hidden">
                     <TokenPanel 
                         tokens={tokens.filter(t => t.type !== 'Light')} 
                         onVisibilityChange={handleTokenVisibilityChange}

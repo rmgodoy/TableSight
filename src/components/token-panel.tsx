@@ -23,6 +23,7 @@ import {
 import Link from 'next/link';
 import { Separator } from './ui/separator';
 import { Label } from './ui/label';
+import { ScrollArea } from './ui/scroll-area';
 
 interface TokenPanelProps {
     tokens: Token[];
@@ -97,129 +98,130 @@ export function TokenPanel({
 
     return (
         <div className="h-full flex flex-col gap-4">
-            <Card className="w-full">
+            <Card className="w-full flex flex-col flex-1 min-h-0">
                 <CardHeader>
                     <CardTitle>Tokens</CardTitle>
                 </CardHeader>
-                <CardContent className='overflow-y-auto'>
-                    {tokens.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center">No tokens on the map.</p>
-                    ) : (
-                        <ul className="space-y-2">
-                            {tokens.map(token => (
-                                <li key={token.id} className="flex flex-col p-2 rounded-md hover:bg-accent/50 transition-colors gap-2 text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                                            <Popover>
-                                                <PopoverTrigger asChild disabled={token.type === 'Light' || token.type === 'Portal'}>
-                                                     <div
-                                                        className={cn(
-                                                            "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg shrink-0 bg-cover bg-center",
-                                                            (token.type !== 'Light' && token.type !== 'Portal') && "cursor-pointer"
-                                                        )}
-                                                        style={{ backgroundColor: token.color, backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none' }}
-                                                    >
-                                                        {!token.iconUrl && renderIcon(token)}
-                                                    </div>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-2">
-                                                    <div className='flex items-center gap-4'>
-                                                        <div className='flex flex-col gap-2 items-center'>
-                                                            <Label>Color</Label>
-                                                            <input
-                                                                type="color"
-                                                                value={token.color}
-                                                                onChange={(e) => onTokenColorChange(token.id, e.target.value)}
-                                                                className="w-10 h-10 border-none cursor-pointer"
-                                                                title="Change token color"
-                                                            />
+                <CardContent className='flex-1 overflow-hidden p-0'>
+                    <ScrollArea className="h-full w-full p-6 pt-0">
+                        {tokens.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center">No tokens on the map.</p>
+                        ) : (
+                            <ul className="space-y-2">
+                                {tokens.map(token => (
+                                    <li key={token.id} className="flex flex-col p-2 rounded-md hover:bg-accent/50 transition-colors gap-2 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <Popover>
+                                                    <PopoverTrigger asChild disabled={token.type === 'Light' || token.type === 'Portal'}>
+                                                         <div
+                                                            className={cn(
+                                                                "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg shrink-0 bg-cover bg-center",
+                                                                (token.type !== 'Light' && token.type !== 'Portal') && "cursor-pointer"
+                                                            )}
+                                                            style={{ backgroundColor: token.color, backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none' }}
+                                                        >
+                                                            {!token.iconUrl && renderIcon(token)}
                                                         </div>
-                                                        <Separator orientation='vertical' className='h-16' />
-                                                        <div className='flex flex-col gap-2 items-start'>
-                                                             <div>
-                                                                <input type="file" accept="image/*" className='hidden' id={`file-input-${token.id}`} onChange={(e) => handleIconUpload(token.id, e)}/>
-                                                                <Button onClick={() => document.getElementById(`file-input-${token.id}`)?.click()}>Upload Icon</Button>
-                                                            </div>
-                                                            <div className='flex items-center gap-2'>
-                                                                <Label>Size</Label>
-                                                                <Input
-                                                                    type="number"
-                                                                    min={1}
-                                                                    max={20}
-                                                                    value={token.size}
-                                                                    onChange={(e) => onTokenSizeChange(token.id, parseInt(e.target.value, 10) || 1)}
-                                                                    className="h-8 w-20 text-center"
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-2">
+                                                        <div className='flex items-center gap-4'>
+                                                            <div className='flex flex-col gap-2 items-center'>
+                                                                <Label>Color</Label>
+                                                                <input
+                                                                    type="color"
+                                                                    value={token.color}
+                                                                    onChange={(e) => onTokenColorChange(token.id, e.target.value)}
+                                                                    className="w-10 h-10 border-none cursor-pointer"
+                                                                    title="Change token color"
                                                                 />
                                                             </div>
+                                                            <Separator orientation='vertical' className='h-16' />
+                                                            <div className='flex flex-col gap-2 items-start'>
+                                                                 <div>
+                                                                    <input type="file" accept="image/*" className='hidden' id={`file-input-${token.id}`} onChange={(e) => handleIconUpload(token.id, e)}/>
+                                                                    <Button onClick={() => document.getElementById(`file-input-${token.id}`)?.click()}>Upload Icon</Button>
+                                                                </div>
+                                                                <div className='flex items-center gap-2'>
+                                                                    <Label>Size</Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        min={1}
+                                                                        max={20}
+                                                                        value={token.size}
+                                                                        onChange={(e) => onTokenSizeChange(token.id, parseInt(e.target.value, 10) || 1)}
+                                                                        className="h-8 w-20 text-center"
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </PopoverContent>
-                                            </Popover>
-                                            <Input 
-                                                className="h-8 border-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring truncate"
-                                                value={token.name} 
-                                                onChange={(e) => onTokenNameChange(token.id, e.target.value)}
-                                                aria-label="Token name"
-                                                disabled={token.type === 'Light' || token.type === 'Portal'}
-                                            />
-                                        </div>
-                                        <div className="flex items-center shrink-0">
-                                            {token.type !== 'Light' && token.type !== 'Portal' && (
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon"
-                                                    className="h-8 w-8"
-                                                    onClick={() => onVisibilityChange(token.id, !token.visible)}
-                                                    title={token.visible ? "Hide Token" : "Show Token"}
-                                                >
-                                                    {token.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                                                </Button>
-                                            )}
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="text-destructive hover:text-destructive h-8 w-8"
-                                                onClick={() => onTokenDelete(token.id)}
-                                                title="Delete Token"
-                                                disabled={token.type === 'Light'}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    {(token.type === 'PC' || token.type === 'Enemy') && (
-                                        <div className="pl-10 flex flex-col items-start gap-4">
-                                            <div className='flex flex-col gap-2 w-full'>
-                                                <Button variant="ghost" className="h-8 px-2 justify-start" onClick={() => onTokenTorchToggle(token.id)}>
-                                                    <Flame className={cn("h-4 w-4 mr-2", token.torch.enabled ? "text-orange-500" : "text-muted-foreground")} />
-                                                    <span className={cn(token.torch.enabled ? "text-primary" : "text-muted-foreground")}>Torch</span>
-                                                </Button>
-                                                
-                                                {token.torch.enabled && (
-                                                <div className="flex items-center gap-2 w-full">
-                                                    <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, Math.max(1, token.torch.radius - 1))}><Minus/></Button>
-                                                    <Input
-                                                        type="number"
-                                                        min={1}
-                                                        max={999}
-                                                        value={token.torch.radius}
-                                                        onChange={(e) => onTokenTorchRadiusChange(token.id, parseInt(e.target.value, 10) || 1)}
-                                                        className="h-8 w-full text-center"
-                                                    />
-                                                    <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, token.torch.radius + 1)}><Plus/></Button>
-                                                </div>
+                                                    </PopoverContent>
+                                                </Popover>
+                                                <Input 
+                                                    className="h-8 border-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring truncate"
+                                                    value={token.name} 
+                                                    onChange={(e) => onTokenNameChange(token.id, e.target.value)}
+                                                    aria-label="Token name"
+                                                    disabled={token.type === 'Light' || token.type === 'Portal'}
+                                                />
+                                            </div>
+                                            <div className="flex items-center shrink-0">
+                                                {token.type !== 'Light' && token.type !== 'Portal' && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => onVisibilityChange(token.id, !token.visible)}
+                                                        title={token.visible ? "Hide Token" : "Show Token"}
+                                                    >
+                                                        {token.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                                    </Button>
                                                 )}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-destructive hover:text-destructive h-8 w-8"
+                                                    onClick={() => onTokenDelete(token.id)}
+                                                    title="Delete Token"
+                                                    disabled={token.type === 'Light'}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             </div>
                                         </div>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
+                                        {(token.type === 'PC' || token.type === 'Enemy') && (
+                                            <div className="pl-10 flex flex-col items-start gap-4">
+                                                <div className='flex flex-col gap-2 w-full'>
+                                                    <Button variant="ghost" className="h-8 px-2 justify-start" onClick={() => onTokenTorchToggle(token.id)}>
+                                                        <Flame className={cn("h-4 w-4 mr-2", token.torch.enabled ? "text-orange-500" : "text-muted-foreground")} />
+                                                        <span className={cn(token.torch.enabled ? "text-primary" : "text-muted-foreground")}>Torch</span>
+                                                    </Button>
+                                                    
+                                                    {token.torch.enabled && (
+                                                    <div className="flex items-center gap-2 w-full">
+                                                        <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, Math.max(1, token.torch.radius - 1))}><Minus/></Button>
+                                                        <Input
+                                                            type="number"
+                                                            min={1}
+                                                            max={999}
+                                                            value={token.torch.radius}
+                                                            onChange={(e) => onTokenTorchRadiusChange(token.id, parseInt(e.target.value, 10) || 1)}
+                                                            className="h-8 w-full text-center"
+                                                        />
+                                                        <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => onTokenTorchRadiusChange(token.id, token.torch.radius + 1)}><Plus/></Button>
+                                                    </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </ScrollArea>
                 </CardContent>
             </Card>
 
-            <div className='flex-1' />
 
              <Card>
                 <CardContent className="p-2 space-y-2">
