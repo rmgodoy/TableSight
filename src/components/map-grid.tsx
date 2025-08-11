@@ -151,17 +151,6 @@ export function MapGrid({
         y: e.clientY - rect.top,
     };
   }
-  
-  const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPlayerView || e.button !== 0 || isDrawingPortal) return;
-    
-    if (selectedTool === 'add-pc' || selectedTool === 'add-enemy') {
-        const point = getTransformedPoint(e);
-        const gridX = Math.floor(point.x / cellSize);
-        const gridY = Math.floor(point.y / cellSize);
-        onMapClick(gridX, gridY);
-    }
-  }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isPlayerView) return;
@@ -173,35 +162,9 @@ export function MapGrid({
         return;
     }
     
-    if (e.button !== 0) return;
-
     const point = getTransformedPoint(e);
 
-    if (selectedTool === 'portal') {
-        if (isDrawingPortal && drawingStartPoint.current) {
-            // This is the second click, finalize the portal
-            const finalPath = [drawingStartPoint.current, point];
-            if (finalPath.length > 1) {
-                onNewPath({ 
-                    points: finalPath, 
-                    color: '#ff00ff',
-                    width: brushSize,
-                    blocksLight: true
-                });
-            }
-            setIsDrawingPortal(false);
-            setCurrentPath([]);
-            drawingStartPoint.current = null;
-        } else {
-            // This is the first click, start the portal line
-            setIsDrawingPortal(true);
-            drawingStartPoint.current = point;
-            setCurrentPath([point, point]);
-        }
-        return; // Prevent other tools from activating
-    }
-
-    if (selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle') {
+    if (selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'portal') {
       setIsDrawing(true);
       drawingStartPoint.current = point;
       setCurrentPath([point]);
@@ -212,6 +175,10 @@ export function MapGrid({
             isErasingRef.current = true;
             eraseWithBrush(point);
         }
+    } else if (selectedTool === 'add-pc' || selectedTool === 'add-enemy') {
+        const gridX = Math.floor(point.x / cellSize);
+        const gridY = Math.floor(point.y / cellSize);
+        onMapClick(gridX, gridY);
     }
   };
 
@@ -239,7 +206,7 @@ export function MapGrid({
     }
 
     if (isDrawing && drawingStartPoint.current) {
-        if(selectedTool === 'draw') {
+        if(selectedTool === 'draw' || selectedTool === 'portal') {
              setCurrentPath(prevPath => [...prevPath, point]);
         } else if(selectedTool === 'rectangle') {
             const start = drawingStartPoint.current;
@@ -275,17 +242,12 @@ export function MapGrid({
         return;
     }
     
-    if (isPlayerView || e.button !== 0) return;
-    
-    if (isDrawingPortal) {
-        // Portal logic is now handled in handleMouseDown to allow for two-point drawing
-        return;
-    }
+    if (isPlayerView) return;
 
     if (isDrawing && currentPath.length > 1) {
       onNewPath({ 
           points: currentPath, 
-          color: brushColor,
+          color: selectedTool === 'portal' ? '#ff00ff' : brushColor,
           width: brushSize,
           blocksLight: drawMode === 'wall'
       });
@@ -552,7 +514,7 @@ export function MapGrid({
       });
   }, [isPlayerView, showFogOfWar, tokens, wallSegments, activePan, activeZoom, cellSize]);
 
-  const isBrushToolActive = !isPlayerView && (selectedTool === 'draw' || (selectedTool === 'erase' && eraseMode === 'brush'));
+  const isBrushToolActive = !isPlayerView && (selectedTool === 'draw' || selectedTool === 'portal' || (selectedTool === 'erase' && eraseMode === 'brush'));
   const currentBrushSize = selectedTool === 'erase' ? eraseBrushSize : brushSize;
 
   const MapContent = () => {
@@ -696,7 +658,7 @@ export function MapGrid({
         isPlayerView ? "bg-transparent" : "bg-background",
          !isPlayerView && isPanning && "cursor-grabbing",
          !isPlayerView && !isPanning && {
-            'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy' || selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'portal',
+            'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy' || selectedTool === 'rectangle' || selectedTool === 'circle',
             'cursor-default': selectedTool === 'select',
             'cursor-none': isBrushToolActive || selectedTool === 'draw',
             'cursor-not-allowed': selectedTool === 'erase' && eraseMode === 'line',
@@ -705,11 +667,10 @@ export function MapGrid({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onClick={handleMapClick}
       onMouseLeave={(e) => {
           if (!isPlayerView) {
               setCursorPosition(null);
-              if (selectedTool !== 'portal' && isDrawing) handleMouseUp(e);
+              if (isDrawing) handleMouseUp(e);
               if (isErasingRef.current) isErasingRef.current = false;
           }
           if (isPanning) setIsPanning(false);
