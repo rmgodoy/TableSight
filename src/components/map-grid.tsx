@@ -165,14 +165,13 @@ export function MapGrid({
     const worldPoint = getTransformedPoint(e, false); // Get world coordinates without snapping
     const point = snapToGrid ? getSnappedPoint(worldPoint) : worldPoint;
 
-    if (selectedTool === 'portal') {
-        setIsDrawingPortal(true);
-        drawingStartPoint.current = point;
-        setCurrentPath([point, point]);
-    } else if (selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle') {
-      setIsDrawing(true);
-      drawingStartPoint.current = point;
-      setCurrentPath([point]);
+    if (selectedTool === 'portal' || selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle') {
+        const drawingToolActive = selectedTool === 'portal' || selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle';
+        if (drawingToolActive) {
+            setIsDrawing(true);
+            drawingStartPoint.current = point;
+            setCurrentPath([point]);
+        }
     } else if (selectedTool === 'erase') {
         if (eraseMode === 'line') {
             onEraseLine(point);
@@ -207,14 +206,11 @@ export function MapGrid({
 
     const point = getTransformedPoint(e);
 
-    if (isDrawingPortal && drawingStartPoint.current) {
-        setCurrentPath([drawingStartPoint.current, point]);
-        return;
-    }
-
     if (isDrawing && drawingStartPoint.current) {
         if(selectedTool === 'draw') {
              setCurrentPath(prevPath => [...prevPath, point]);
+        } else if (selectedTool === 'portal') {
+            setCurrentPath([drawingStartPoint.current, point]);
         } else if(selectedTool === 'rectangle') {
             const start = drawingStartPoint.current;
             setCurrentPath([
@@ -251,10 +247,7 @@ export function MapGrid({
     
     if (isPlayerView) return;
     
-    const isFreeDraw = isDrawing && currentPath.length > 1;
-    const isLineDraw = isDrawingPortal && currentPath.length > 1;
-
-    if (isFreeDraw || isLineDraw) {
+    if (isDrawing && currentPath.length > 1) {
       onNewPath({ 
           points: currentPath, 
           color: selectedTool === 'portal' ? '#ff00ff' : brushColor,
@@ -263,7 +256,6 @@ export function MapGrid({
       });
     }
     setIsDrawing(false);
-    setIsDrawingPortal(false);
     setCurrentPath([]);
     drawingStartPoint.current = null;
     isErasingRef.current = false;
@@ -430,17 +422,17 @@ export function MapGrid({
 
     const iconContent = () => {
         if (token.type === 'Light') {
-          return <Lightbulb className={cn("text-white/80 transition-colors", token.torch.enabled && "text-yellow-300")}/>
+          return <Lightbulb className={cn("text-white/80 transition-colors w-full h-full", token.torch.enabled && "text-yellow-300")}/>
         }
         if (token.type === 'Portal') {
-          return portalWall?.blocksLight ? <DoorClosed className="text-red-300" /> : <DoorOpen className="text-green-300"/>;
+          return portalWall?.blocksLight ? <DoorClosed className="text-red-300 w-full h-full" /> : <DoorOpen className="text-green-300 w-full h-full"/>;
         }
         if (token.iconUrl) return null;
         if (token.type === 'PC') {
-            return <CircleUserRound className="text-white/80" />;
+            return <CircleUserRound className="text-white/80 w-full h-full" />;
         }
         if (token.type === 'Enemy') {
-            return <Shield className="text-white/80" />;
+            return <Shield className="text-white/80 w-full h-full" />;
         }
         return null;
     }
@@ -448,7 +440,7 @@ export function MapGrid({
     return (
        <div
         className={cn(
-          "rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center",
+          "rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center p-1",
            (token.type === 'Light' || token.type === 'Portal') && 'cursor-pointer'
         )}
         style={{ 
@@ -458,9 +450,7 @@ export function MapGrid({
           height: '100%',
         }}
        >
-         <div style={{transform: `scale(${token.size * 0.5})`}}>
-            {iconContent()}
-         </div>
+        {iconContent()}
        </div>
     );
   };
@@ -567,7 +557,7 @@ export function MapGrid({
                         />
                     )
                 })}
-                {!isPlayerView && (isDrawing || isDrawingPortal) && currentPath.length > 0 && (
+                {!isPlayerView && isDrawing && currentPath.length > 0 && (
                     <path
                         d={getSvgPathFromPoints(currentPath)}
                         stroke={selectedTool === 'portal' ? '#ff00ff' : brushColor}
@@ -592,21 +582,24 @@ export function MapGrid({
                   />
                 )}
                 {renderTokens.map(token => {
-                    let tokenSize = cellSize;
-                    let tokenPos = { x: 0, y: 0 };
-                    
-                    if(token.type === 'PC' || token.type === 'Enemy') {
-                        tokenSize = token.size * cellSize;
+                    const visualSizeFactor = 0.9;
+                    let tokenSize, tokenPos;
+
+                    if (token.type === 'PC' || token.type === 'Enemy') {
+                        const baseSize = token.size * cellSize;
+                        tokenSize = baseSize * visualSizeFactor;
+                        const offset = (baseSize - tokenSize) / 2;
                         tokenPos = {
-                            x: token.x * cellSize,
-                            y: token.y * cellSize,
-                        }
+                            x: token.x * cellSize + offset,
+                            y: token.y * cellSize + offset,
+                        };
                     } else { // Light or Portal
-                         tokenSize = cellSize;
-                         tokenPos = {
-                            x: token.x - tokenSize / 2,
-                            y: token.y - tokenSize / 2,
-                         }
+                        tokenSize = cellSize * visualSizeFactor;
+                        const offset = (cellSize - tokenSize) / 2;
+                        tokenPos = {
+                            x: token.x - (tokenSize / 2),
+                            y: token.y - (tokenSize / 2),
+                        };
                     }
 
                     return (
