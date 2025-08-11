@@ -6,7 +6,7 @@ import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Min
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -24,6 +24,9 @@ import Link from 'next/link';
 import { Separator } from './ui/separator';
 import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
+
+type TokenFilter = 'combatants' | 'lights' | 'portals';
 
 interface TokenPanelProps {
     tokens: Token[];
@@ -56,6 +59,7 @@ export function TokenPanel({
 }: TokenPanelProps) {
     const { toast } = useToast();
     const [playerUrl, setPlayerUrl] = useState('');
+    const [filter, setFilter] = useState<TokenFilter>('combatants');
 
      useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -73,6 +77,18 @@ export function TokenPanel({
             });
         }
     };
+
+    const filteredTokens = useMemo(() => {
+        switch (filter) {
+            case 'lights':
+                return tokens.filter(t => t.type === 'Light');
+            case 'portals':
+                return tokens.filter(t => t.type === 'Portal');
+            case 'combatants':
+            default:
+                return tokens.filter(t => t.type === 'PC' || t.type === 'Enemy');
+        }
+    }, [tokens, filter]);
 
 
     const handleIconUpload = (tokenId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,15 +116,28 @@ export function TokenPanel({
         <div className="h-full flex flex-col gap-4">
             <Card className="w-full flex flex-col flex-1 min-h-0">
                 <CardHeader>
-                    <CardTitle>Tokens</CardTitle>
+                    <div className="flex justify-between items-center">
+                        <CardTitle>Tokens</CardTitle>
+                        <ToggleGroup type="single" value={filter} onValueChange={(value: TokenFilter) => value && setFilter(value)} size="sm">
+                            <ToggleGroupItem value="combatants" aria-label="Combatants">
+                                <Users className="h-4 w-4" />
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="lights" aria-label="Lights">
+                                <Lightbulb className="h-4 w-4" />
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="portals" aria-label="Portals">
+                                <DoorClosed className="h-4 w-4" />
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+                    </div>
                 </CardHeader>
                 <CardContent className='flex-1 overflow-hidden p-0'>
                     <ScrollArea className="h-full w-full p-6 pt-0">
-                        {tokens.length === 0 ? (
-                            <p className="text-sm text-muted-foreground text-center">No tokens on the map.</p>
+                        {filteredTokens.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center">No tokens of this type.</p>
                         ) : (
                             <ul className="space-y-2">
-                                {tokens.map(token => (
+                                {filteredTokens.map(token => (
                                     <li key={token.id} className="flex flex-col p-2 rounded-md hover:bg-accent/50 transition-colors gap-2 text-sm">
                                         <div className="flex items-center gap-2">
                                             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -189,7 +218,7 @@ export function TokenPanel({
                                                 </Button>
                                             </div>
                                         </div>
-                                        {(token.type === 'PC' || token.type === 'Enemy') && (
+                                        {(token.type === 'PC' || token.type === 'Enemy' || token.type === 'Light') && (
                                             <div className="pl-10 flex flex-col items-start gap-4">
                                                 <div className='flex flex-col gap-2 w-full'>
                                                     <Button variant="ghost" className="h-8 px-2 justify-start" onClick={() => onTokenTorchToggle(token.id)}>
@@ -265,5 +294,3 @@ export function TokenPanel({
         </div>
     );
 }
-
-    
