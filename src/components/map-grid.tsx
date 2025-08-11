@@ -15,7 +15,7 @@ interface MapGridProps {
   paths: Path[];
   backgroundImage: string | null;
   cellSize: number;
-  onMapClick: (x: number, y: number) => void;
+  onMapClick: (x: number, y: number, isPixelCoords?: boolean) => void;
   onNewPath: (path: Omit<Path, 'id' | 'isPortal'>) => void;
   onEraseLine: (point: Point) => void;
   onEraseBrush: (updatedPaths: Path[]) => void;
@@ -184,6 +184,8 @@ export function MapGrid({
         const gridX = Math.floor(worldPoint.x / cellSize);
         const gridY = Math.floor(worldPoint.y / cellSize);
         onMapClick(gridX, gridY);
+    } else if (selectedTool === 'add-light') {
+        onMapClick(point.x, point.y, true);
     }
   };
 
@@ -667,7 +669,7 @@ export function MapGrid({
         isPlayerView ? "bg-transparent" : "bg-background",
          !isPlayerView && isPanning && "cursor-grabbing",
          !isPlayerView && !isPanning && {
-            'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy' || selectedTool === 'rectangle' || selectedTool === 'circle',
+            'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy' || selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'add-light',
             'cursor-default': selectedTool === 'select',
             'cursor-none': isBrushToolActive || selectedTool === 'draw' || selectedTool === 'portal',
             'cursor-not-allowed': selectedTool === 'erase' && eraseMode === 'line',

@@ -28,7 +28,7 @@ import type { Point } from '@/lib/raycasting';
 import { Switch } from './ui/switch';
 import { mergeShapes, pathIntersects } from '@/lib/shape-merger';
 
-export type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'erase' | 'add-pc' | 'add-enemy' | 'portal';
+export type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'erase' | 'add-pc' | 'add-enemy' | 'portal' | 'add-light';
 export type EraseMode = 'line' | 'brush';
 export type DrawMode = 'wall' | 'detail';
 
@@ -230,8 +230,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         };
     }, [undo, redo]);
 
-    const handleMapClick = (x: number, y: number) => {
+    const handleMapClick = (x: number, y: number, isPixelCoords: boolean = false) => {
         let newToken: Token | null = null;
+        
         if (selectedTool === 'add-pc') {
             newToken = {
                 id: `pc-${Date.now()}`,
@@ -240,8 +241,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 size: 1,
                 torch: { enabled: false, radius: 5 },
             };
-        }
-        if (selectedTool === 'add-enemy') {
+        } else if (selectedTool === 'add-enemy') {
             newToken = {
                 id: `enemy-${Date.now()}`,
                 name: `Enemy ${tokens.filter(t => t.type === 'Enemy').length + 1}`,
@@ -249,7 +249,17 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 size: 1,
                 torch: { enabled: false, radius: 5 },
             };
+        } else if (selectedTool === 'add-light') {
+             newToken = {
+                id: `light-${Date.now()}`,
+                name: `Light ${tokens.filter(t => t.type === 'Light').length + 1}`,
+                x, y, type: 'Light' as const, visible: false, // Not visible to players
+                color: '#fBBF24',
+                size: 1,
+                torch: { enabled: true, radius: 10 },
+            };
         }
+
         if (newToken) {
             recordHistory({ tokens: [...tokens, newToken]});
         }
@@ -510,6 +520,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     
     const isDrawingTool = selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle';
     const isPortalTool = selectedTool === 'portal';
+    const isLightTool = selectedTool === 'add-light';
 
     return (
         <>
@@ -547,7 +558,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         </Button>
                     </div>
 
-                    {(isDrawingTool || isPortalTool) && (
+                    {(isDrawingTool || isPortalTool || isLightTool) && (
                         <Card className="absolute top-2 left-24 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-4">
                             <CardContent className="p-2 flex items-center gap-4">
                                 {isDrawingTool && (
@@ -576,7 +587,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                                 )}
                                
 
-                                <div className='flex items-center gap-2'>
+                                {(isDrawingTool || isPortalTool) && <div className='flex items-center gap-2'>
                                     <Label className="text-sm font-medium">Size</Label>
                                     <Slider
                                         id="brush-size-slider"
@@ -586,7 +597,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                                         className="w-32"
                                     />
                                     <span className='text-sm font-bold w-8 text-center'>{brushSize}</span>
-                                </div>
+                                </div>}
 
                                 {isDrawingTool && (
                                      <div className="flex items-center gap-2">
