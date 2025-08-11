@@ -165,7 +165,11 @@ export function MapGrid({
     const worldPoint = getTransformedPoint(e, false); // Get world coordinates without snapping
     const point = snapToGrid ? getSnappedPoint(worldPoint) : worldPoint;
 
-    if (selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'portal') {
+    if (selectedTool === 'portal') {
+        setIsDrawingPortal(true);
+        drawingStartPoint.current = point;
+        setCurrentPath([point, point]);
+    } else if (selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle') {
       setIsDrawing(true);
       drawingStartPoint.current = point;
       setCurrentPath([point]);
@@ -207,7 +211,7 @@ export function MapGrid({
     }
 
     if (isDrawing && drawingStartPoint.current) {
-        if(selectedTool === 'draw' || selectedTool === 'portal') {
+        if(selectedTool === 'draw') {
              setCurrentPath(prevPath => [...prevPath, point]);
         } else if(selectedTool === 'rectangle') {
             const start = drawingStartPoint.current;
@@ -244,8 +248,11 @@ export function MapGrid({
     }
     
     if (isPlayerView) return;
+    
+    const isFreeDraw = isDrawing && currentPath.length > 1;
+    const isLineDraw = isDrawingPortal && currentPath.length > 1;
 
-    if (isDrawing && currentPath.length > 1) {
+    if (isFreeDraw || isLineDraw) {
       onNewPath({ 
           points: currentPath, 
           color: selectedTool === 'portal' ? '#ff00ff' : brushColor,
@@ -254,6 +261,7 @@ export function MapGrid({
       });
     }
     setIsDrawing(false);
+    setIsDrawingPortal(false);
     setCurrentPath([]);
     drawingStartPoint.current = null;
     isErasingRef.current = false;
@@ -661,7 +669,7 @@ export function MapGrid({
          !isPlayerView && !isPanning && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy' || selectedTool === 'rectangle' || selectedTool === 'circle',
             'cursor-default': selectedTool === 'select',
-            'cursor-none': isBrushToolActive || selectedTool === 'draw',
+            'cursor-none': isBrushToolActive || selectedTool === 'draw' || selectedTool === 'portal',
             'cursor-not-allowed': selectedTool === 'erase' && eraseMode === 'line',
         }
       )}
@@ -671,7 +679,7 @@ export function MapGrid({
       onMouseLeave={(e) => {
           if (!isPlayerView) {
               setCursorPosition(null);
-              if (isDrawing) handleMouseUp(e);
+              if (isDrawing || isDrawingPortal) handleMouseUp(e);
               if (isErasingRef.current) isErasingRef.current = false;
           }
           if (isPanning) setIsPanning(false);

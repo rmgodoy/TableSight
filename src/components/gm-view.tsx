@@ -288,7 +288,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     
         if (smartMode && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'draw')) {
             const intersectingPaths = paths.filter(p =>
-                p.blocksLight === newPathData.blocksLight && pathIntersects(p, newPathData)
+                p.blocksLight === newPathData.blocksLight && !p.isPortal && pathIntersects(p, newPathData)
             );
     
             if (intersectingPaths.length > 0) {
