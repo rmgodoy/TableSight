@@ -582,7 +582,7 @@ export function MapGrid({
                   />
                 )}
                 {renderTokens.map(token => {
-                    const visualSizeFactor = 0.9;
+                    const visualSizeFactor = 0.75;
                     let tokenSize, tokenPos;
 
                     if (token.type === 'PC' || token.type === 'Enemy') {
