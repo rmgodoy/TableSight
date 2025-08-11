@@ -162,7 +162,8 @@ export function MapGrid({
         return;
     }
     
-    const point = getTransformedPoint(e);
+    const worldPoint = getTransformedPoint(e, false); // Get world coordinates without snapping
+    const point = snapToGrid ? getSnappedPoint(worldPoint) : worldPoint;
 
     if (selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'portal') {
       setIsDrawing(true);
@@ -176,8 +177,8 @@ export function MapGrid({
             eraseWithBrush(point);
         }
     } else if (selectedTool === 'add-pc' || selectedTool === 'add-enemy') {
-        const gridX = Math.floor(point.x / cellSize);
-        const gridY = Math.floor(point.y / cellSize);
+        const gridX = Math.floor(worldPoint.x / cellSize);
+        const gridY = Math.floor(worldPoint.y / cellSize);
         onMapClick(gridX, gridY);
     }
   };
