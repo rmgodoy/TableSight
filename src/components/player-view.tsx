@@ -19,6 +19,12 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     if (!savedState) return;
     try {
       const gameState: GameState = JSON.parse(savedState);
+      
+      // If player view is frozen, don't apply any updates
+      if (gameState.isPlayerViewFrozen) {
+          return;
+      }
+
       // Backwards compatibility
       const updatedTokens = (gameState.tokens || []).map(t => ({
         ...t,

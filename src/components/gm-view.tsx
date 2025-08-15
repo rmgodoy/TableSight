@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb, Grid3x3, Waves, BrainCircuit, PanelRight } from 'lucide-react';
+import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb, Grid3x3, Waves, BrainCircuit, PanelRight, Snowflake } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { GmSidebar } from '@/components/gm-sidebar';
 import { TokenPanel } from '@/components/token-panel';
@@ -74,6 +74,7 @@ export type GameState = {
     backgroundImage?: string | null;
     cellSize?: number;
     lastModified?: number;
+    isPlayerViewFrozen?: boolean;
 };
 
 // Represents a single state in the history for undo/redo
@@ -106,6 +107,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [brushSize, setBrushSize] = useState(5);
     const [eraseBrushSize, setEraseBrushSize] = useState(20);
     const [hoveredTokenId, setHoveredTokenId] = useState<string | null>(null);
+    const [isPlayerViewFrozen, setPlayerViewFrozen] = useState(false);
     
     // Derived state from history
     const currentHistoryState = history[historyIndex] || { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
@@ -168,6 +170,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 if (gameState.pan) setPan(gameState.pan);
                 if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
                 if (gameState.playerPan) setPlayerPan(gameState.playerPan);
+                if (gameState.isPlayerViewFrozen) setPlayerViewFrozen(gameState.isPlayerViewFrozen);
             } else {
                 const initialState: HistoryState = { sessionName: '', paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
                 setHistory([initialState]);
@@ -195,6 +198,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             playerZoom,
             playerPan,
             lastModified: Date.now(),
+            isPlayerViewFrozen,
         };
 
         const handler = setTimeout(() => {
@@ -211,7 +215,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }, 500);
 
         return () => clearTimeout(handler);
-    }, [currentHistoryState, zoom, pan, playerZoom, playerPan, historyIndex, storageKey, toast]);
+    }, [currentHistoryState, zoom, pan, playerZoom, playerPan, historyIndex, storageKey, toast, isPlayerViewFrozen]);
 
 
     const undo = useCallback(() => {
@@ -222,7 +226,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
     const redo = useCallback(() => {
         if (historyIndex < history.length - 1) {
-            setHistoryIndex(prev => prev - 1);
+            setHistoryIndex(prev => prev + 1);
         }
     }, [history, historyIndex]);
 
@@ -477,6 +481,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         toast({ title: "Player View Synced!", description: "The player's view now matches yours." });
     };
     const matchPlayerView = () => { setPan(playerPan); setZoom(playerZoom); };
+    const togglePlayerViewFreeze = () => setPlayerViewFrozen(prev => !prev);
 
     const confirmImport = () => {
         if (!pendingImportFile.current) return;
@@ -602,7 +607,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 <GmSidebar 
                     selectedTool={selectedTool}
                     onToolSelect={setSelectedTool}
-                    onImport={onImport}
                     undo={undo}
                     redo={redo}
                     resetView={resetView}
@@ -617,6 +621,12 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                             {showFogOfWar ? <Eye /> : <EyeOff />}
                         </Button>
                     </div>
+
+                    {isPlayerViewFrozen && (
+                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 p-2 rounded-lg bg-blue-600 text-white flex items-center gap-2 text-lg font-bold animate-pulse">
+                            <Snowflake className="h-6 w-6" /> Player View Frozen
+                        </div>
+                    )}
 
                     {(isDrawingTool || isPortalTool || isHiddenWallTool || isLightTool) && (
                         <Card className="absolute top-2 left-24 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-4">
@@ -754,6 +764,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     <TokenPanel 
                         tokens={tokens}
                         sessionName={sessionName}
+                        isPlayerViewFrozen={isPlayerViewFrozen}
                         onVisibilityChange={handleTokenVisibilityChange}
                         onToggleAllEnemiesVisibility={handleToggleAllEnemiesVisibility}
                         onTokenDelete={handleTokenDelete}
@@ -769,6 +780,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         sessionId={sessionId}
                         syncPlayerView={syncPlayerView}
                         matchPlayerView={matchPlayerView}
+                        togglePlayerViewFreeze={togglePlayerViewFreeze}
                     />
                 </aside>
             </div>

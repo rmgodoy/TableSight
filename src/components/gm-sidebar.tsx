@@ -16,7 +16,6 @@ import { useRef } from 'react';
 interface GmSidebarProps {
     selectedTool: Tool;
     onToolSelect: (tool: Tool) => void;
-    onImport: (file: File) => void;
     undo: () => void;
     redo: () => void;
     resetView: () => void;
@@ -28,7 +27,6 @@ interface GmSidebarProps {
 export function GmSidebar({ 
     selectedTool, 
     onToolSelect,
-    onImport,
     undo,
     redo,
     resetView,
@@ -57,19 +55,6 @@ export function GmSidebar({
         { id: 'zoom-out', label: 'Zoom Out', icon: <ZoomOut />, action: zoomOut },
         { id: 'reset-view', label: 'Reset View', icon: <Maximize />, action: resetView },
     ];
-
-    const handleImportClick = () => {
-        importInputRef.current?.click();
-    };
-    
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            onImport(file);
-        }
-        // Reset the input value to allow re-uploading the same file
-        event.target.value = '';
-    };
 
     return (
         <TooltipProvider delayDuration={100}>

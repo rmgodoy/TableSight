@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, PanelRight, Heart } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, PanelRight, Heart, Snowflake } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -31,6 +31,7 @@ type TokenFilter = 'combatants' | 'lights' | 'portals';
 interface TokenPanelProps {
     tokens: Token[];
     sessionName?: string;
+    isPlayerViewFrozen: boolean;
     onVisibilityChange: (tokenId: string, isVisible: boolean) => void;
     onToggleAllEnemiesVisibility: () => void;
     onTokenDelete: (tokenId: string) => void;
@@ -46,6 +47,7 @@ interface TokenPanelProps {
     sessionId: string;
     syncPlayerView: () => void;
     matchPlayerView: () => void;
+    togglePlayerViewFreeze: () => void;
 }
 
 const HpInput = ({ token, onTokenHpChange }: { token: Token, onTokenHpChange: (tokenId: string, hp: { current: number, max: number }) => void }) => {
@@ -67,11 +69,12 @@ const HpInput = ({ token, onTokenHpChange }: { token: Token, onTokenHpChange: (t
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
             commitChange();
             (e.target as HTMLInputElement).blur(); // Lose focus on enter
         }
         if (e.key === 'Escape') {
-            setCurrentHp(token.hp!.current.toString());
              (e.target as HTMLInputElement).blur();
         }
     };
@@ -94,6 +97,7 @@ const HpInput = ({ token, onTokenHpChange }: { token: Token, onTokenHpChange: (t
 export function TokenPanel({ 
     tokens, 
     sessionName,
+    isPlayerViewFrozen,
     onVisibilityChange, 
     onToggleAllEnemiesVisibility,
     onTokenDelete, 
@@ -109,6 +113,7 @@ export function TokenPanel({
     sessionId,
     syncPlayerView,
     matchPlayerView,
+    togglePlayerViewFreeze,
 }: TokenPanelProps) {
     const { toast } = useToast();
     const [playerUrl, setPlayerUrl] = useState('');
@@ -375,8 +380,9 @@ export function TokenPanel({
                     </div>
 
                     <Separator />
-                     <div className='grid grid-cols-1 gap-2'>
+                     <div className='grid grid-cols-2 gap-2'>
                         <Button variant="outline" asChild><Link href="/"><Home className="mr-2 h-4 w-4" /> Home</Link></Button>
+                        <Button variant={isPlayerViewFrozen ? "destructive" : "outline"} onClick={togglePlayerViewFreeze}><Snowflake className="mr-2 h-4 w-4" /> Freeze</Button>
                     </div>
                 </CardContent>
             </Card>
@@ -387,3 +393,4 @@ export function TokenPanel({
     
 
     
+
