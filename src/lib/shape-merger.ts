@@ -3,7 +3,7 @@
 
 import type { Path } from '@/components/gm-view';
 import type { Point } from '@/lib/raycasting';
-import polygonClipping, { type Polygon, type MultiPolygon as ClippingMultiPolygon } from 'polygon-clipping';
+import polygonClipping, { type Polygon as ClippingPolygon } from 'polygon-clipping';
 
 
 // The polygon-clipping library expects points in [x, y] tuple format.
@@ -11,17 +11,17 @@ type PolygonPoint = [number, number];
 // It operates on arrays of polygons, where a polygon is an array of rings,
 // and a ring is an array of points. For our simple, non-holed shapes,
 // this will be an array with a single polygon, which has a single ring.
-type ClippingPolygon = PolygonPoint[][];
-type MultiPolygon = ClippingPolygon[];
+type PathClippingPolygon = ClippingPolygon[];
 
-function pathToClippingMultiPolygon(path: Path): MultiPolygon {
-    return [[path.points.map(p => [p.x, p.y])]];
+function pathToClippingPolygon(path: Path): PathClippingPolygon {
+    // A path is an array of polygons (the first is the exterior, the rest are holes)
+    return path.points.map(ring => ring.map(p => [p.x, p.y] as PolygonPoint));
 }
 
 /**
  * Merges multiple paths into a single path representing their outer perimeter.
  * @param paths An array of Path objects to merge.
- * @returns A single Path object that is the union of the input paths, or null if merging fails.
+ * @returns An array of new Path objects that is the union of the input paths, or null if merging fails.
  */
 export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id'>[] | null> {
     if (paths.length === 0) {
@@ -39,22 +39,26 @@ export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id'>[] | n
 
     try {
         // Convert our Path objects into the format the library expects.
-        const multiPolygons: MultiPolygon[] = paths.map(pathToClippingMultiPolygon);
+        // We need to flatten the structure since the library's union function takes individual polygons.
+        const allPolygons: PathClippingPolygon[] = paths.flatMap(pathToClippingPolygon);
 
         // Use the spread operator to pass all polygons to the union function.
-        const mergedMultiPolygon = polygonClipping.union(...multiPolygons as [Polygon, ...Polygon[]]);
+        // The type assertion is needed because the library's types expect at least one polygon.
+        const mergedMultiPolygon = polygonClipping.union(...allPolygons as [ClippingPolygon, ...ClippingPolygon[]]);
 
-        if (mergedMultiPolygon.length === 0 || mergedMultiPolygon[0].length === 0) {
+        if (mergedMultiPolygon.length === 0) {
             console.error("Polygon clipping returned an empty result.");
-            return null;
+            return [];
         }
         
         // Find a representative path to source style properties from.
         const representativePath = paths[0];
 
-        const resultingPaths = mergedMultiPolygon.map(polygon => {
-            // We are interested in the outer ring of each polygon.
-            const mergedPoints: Point[] = polygon[0].map(p => ({ x: p[0], y: p[1] }));
+        const resultingPaths = mergedMultiPolygon.map(polygonWithHoles => {
+            // polygonWithHoles is an array of rings [outer, hole1, hole2, ...]
+            const mergedPoints: Point[][] = polygonWithHoles.map(ring =>
+                ring.map(p => ({ x: p[0], y: p[1] }))
+            );
             return {
                 points: mergedPoints,
                 color: representativePath.color,
@@ -80,9 +84,10 @@ export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id'>[] | n
  */
 export function pathIntersects(pathA: Path, pathB: Path): boolean {
     try {
-        const polyA = pathToClippingMultiPolygon(pathA);
-        const polyB = pathToClippingMultiPolygon(pathB);
-        const intersection = polygonClipping.intersection(polyA as ClippingMultiPolygon, polyB as ClippingMultiPolygon);
+        const polyA = pathToClippingPolygon(pathA);
+        const polyB = pathToClippingPolygon(pathB);
+        // The intersection function expects arrays of polygons.
+        const intersection = polygonClipping.intersection(polyA, polyB);
         // If the intersection has any area, the length will be > 0.
         return intersection.length > 0;
     } catch (error) {

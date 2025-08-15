@@ -34,7 +34,7 @@ export type DrawMode = 'wall' | 'detail';
 
 export type Path = {
     id: string;
-    points: Point[];
+    points: Point[][];
     color: string;
     width: number;
     blocksLight: boolean;
@@ -136,6 +136,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     ...p,
                     id: p.id || `path-${Math.random()}`,
                     isPortal: p.isPortal || false,
+                    // backwards compatibility for points structure
+                    points: Array.isArray(p.points[0]) ? p.points : [p.points]
                 }));
                 const loadedTokens = (gameState.tokens || []).map(t => ({
                     ...t,
@@ -275,11 +277,12 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         };
 
         const newTokens = [...tokens];
-        if (isPortalTool && newPathData.points.length > 0) {
+        if (isPortalTool && newPathData.points.length > 0 && newPathData.points[0].length > 0) {
             // Find center of portal to place token
-            const { x: totalX, y: totalY } = newPathData.points.reduce((acc, p) => ({x: acc.x + p.x, y: acc.y + p.y}), {x: 0, y: 0});
-            const centerX = totalX / newPathData.points.length;
-            const centerY = totalY / newPathData.points.length;
+            const allPoints = newPathData.points[0];
+            const { x: totalX, y: totalY } = allPoints.reduce((acc, p) => ({x: acc.x + p.x, y: acc.y + p.y}), {x: 0, y: 0});
+            const centerX = totalX / allPoints.length;
+            const centerY = totalY / allPoints.length;
 
             const portalToken: Token = {
                 id: `portal-token-${Date.now()}`,
@@ -340,9 +343,11 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         };
     
         const pathToErase = paths.find(path => {
-            for (let i = 0; i < path.points.length - 1; i++) {
-                if (distToSegmentSq(point, path.points[i], path.points[i+1]) < eraseRadius * eraseRadius) {
-                    return true;
+            for (const ring of path.points) {
+                for (let i = 0; i < ring.length - 1; i++) {
+                    if (distToSegmentSq(point, ring[i], ring[i+1]) < eraseRadius * eraseRadius) {
+                        return true;
+                    }
                 }
             }
             return false;
@@ -436,7 +441,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 
                 const newWalls: Path[] = (data.line_of_sight || []).map((wall: any, index: number) => ({
                     id: `wall-${Date.now()}-${index}`,
-                    points: wall.map((p: {x: number, y: number}) => ({ x: p.x * pixelsPerGrid, y: p.y * pixelsPerGrid })),
+                    points: [wall.map((p: {x: number, y: number}) => ({ x: p.x * pixelsPerGrid, y: p.y * pixelsPerGrid }))],
                     color: '#000000',
                     width: 5,
                     blocksLight: true,
@@ -451,7 +456,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     
                     portalWalls.push({
                         id: portalWallId,
-                        points: portal.bounds.map((p: {x: number, y: number}) => ({ x: p.x * pixelsPerGrid, y: p.y * pixelsPerGrid })),
+                        points: [portal.bounds.map((p: {x: number, y: number}) => ({ x: p.x * pixelsPerGrid, y: p.y * pixelsPerGrid }))],
                         color: '#ff0000', // Distinct color for portals
                         width: 5,
                         blocksLight: true, // Portals are closed by default

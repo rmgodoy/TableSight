@@ -36,10 +36,15 @@ interface MapGridProps {
   showFogOfWar?: boolean;
 }
 
-function getSvgPathFromPoints(points: Point[], scale: number = 1) {
-  if (points.length === 0) return '';
-  return `M ${points[0].x * scale} ${points[0].y * scale} ` + points.slice(1).map(p => `L ${p.x * scale} ${p.y * scale}`).join(' ');
+function getSvgPathFromPoints(rings: Point[][], scale: number = 1) {
+    if (!rings || rings.length === 0) return '';
+    
+    return rings.map(ring => {
+        if (ring.length === 0) return '';
+        return `M ${ring[0].x * scale} ${ring[0].y * scale} ` + ring.slice(1).map(p => `L ${p.x * scale} ${p.y * scale}`).join(' ') + ' Z';
+    }).join(' ');
 }
+
 
 export function MapGrid({ 
   showGrid, 
@@ -249,7 +254,7 @@ export function MapGrid({
     
     if (isDrawing && currentPath.length > 1) {
       onNewPath({ 
-          points: currentPath, 
+          points: [currentPath], // Wrap points in another array for the new data structure
           color: selectedTool === 'portal' ? '#ff00ff' : brushColor,
           width: brushSize,
           blocksLight: drawMode === 'wall'
@@ -268,32 +273,23 @@ export function MapGrid({
     let changed = false;
 
     paths.forEach(path => {
-        let currentSegment: Point[] = [];
-        const pathScale = 1; // All paths are now in pixel space
-        for (const point of path.points) {
-             const scaledPoint = { x: point.x * pathScale, y: point.y * pathScale };
-            if (distanceSq(scaledPoint, erasePoint) > (eraseBrushSize / activeZoom)**2) {
-                currentSegment.push(point);
-            } else {
-                if (currentSegment.length > 1) {
-                    newPaths.push({ ...path, id: `${path.id}-split-${Math.random()}`, points: currentSegment });
-                    changed = true;
+        // This simplified logic doesn't handle splitting paths with holes well.
+        // For now, we erase the whole path if any point is touched. A more complex solution is needed for partial erase.
+        let pathErased = false;
+        for (const ring of path.points) {
+            for (const point of ring) {
+                if (distanceSq(point, erasePoint) <= (eraseBrushSize / activeZoom)**2) {
+                    pathErased = true;
+                    break;
                 }
-                currentSegment = [];
             }
+            if(pathErased) break;
         }
-        if (currentSegment.length > 1) {
-            newPaths.push({ ...path, id: path.points.length === currentSegment.length ? path.id : `${path.id}-split-${Math.random()}`, points: currentSegment });
-        } else if (currentSegment.length === 1 && path.points.length > 1) {
-            // This case handles when the erase splits the path perfectly
-        } else if (currentSegment.length === 0 && path.points.length > 0) {
-            // Path was fully erased
-             changed = true;
+
+        if (pathErased) {
+            changed = true;
         } else {
-            // No change to this path
-            if(!changed && path.points.length === currentSegment.length) {
-                newPaths.push(path);
-            }
+            newPaths.push(path);
         }
     });
 
@@ -440,7 +436,7 @@ export function MapGrid({
     return (
        <div
         className={cn(
-          "rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center p-1",
+          "rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center",
            (token.type === 'Light' || token.type === 'Portal') && 'cursor-pointer'
         )}
         style={{ 
@@ -460,13 +456,15 @@ export function MapGrid({
      paths
         .filter(p => p.blocksLight)
         .forEach(path => {
-            for (let i = 0; i < path.points.length - 1; i++) {
-                segments.push({ 
-                    a: { x: path.points[i].x, y: path.points[i].y }, 
-                    b: { x: path.points[i+1].x, y: path.points[i+1].y }, 
-                    width: path.width 
-                });
-            }
+            path.points.forEach(ring => {
+                for (let i = 0; i < ring.length; i++) {
+                    segments.push({ 
+                        a: ring[i], 
+                        b: ring[(i + 1) % ring.length], // Connect last point to first
+                        width: path.width 
+                    });
+                }
+            });
         });
     return segments;
   }, [paths]);
@@ -541,7 +539,8 @@ export function MapGrid({
                 <img src={backgroundImage} className="absolute top-0 left-0 pointer-events-none w-auto h-auto max-w-none max-h-none" alt="Game Map Background" onDragStart={(e) => e.preventDefault()}/>
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-                {renderPaths.filter(p => p.points.length > 1).map((path) => {
+                {renderPaths.map((path) => {
+                    const isShape = selectedTool === 'rectangle' || selectedTool === 'circle';
                     const pathD = getSvgPathFromPoints(path.points, 1);
                     return (
                         <path
@@ -549,7 +548,8 @@ export function MapGrid({
                             d={pathD}
                             stroke={path.color}
                             strokeWidth={path.width}
-                            fill="none"
+                            fill={isShape ? 'rgba(0,0,0,0.5)' : 'none'}
+                            fillRule="evenodd"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeDasharray={path.isPortal ? '10,10' : undefined}
@@ -559,10 +559,11 @@ export function MapGrid({
                 })}
                 {!isPlayerView && isDrawing && currentPath.length > 0 && (
                     <path
-                        d={getSvgPathFromPoints(currentPath)}
+                        d={getSvgPathFromPoints([currentPath])}
                         stroke={selectedTool === 'portal' ? '#ff00ff' : brushColor}
                         strokeWidth={brushSize}
-                        fill={selectedTool === 'rectangle' || selectedTool === 'circle' ? 'transparent' : 'none'}
+                        fill={selectedTool === 'rectangle' || selectedTool === 'circle' ? 'rgba(0,0,0,0.5)' : 'none'}
+                        fillRule="evenodd"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeDasharray={selectedTool === 'portal' ? '10,10' : undefined}
@@ -582,7 +583,7 @@ export function MapGrid({
                   />
                 )}
                 {renderTokens.map(token => {
-                    const visualSizeFactor = 0.75;
+                    const visualSizeFactor = 0.9;
                     let tokenSize, tokenPos;
 
                     if (token.type === 'PC' || token.type === 'Enemy') {
@@ -595,7 +596,6 @@ export function MapGrid({
                         };
                     } else { // Light or Portal
                         tokenSize = cellSize * visualSizeFactor;
-                        const offset = (cellSize - tokenSize) / 2;
                         tokenPos = {
                             x: token.x - (tokenSize / 2),
                             y: token.y - (tokenSize / 2),
