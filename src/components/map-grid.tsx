@@ -10,6 +10,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Badge } from './ui/badge';
 
 type HpStatus = 'Unscathed' | 'Hurt' | 'Bloodied' | 'Near Death';
+type HpColorRing = 'ring-green-500' | 'ring-yellow-500' | 'ring-orange-500' | 'ring-red-500' | 'ring-red-800' | 'ring-white/50';
 
 interface MapGridProps {
   showGrid: boolean;
@@ -418,20 +419,21 @@ export function MapGrid({
       onZoomChange(newZoom);
   }
 
-  const getHpStatus = (token: Token): HpStatus | null => {
-    if (!token.hp || token.type !== 'Enemy') return null;
+    const getHpRingColor = (token: Token): HpColorRing => {
+        if (!isPlayerView || !token.hp || token.type !== 'Enemy' || !token.visible) return 'ring-white/50';
 
-    const percent = (token.hp.current / token.hp.max) * 100;
-    if (percent >= 100) return 'Unscathed';
-    if (percent > 75) return 'Hurt';
-    if (percent > 25) return 'Bloodied';
-    return 'Near Death';
-  }
+        const percent = (token.hp.current / token.hp.max) * 100;
+        if (percent > 75) return 'ring-green-500';
+        if (percent > 50) return 'ring-yellow-500';
+        if (percent > 25) return 'ring-orange-500';
+        if (percent > 10) return 'ring-red-500';
+        return 'ring-red-800';
+    };
+
 
   const renderToken = (token: Token) => {
     const portalWall = paths.find(p => p.id === token.controls);
     const isHovered = !isPlayerView && hoveredTokenId === token.id;
-    const hpStatus = getHpStatus(token);
     
     const iconContent = () => {
         if (token.type === 'Light') {
@@ -451,15 +453,7 @@ export function MapGrid({
     }
 
     const isHiddenEnemy = !isPlayerView && token.type === 'Enemy' && !token.visible;
-    const hpRingColor = useMemo(() => {
-        if (!isPlayerView || hpStatus === 'Unscathed' || !hpStatus) return 'ring-white/50';
-        switch (hpStatus) {
-            case 'Hurt': return 'ring-yellow-500';
-            case 'Bloodied': return 'ring-orange-500';
-            case 'Near Death': return 'ring-red-600';
-            default: return 'ring-white/50';
-        }
-    }, [isPlayerView, hpStatus]);
+    const hpRingColor = getHpRingColor(token);
 
 
     return (
@@ -468,6 +462,7 @@ export function MapGrid({
             className={cn(
             "relative rounded-full flex items-center justify-center ring-2 shadow-lg bg-cover bg-center w-full h-full",
             hpRingColor,
+            isHovered && (token.type === 'PC' || token.type === 'Enemy') && 'bg-primary/30',
             (token.type === 'Light' || token.type === 'Portal') && 'cursor-pointer'
             )}
             style={{ 
@@ -475,9 +470,6 @@ export function MapGrid({
             backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none',
             }}
         >
-            {isHovered && (token.type === 'PC' || token.type === 'Enemy') && (
-                <div className="absolute inset-0 bg-primary/30 rounded-full" />
-            )}
             {iconContent()}
             {isHiddenEnemy && (
             <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
@@ -805,3 +797,6 @@ export function MapGrid({
     </div>
   );
 }
+
+
+    

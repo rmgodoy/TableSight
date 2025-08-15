@@ -48,6 +48,49 @@ interface TokenPanelProps {
     matchPlayerView: () => void;
 }
 
+const HpInput = ({ token, onTokenHpChange }: { token: Token, onTokenHpChange: (tokenId: string, hp: { current: number, max: number }) => void }) => {
+    const [currentHp, setCurrentHp] = useState(token.hp!.current.toString());
+
+    useEffect(() => {
+        setCurrentHp(token.hp!.current.toString());
+    }, [token.hp]);
+
+    const commitChange = () => {
+        const newHp = parseInt(currentHp, 10);
+        if (!isNaN(newHp) && newHp !== token.hp!.current) {
+            onTokenHpChange(token.id, { ...token.hp!, current: newHp });
+        } else {
+            // If input is invalid or unchanged, revert to original value
+            setCurrentHp(token.hp!.current.toString());
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            commitChange();
+            (e.target as HTMLInputElement).blur(); // Lose focus on enter
+        }
+        if (e.key === 'Escape') {
+            setCurrentHp(token.hp!.current.toString());
+             (e.target as HTMLInputElement).blur();
+        }
+    };
+
+    return (
+        <Input
+            id={`hp-current-${token.id}`}
+            type="number"
+            value={currentHp}
+            onChange={(e) => setCurrentHp(e.target.value)}
+            onBlur={commitChange}
+            onKeyDown={handleKeyDown}
+            className="h-8 w-20 text-center"
+            aria-label="Current HP"
+        />
+    );
+};
+
+
 export function TokenPanel({ 
     tokens, 
     sessionName,
@@ -136,7 +179,7 @@ export function TokenPanel({
                 <CardHeader>
                     <div className="flex justify-between items-start">
                         <CardTitle>{ sessionName || 'Tokens' }</CardTitle>
-                        <div className="flex flex-col items-end gap-2">
+                         <div className="flex flex-col items-end gap-2">
                              <ToggleGroup type="single" value={filter} onValueChange={(value: TokenFilter) => value && setFilter(value)} size="sm">
                                 <ToggleGroupItem value="combatants" aria-label="Combatants">
                                     <Users className="h-4 w-4" />
@@ -281,14 +324,7 @@ export function TokenPanel({
                                                 <div className='flex items-center gap-2 text-sm'>
                                                     <Heart className="h-4 w-4 text-red-500" />
                                                     <Label htmlFor={`hp-current-${token.id}`}>HP</Label>
-                                                    <Input
-                                                        id={`hp-current-${token.id}`}
-                                                        type="number"
-                                                        value={token.hp.current}
-                                                        onChange={(e) => onTokenHpChange(token.id, { ...token.hp!, current: parseInt(e.target.value, 10) || 0 })}
-                                                        className="h-8 w-20 text-center"
-                                                        aria-label="Current HP"
-                                                    />
+                                                    <HpInput token={token} onTokenHpChange={onTokenHpChange} />
                                                 </div>
                                             )}
                                             {(token.type === 'PC' || token.type === 'Enemy' || token.type === 'Light') && (
@@ -366,5 +402,7 @@ export function TokenPanel({
         </div>
     );
 }
+
+    
 
     
