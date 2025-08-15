@@ -744,6 +744,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                             playerPan={playerPan}
                             playerZoom={playerZoom}
                             onPlayerPanChange={setPlayerPan}
+                            onPlayerZoomChange={setPlayerZoom}
                             playerViewport={playerViewport}
                             showPlayerViewport={showPlayerViewport}
                             followedTokenId={followedTokenId}

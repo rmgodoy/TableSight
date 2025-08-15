@@ -1,7 +1,7 @@
 
 'use client';
 
-import { CircleUserRound, Shield, Lightbulb, DoorClosed, DoorOpen, EyeOff, Skull } from 'lucide-react';
+import { CircleUserRound, Shield, Lightbulb, DoorClosed, DoorOpen, EyeOff, Skull, Maximize } from 'lucide-react';
 import type { Token, Tool, Path, EraseMode, DrawMode } from './gm-view';
 import type { Point } from '@/lib/raycasting';
 import { calculateVisibilityPolygon } from '@/lib/raycasting';
@@ -43,6 +43,7 @@ interface MapGridProps {
   playerPan?: { x: number; y: number };
   playerZoom?: number;
   onPlayerPanChange?: (pan: { x: number; y: number }) => void;
+  onPlayerZoomChange?: (zoom: number) => void;
   playerViewport?: { width: number; height: number } | null;
   showPlayerViewport?: boolean;
   followedTokenId?: string | null;
@@ -86,6 +87,7 @@ export function MapGrid({
   onZoomChange,
   onPanChange,
   onPlayerPanChange,
+  onPlayerZoomChange,
   showFogOfWar = false,
   hoveredTokenId = null,
   playerPan = { x: 0, y: 0},
@@ -117,6 +119,15 @@ export function MapGrid({
   
   const [isDraggingPlayerViewport, setIsDraggingPlayerViewport] = useState(false);
   const playerViewDragStartRef = useRef({ mouseX: 0, mouseY: 0, panX: 0, panY: 0 });
+
+  const [isResizingPlayerViewport, setIsResizingPlayerViewport] = useState(false);
+  const playerViewResizeStartRef = useRef({
+      mouseX: 0,
+      mouseY: 0,
+      rectWidth: 0,
+      rectHeight: 0,
+      playerZoom: 1,
+  });
 
   useEffect(() => {
     // For GM view, always sync with props
@@ -352,6 +363,22 @@ export function MapGrid({
   };
 
   const handleGlobalMouseMove = (e: MouseEvent) => {
+    if (isResizingPlayerViewport && onPlayerZoomChange && playerViewport && playerZoom) {
+        const dx = e.clientX - playerViewResizeStartRef.current.mouseX;
+        const dy = e.clientY - playerViewResizeStartRef.current.mouseY;
+
+        const aspect = playerViewport.width / playerViewport.height;
+        const delta = Math.abs(dx) > Math.abs(dy) ? dx * Math.sign(aspect) : dy;
+        
+        const newWidth = playerViewResizeStartRef.current.rectWidth + delta;
+        const scaleFactor = newWidth / playerViewResizeStartRef.current.rectWidth;
+
+        const newPlayerZoom = playerViewResizeStartRef.current.playerZoom / scaleFactor;
+        
+        onPlayerZoomChange(Math.max(0.1, Math.min(5, newPlayerZoom)));
+        return;
+    }
+
     if (isDraggingPlayerViewport && onPlayerPanChange) {
         const dx = e.clientX - playerViewDragStartRef.current.mouseX;
         const dy = e.clientY - playerViewDragStartRef.current.mouseY;
@@ -377,6 +404,11 @@ export function MapGrid({
   };
   
   const handleGlobalMouseUp = (e: MouseEvent) => {
+     if (isResizingPlayerViewport) {
+        setIsResizingPlayerViewport(false);
+        return;
+    }
+
     if (isDraggingPlayerViewport) {
         setIsDraggingPlayerViewport(false);
         return;
@@ -401,7 +433,7 @@ export function MapGrid({
   };
 
   useEffect(() => {
-    if (draggingToken || isDraggingPlayerViewport) {
+    if (draggingToken || isDraggingPlayerViewport || isResizingPlayerViewport) {
       document.addEventListener('mousemove', handleGlobalMouseMove);
       document.addEventListener('mouseup', handleGlobalMouseUp);
     } else {
@@ -414,7 +446,7 @@ export function MapGrid({
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draggingToken, pan, zoom, dragOffset, isDraggingPlayerViewport]);
+  }, [draggingToken, pan, zoom, dragOffset, isDraggingPlayerViewport, isResizingPlayerViewport]);
 
   useEffect(() => {
     const handleSpacebarPan = (e: KeyboardEvent) => {
@@ -602,7 +634,7 @@ export function MapGrid({
   const currentBrushSize = selectedTool === 'erase' ? eraseBrushSize : brushSize;
 
   const PlayerViewportRect = () => {
-    if (isPlayerView || !playerViewport || !showPlayerViewport) {
+    if (isPlayerView || !playerViewport || !showPlayerViewport || !playerZoom) {
         return null;
     }
 
@@ -637,6 +669,19 @@ export function MapGrid({
         };
     };
 
+     const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (followedTokenId) return;
+        e.stopPropagation();
+        setIsResizingPlayerViewport(true);
+        playerViewResizeStartRef.current = {
+            mouseX: e.clientX,
+            mouseY: e.clientY,
+            rectWidth: rectWidth,
+            rectHeight: rectHeight,
+            playerZoom: playerZoom,
+        };
+    };
+
     return (
         <div 
             className={cn(
@@ -652,7 +697,14 @@ export function MapGrid({
                 height: `${rectHeight}px`,
             }}
             onMouseDown={handleMouseDown}
-        />
+        >
+            {!followedTokenId && (
+                <div
+                    onMouseDown={handleResizeMouseDown}
+                    className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 border-2 border-background rounded-full cursor-nwse-resize"
+                />
+            )}
+        </div>
     )
   }
 
