@@ -391,6 +391,21 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         recordHistory({ tokens: newTokens, paths: newPaths });
     }
 
+    const handleTokenDuplicate = (tokenId: string) => {
+        const tokenToDuplicate = tokens.find(t => t.id === tokenId);
+        if (!tokenToDuplicate) return;
+
+        const newToken: Token = {
+            ...tokenToDuplicate,
+            id: `${tokenToDuplicate.type.toLowerCase()}-${Date.now()}`,
+            name: `${tokenToDuplicate.name} (copy)`,
+            x: tokenToDuplicate.x + 1,
+            y: tokenToDuplicate.y + 1,
+        };
+
+        recordHistory({ tokens: [...tokens, newToken] });
+    };
+
     const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => updateToken(tokenId, { visible: isVisible });
     const handleTokenMove = (tokenId:string, x: number, y: number) => updateToken(tokenId, { x, y });
     const handleTokenNameChange = (tokenId: string, newName: string) => updateToken(tokenId, { name: newName });
@@ -713,6 +728,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         sessionName={sessionName}
                         onVisibilityChange={handleTokenVisibilityChange}
                         onTokenDelete={handleTokenDelete}
+                        onTokenDuplicate={handleTokenDuplicate}
                         onTokenNameChange={handleTokenNameChange}
                         onTokenColorChange={handleTokenColorChange}
                         onTokenIconChange={handleTokenIconChange}

@@ -33,6 +33,7 @@ interface TokenPanelProps {
     sessionName?: string;
     onVisibilityChange: (tokenId: string, isVisible: boolean) => void;
     onTokenDelete: (tokenId: string) => void;
+    onTokenDuplicate: (tokenId: string) => void;
     onTokenNameChange: (tokenId: string, newName: string) => void;
     onTokenColorChange: (tokenId: string, color: string) => void;
     onTokenIconChange: (tokenId: string, iconUrl: string) => void;
@@ -49,6 +50,7 @@ export function TokenPanel({
     sessionName,
     onVisibilityChange, 
     onTokenDelete, 
+    onTokenDuplicate,
     onTokenNameChange, 
     onTokenColorChange, 
     onTokenIconChange,
@@ -203,15 +205,26 @@ export function TokenPanel({
                                             </div>
                                             <div className="flex items-center shrink-0">
                                                 {token.type !== 'Light' && token.type !== 'Portal' && (
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => onVisibilityChange(token.id, !token.visible)}
-                                                        title={token.visible ? "Hide Token" : "Show Token"}
-                                                    >
-                                                        {token.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                                                    </Button>
+                                                    <>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => onVisibilityChange(token.id, !token.visible)}
+                                                            title={token.visible ? "Hide Token" : "Show Token"}
+                                                        >
+                                                            {token.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            title="Duplicate Token"
+                                                            onClick={() => onTokenDuplicate(token.id)}
+                                                        >
+                                                            <Copy className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
                                                 )}
                                                 <Button
                                                     variant="ghost"
