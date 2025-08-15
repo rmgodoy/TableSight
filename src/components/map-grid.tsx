@@ -1,7 +1,7 @@
 
 'use client';
 
-import { CircleUserRound, Shield, Lightbulb, DoorClosed, DoorOpen } from 'lucide-react';
+import { CircleUserRound, Shield, Lightbulb, DoorClosed, DoorOpen, EyeOff } from 'lucide-react';
 import type { Token, Tool, Path, EraseMode, DrawMode } from './gm-view';
 import type { Point } from '@/lib/raycasting';
 import { calculateVisibilityPolygon } from '@/lib/raycasting';
@@ -433,10 +433,12 @@ export function MapGrid({
         return null;
     }
 
+    const isHiddenEnemy = !isPlayerView && token.type === 'Enemy' && !token.visible;
+
     return (
        <div
         className={cn(
-          "rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center",
+          "relative rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center",
            (token.type === 'Light' || token.type === 'Portal') && 'cursor-pointer'
         )}
         style={{ 
@@ -447,6 +449,11 @@ export function MapGrid({
         }}
        >
         {iconContent()}
+        {isHiddenEnemy && (
+          <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+            <EyeOff className="w-1/2 h-1/2 text-white/70"/>
+          </div>
+        )}
        </div>
     );
   };
