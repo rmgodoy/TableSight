@@ -355,8 +355,8 @@ export function MapGrid({
         const dy = e.clientY - playerViewDragStartRef.current.mouseY;
 
         onPlayerPanChange({
-            x: playerViewDragStartRef.current.panX + dx,
-            y: playerViewDragStartRef.current.panY + dy,
+            x: playerViewDragStartRef.current.panX - dx,
+            y: playerViewDragStartRef.current.panY - dy,
         });
         return;
     }
