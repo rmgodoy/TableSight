@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, PanelRight, Heart, Snowflake, Camera, MoreVertical, DoorOpen } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, BrickWall, Heart, Snowflake, Camera, MoreVertical, DoorOpen, Skull } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -172,11 +172,11 @@ export function TokenPanel({
     const renderIcon = (token: Token) => {
         if (token.iconUrl) return null;
         if (token.type === 'PC') return <CircleUserRound className="text-white/80" />;
-        if (token.type === 'Enemy') return <Shield className="text-white/80" />;
+        if (token.type === 'Enemy') return <Skull className="text-white/80" />;
         if (token.type === 'Light') return <Lightbulb className={cn("text-white/80", token.torch.enabled && "text-yellow-300")} />;
         if (token.type === 'Portal') {
              if (token.name.toLowerCase().includes('wall')) {
-                return <PanelRight className="text-gray-400" />;
+                return <BrickWall className="text-gray-400" />;
             }
             return <DoorClosed className="text-red-300" />;
         }

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { CircleUserRound, Shield, Lightbulb, DoorClosed, DoorOpen, EyeOff, Skull, Maximize } from 'lucide-react';
+import { CircleUserRound, Lightbulb, DoorClosed, DoorOpen, EyeOff, Skull, Maximize, BrickWall } from 'lucide-react';
 import type { Token, Tool, Path, EraseMode, DrawMode } from './gm-view';
 import type { Point } from '@/lib/raycasting';
 import { calculateVisibilityPolygon } from '@/lib/raycasting';
@@ -365,34 +365,34 @@ export function MapGrid({
 
   const handleGlobalMouseMove = (e: MouseEvent) => {
      if (isResizingPlayerViewport && onPlayerPanChange && onPlayerZoomChange && playerViewport && playerZoom) {
-        const dx = e.clientX - playerViewResizeStartRef.current.mouseX;
+            const dx = e.clientX - playerViewResizeStartRef.current.mouseX;
 
-        // Calculate new viewport width on GM's screen
-        const newGmViewportWidth = playerViewResizeStartRef.current.viewportWidth + dx;
-        
-        // Calculate the ratio of the new width to the old width
-        const scaleFactor = newGmViewportWidth / playerViewResizeStartRef.current.viewportWidth;
-        
-        // The new player zoom is the old player zoom divided by the scale factor
-        const newPlayerZoom = playerViewResizeStartRef.current.zoom / scaleFactor;
-        const clampedNewPlayerZoom = Math.max(0.1, Math.min(5, newPlayerZoom));
-        
-        // To keep the center of the viewport fixed, we need to adjust the pan
-        const oldPlayerZoom = playerViewResizeStartRef.current.zoom;
-        const oldPan = {x: playerViewResizeStartRef.current.panX, y: playerViewResizeStartRef.current.panY};
-        
-        const oldCenterWorld = {
-            x: (-oldPan.x + playerViewport.width / 2) / oldPlayerZoom,
-            y: (-oldPan.y + playerViewport.height / 2) / oldPlayerZoom
-        };
-        
-        const newPan = {
-            x: -(oldCenterWorld.x * clampedNewPlayerZoom - playerViewport.width / 2),
-            y: -(oldCenterWorld.y * clampedNewPlayerZoom - playerViewport.height / 2)
-        };
+            // Calculate new viewport width on GM's screen
+            const newGmViewportWidth = playerViewResizeStartRef.current.viewportWidth + dx;
+            
+            // Calculate the ratio of the new width to the old width
+            const scaleFactor = newGmViewportWidth / playerViewResizeStartRef.current.viewportWidth;
+            
+            // The new player zoom is the old player zoom divided by the scale factor
+            const newPlayerZoom = playerViewResizeStartRef.current.zoom / scaleFactor;
+            const clampedNewPlayerZoom = Math.max(0.1, Math.min(5, newPlayerZoom));
+            
+            // To keep the center of the viewport fixed, we need to adjust the pan
+            const oldPlayerZoom = playerViewResizeStartRef.current.zoom;
+            const oldPan = {x: playerViewResizeStartRef.current.panX, y: playerViewResizeStartRef.current.panY};
+            
+            const oldCenterWorld = {
+                x: (-oldPan.x + playerViewport.width / 2) / oldPlayerZoom,
+                y: (-oldPan.y + playerViewport.height / 2) / oldPlayerZoom
+            };
+            
+            const newPan = {
+                x: -(oldCenterWorld.x * clampedNewPlayerZoom - playerViewport.width / 2),
+                y: -(oldCenterWorld.y * clampedNewPlayerZoom - playerViewport.height / 2)
+            };
 
-        onPlayerZoomChange(clampedNewPlayerZoom);
-        onPlayerPanChange(newPan);
+            onPlayerZoomChange(clampedNewPlayerZoom);
+            onPlayerPanChange(newPan);
         return;
     }
 
@@ -535,14 +535,14 @@ export function MapGrid({
           return <Lightbulb className={cn("text-white/80 transition-colors w-full h-full", token.torch.enabled && "text-yellow-300")}/>
         }
         if (token.type === 'Portal') {
-          return portalWall?.blocksLight ? <DoorClosed className="text-red-300 w-full h-full" /> : <DoorOpen className="text-green-300 w-full h-full"/>;
+            return portalWall?.blocksLight ? <DoorClosed className="text-red-300 w-full h-full" /> : <DoorOpen className="text-green-300 w-full h-full"/>;
         }
         if (token.iconUrl) return null;
         if (token.type === 'PC') {
             return <CircleUserRound className="text-white/80 w-full h-full" />;
         }
         if (token.type === 'Enemy') {
-            return <Shield className="text-white/80 w-full h-full" />;
+            return <Skull className="text-white/80 w-full h-full" />;
         }
         return null;
     }
