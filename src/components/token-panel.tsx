@@ -375,27 +375,8 @@ export function TokenPanel({
                     </div>
 
                     <Separator />
-                     <div className='grid grid-cols-2 gap-2'>
+                     <div className='grid grid-cols-1 gap-2'>
                         <Button variant="outline" asChild><Link href="/"><Home className="mr-2 h-4 w-4" /> Home</Link></Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive">End Session</Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure you want to end the session?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. Your map will be saved, but the session will end.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction asChild>
-                                <Link href="/">End Session</Link>
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                     </div>
                 </CardContent>
             </Card>
