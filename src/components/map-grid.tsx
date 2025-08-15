@@ -7,6 +7,9 @@ import type { Point } from '@/lib/raycasting';
 import { calculateVisibilityPolygon } from '@/lib/raycasting';
 import { cn } from '@/lib/utils';
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { Badge } from './ui/badge';
+
+type HpStatus = 'Unscathed' | 'Hurt' | 'Bloodied' | 'Near Death';
 
 interface MapGridProps {
   showGrid: boolean;
@@ -415,9 +418,20 @@ export function MapGrid({
       onZoomChange(newZoom);
   }
 
+  const getHpStatus = (token: Token): HpStatus | null => {
+    if (!token.hp || token.type !== 'Enemy') return null;
+
+    const percent = (token.hp.current / token.hp.max) * 100;
+    if (percent >= 100) return 'Unscathed';
+    if (percent > 75) return 'Hurt';
+    if (percent > 25) return 'Bloodied';
+    return 'Near Death';
+  }
+
   const renderToken = (token: Token) => {
     const portalWall = paths.find(p => p.id === token.controls);
     const isHovered = !isPlayerView && hoveredTokenId === token.id;
+    const hpStatus = getHpStatus(token);
     
     const iconContent = () => {
         if (token.type === 'Light') {
@@ -439,32 +453,40 @@ export function MapGrid({
     const isHiddenEnemy = !isPlayerView && token.type === 'Enemy' && !token.visible;
 
     return (
-       <div
-        className={cn(
-          "relative rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center",
-           (token.type === 'Light' || token.type === 'Portal') && 'cursor-pointer'
-        )}
-        style={{ 
-          backgroundColor: (token.type === 'Light' || token.type === 'Portal') ? 'transparent' : token.color, 
-          backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none',
-          width: '100%',
-          height: '100%',
-        }}
-       >
-        {isHovered && (token.type === 'PC' || token.type === 'Enemy') && (
-            <div className="absolute inset-0 bg-primary/30 rounded-full" />
-        )}
-        {iconContent()}
-        {isHiddenEnemy && (
-          <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-            <EyeOff className="w-1/2 h-1/2 text-white/70"/>
-          </div>
-        )}
-        {isHovered && (
-          <div 
-            className="absolute -inset-1 rounded-full border-4 border-primary animate-pulse"
-            style={{ animationDuration: '1.2s' }}
-          />
+      <div className="relative w-full h-full">
+        <div
+            className={cn(
+            "relative rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center w-full h-full",
+            (token.type === 'Light' || token.type === 'Portal') && 'cursor-pointer'
+            )}
+            style={{ 
+            backgroundColor: (token.type === 'Light' || token.type === 'Portal') ? 'transparent' : token.color, 
+            backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none',
+            }}
+        >
+            {isHovered && (token.type === 'PC' || token.type === 'Enemy') && (
+                <div className="absolute inset-0 bg-primary/30 rounded-full" />
+            )}
+            {iconContent()}
+            {isHiddenEnemy && (
+            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                <EyeOff className="w-1/2 h-1/2 text-white/70"/>
+            </div>
+            )}
+            {isHovered && (
+            <div 
+                className="absolute -inset-1 rounded-full border-4 border-primary animate-pulse"
+                style={{ animationDuration: '1.2s' }}
+            />
+            )}
+        </div>
+        {isPlayerView && hpStatus && hpStatus !== 'Unscathed' && (
+             <Badge 
+                variant={hpStatus === 'Near Death' ? 'destructive' : 'secondary'}
+                className="absolute -bottom-1 -right-2 text-xs px-1 py-0"
+            >
+                {hpStatus}
+            </Badge>
         )}
        </div>
     );

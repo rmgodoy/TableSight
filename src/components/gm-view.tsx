@@ -56,6 +56,10 @@ export type Token = {
     enabled: boolean;
     radius: number;
   };
+  hp?: {
+      current: number;
+      max: number;
+  };
   controls?: string; // ID of the path this token controls (for portals/hidden walls)
 };
 
@@ -149,7 +153,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     ...t,
                     type: t.type || (t.id.startsWith('pc-') ? 'PC' : 'Enemy'),
                     size: t.size || 1,
-                    torch: t.torch || { enabled: false, radius: 5 }
+                    torch: t.torch || { enabled: false, radius: 5 },
+                    hp: t.hp || (t.type === 'Enemy' ? { current: 10, max: 10 } : undefined)
                 }));
                 const loadedBg = gameState.backgroundImage || null;
                 const loadedCellSize = gameState.cellSize || 40;
@@ -217,7 +222,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
     const redo = useCallback(() => {
         if (historyIndex < history.length - 1) {
-            setHistoryIndex(prev => prev + 1);
+            setHistoryIndex(prev => prev - 1);
         }
     }, [history, historyIndex]);
 
@@ -258,6 +263,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 x, y, type: 'Enemy' as const, visible: false, color: '#ef4444',
                 size: 1,
                 torch: { enabled: false, radius: 5 },
+                hp: { current: 10, max: 10 },
             };
         } else if (selectedTool === 'add-light') {
              newToken = {
@@ -437,6 +443,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const handleTokenTorchRadiusChange = (tokenId: string, radius: number) => {
          const token = tokens.find(t => t.id === tokenId);
         if(token) updateToken(tokenId, { torch: { ...token.torch, radius } });
+    }
+    const handleTokenHpChange = (tokenId: string, hp: { current: number; max: number; }) => {
+        updateToken(tokenId, { hp });
     }
     
     const handlePortalToggle = useCallback((portalTokenId: string) => {
@@ -755,6 +764,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         onTokenSizeChange={handleTokenSizeChange}
                         onTokenTorchToggle={handleTokenTorchToggle}
                         onTokenTorchRadiusChange={handleTokenTorchRadiusChange}
+                        onTokenHpChange={handleTokenHpChange}
                         onTokenHover={setHoveredTokenId}
                         sessionId={sessionId}
                         syncPlayerView={syncPlayerView}

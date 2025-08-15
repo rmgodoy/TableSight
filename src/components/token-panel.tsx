@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, PanelRight } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, PanelRight, Heart } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -41,6 +41,7 @@ interface TokenPanelProps {
     onTokenSizeChange: (tokenId: string, size: number) => void;
     onTokenTorchToggle: (tokenId: string) => void;
     onTokenTorchRadiusChange: (tokenId: string, radius: number) => void;
+    onTokenHpChange: (tokenId: string, hp: { current: number, max: number }) => void;
     onTokenHover: (tokenId: string | null) => void;
     sessionId: string;
     syncPlayerView: () => void;
@@ -60,6 +61,7 @@ export function TokenPanel({
     onTokenSizeChange,
     onTokenTorchToggle,
     onTokenTorchRadiusChange,
+    onTokenHpChange,
     onTokenHover,
     sessionId,
     syncPlayerView,
@@ -262,8 +264,30 @@ export function TokenPanel({
                                                 </Button>
                                             </div>
                                         </div>
-                                        {(token.type === 'PC' || token.type === 'Enemy' || token.type === 'Light') && (
-                                            <div className="pl-10 flex flex-col items-start gap-4">
+                                         <div className="pl-10 flex flex-col items-start gap-4">
+                                            {token.type === 'Enemy' && token.hp && (
+                                                <div className='flex items-center gap-2 text-sm'>
+                                                    <Heart className="h-4 w-4 text-red-500" />
+                                                    <Label htmlFor={`hp-current-${token.id}`}>HP</Label>
+                                                    <Input
+                                                        id={`hp-current-${token.id}`}
+                                                        type="number"
+                                                        value={token.hp.current}
+                                                        onChange={(e) => onTokenHpChange(token.id, { ...token.hp!, current: parseInt(e.target.value, 10) || 0 })}
+                                                        className="h-8 w-20 text-center"
+                                                        aria-label="Current HP"
+                                                    />
+                                                    <span>/</span>
+                                                    <Input
+                                                        type="number"
+                                                        value={token.hp.max}
+                                                        onChange={(e) => onTokenHpChange(token.id, { ...token.hp!, max: parseInt(e.target.value, 10) || 0 })}
+                                                        className="h-8 w-20 text-center"
+                                                        aria-label="Maximum HP"
+                                                    />
+                                                </div>
+                                            )}
+                                            {(token.type === 'PC' || token.type === 'Enemy' || token.type === 'Light') && (
                                                 <div className='flex flex-col gap-2 w-full'>
                                                     <Button variant="ghost" className="h-8 px-2 justify-start" onClick={() => onTokenTorchToggle(token.id)}>
                                                         <Flame className={cn("h-4 w-4 mr-2", token.torch.enabled ? "text-orange-500" : "text-muted-foreground")} />
@@ -285,8 +309,8 @@ export function TokenPanel({
                                                     </div>
                                                     )}
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
+                                         </div>
                                     </li>
                                 ))}
                             </ul>

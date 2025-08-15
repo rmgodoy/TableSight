@@ -24,7 +24,8 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
         ...t,
         type: t.type || (t.id.startsWith('pc-') ? 'PC' : 'Enemy'),
         size: t.size || 1,
-        torch: t.torch || { enabled: false, radius: 5 }
+        torch: t.torch || { enabled: false, radius: 5 },
+        hp: t.hp || (t.type === 'Enemy' ? { current: 10, max: 10 } : undefined),
       }));
        const loadedPaths = (gameState.paths || []).map(p => ({
             ...p,
