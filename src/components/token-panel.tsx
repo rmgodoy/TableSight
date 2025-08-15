@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, PanelRight, Heart, Snowflake, Camera, MoreVertical } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, PanelRight, Heart, Snowflake, Camera, MoreVertical, DoorOpen } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -170,6 +170,7 @@ export function TokenPanel({
     };
 
     const renderIcon = (token: Token) => {
+        if (token.iconUrl) return null;
         if (token.type === 'PC') return <CircleUserRound className="text-white/80" />;
         if (token.type === 'Enemy') return <Shield className="text-white/80" />;
         if (token.type === 'Light') return <Lightbulb className={cn("text-white/80", token.torch.enabled && "text-yellow-300")} />;
@@ -233,9 +234,12 @@ export function TokenPanel({
                                                     className={cn(
                                                         "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg shrink-0 bg-cover bg-center"
                                                     )}
-                                                    style={{ backgroundColor: (token.type === 'Light' || token.type === 'Portal') ? 'transparent' : token.color, backgroundImage: token.iconUrl ? `url(${'\'\'\''}${token.iconUrl}'\'\'')` : 'none' }}
+                                                    style={{ 
+                                                        backgroundColor: (token.type === 'Light' || token.type === 'Portal') ? 'transparent' : token.color, 
+                                                        backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none' 
+                                                    }}
                                                 >
-                                                    {!token.iconUrl && renderIcon(token)}
+                                                    {renderIcon(token)}
                                                 </div>
                                                 
                                                 <Input 
@@ -410,5 +414,7 @@ export function TokenPanel({
         </div>
     );
 }
+
+    
 
     
