@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, PanelRight, Heart, Snowflake, Camera } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, PanelRight, Heart, Snowflake, Camera, MoreVertical } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -229,17 +229,40 @@ export function TokenPanel({
                                     >
                                         <div className="flex items-center gap-2">
                                             <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <div
+                                                    className={cn(
+                                                        "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg shrink-0 bg-cover bg-center"
+                                                    )}
+                                                    style={{ backgroundColor: (token.type === 'Light' || token.type === 'Portal') ? 'transparent' : token.color, backgroundImage: token.iconUrl ? `url(${'\'\'\''}${token.iconUrl}'\'\'')` : 'none' }}
+                                                >
+                                                    {!token.iconUrl && renderIcon(token)}
+                                                </div>
+                                                
+                                                <Input 
+                                                    className="h-8 border-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring truncate"
+                                                    value={token.name} 
+                                                    onChange={(e) => onTokenNameChange(token.id, e.target.value)}
+                                                    aria-label="Token name"
+                                                    disabled={token.type === 'Light' || token.type === 'Portal'}
+                                                />
+                                            </div>
+                                            <div className="flex items-center shrink-0">
+                                                 {token.type !== 'Light' && token.type !== 'Portal' && (
+                                                      <Button 
+                                                        variant="ghost" 
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => onVisibilityChange(token.id, !token.visible)}
+                                                        title={token.visible ? "Hide Token" : "Show Token"}
+                                                    >
+                                                        {token.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                                    </Button>
+                                                 )}
                                                 <Popover>
-                                                    <PopoverTrigger asChild disabled={token.type === 'Light' || token.type === 'Portal'}>
-                                                         <div
-                                                            className={cn(
-                                                                "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg shrink-0 bg-cover bg-center",
-                                                                (token.type !== 'Light' && token.type !== 'Portal') && "cursor-pointer"
-                                                            )}
-                                                            style={{ backgroundColor: token.color, backgroundImage: token.iconUrl ? `url(${'\'\'\''}${token.iconUrl}'\'\'')` : 'none' }}
-                                                        >
-                                                            {!token.iconUrl && renderIcon(token)}
-                                                        </div>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-2">
                                                         <div className='flex items-center gap-4'>
@@ -251,13 +274,14 @@ export function TokenPanel({
                                                                     onChange={(e) => onTokenColorChange(token.id, e.target.value)}
                                                                     className="w-10 h-10 border-none cursor-pointer"
                                                                     title="Change token color"
+                                                                    disabled={token.type === 'Light' || token.type === 'Portal'}
                                                                 />
                                                             </div>
                                                             <Separator orientation='vertical' className='h-16' />
                                                             <div className='flex flex-col gap-2 items-start'>
                                                                  <div>
                                                                     <input type="file" accept="image/*" className='hidden' id={`file-input-${token.id}`} onChange={(e) => handleIconUpload(token.id, e)}/>
-                                                                    <Button onClick={() => document.getElementById(`file-input-${token.id}`)?.click()}>Upload Icon</Button>
+                                                                    <Button disabled={token.type === 'Light' || token.type === 'Portal'} onClick={() => document.getElementById(`file-input-${token.id}`)?.click()}>Upload Icon</Button>
                                                                 </div>
                                                                 <div className='flex items-center gap-2'>
                                                                     <Label>Size</Label>
@@ -268,6 +292,7 @@ export function TokenPanel({
                                                                         value={token.size}
                                                                         onChange={(e) => onTokenSizeChange(token.id, parseInt(e.target.value, 10) || 1)}
                                                                         className="h-8 w-20 text-center"
+                                                                        disabled={token.type === 'Light' || token.type === 'Portal'}
                                                                     />
                                                                 </div>
                                                                  {token.type === 'Enemy' && token.hp && (
@@ -283,58 +308,41 @@ export function TokenPanel({
                                                                     </div>
                                                                 )}
                                                             </div>
+                                                            <Separator orientation='vertical' className='h-16' />
+                                                            <div className="flex flex-col gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className={cn("justify-start", followedTokenId === token.id && "bg-accent text-accent-foreground")}
+                                                                    title={followedTokenId === token.id ? "Unfollow Token" : "Follow Token"}
+                                                                    onClick={() => onToggleFollowToken(token.id)}
+                                                                    disabled={token.type === 'Light' || token.type === 'Portal'}
+                                                                >
+                                                                    <Camera className="mr-2 h-4 w-4" /> Follow
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="justify-start"
+                                                                    title="Duplicate Token"
+                                                                    onClick={() => onTokenDuplicate(token.id)}
+                                                                    disabled={token.type === 'Light' || token.type === 'Portal'}
+                                                                >
+                                                                    <Copy className="mr-2 h-4 w-4" /> Duplicate
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="text-destructive hover:text-destructive justify-start"
+                                                                    title="Delete Token"
+                                                                    onClick={() => onTokenDelete(token.id)}
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                     </PopoverContent>
                                                 </Popover>
-                                                <Input 
-                                                    className="h-8 border-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring truncate"
-                                                    value={token.name} 
-                                                    onChange={(e) => onTokenNameChange(token.id, e.target.value)}
-                                                    aria-label="Token name"
-                                                    disabled={token.type === 'Light' || token.type === 'Portal'}
-                                                />
-                                            </div>
-                                            <div className="flex items-center shrink-0">
-                                                {token.type !== 'Light' && token.type !== 'Portal' && (
-                                                    <>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className={cn("h-8 w-8", followedTokenId === token.id && "bg-accent text-accent-foreground")}
-                                                            title={followedTokenId === token.id ? "Unfollow Token" : "Follow Token"}
-                                                            onClick={() => onToggleFollowToken(token.id)}
-                                                        >
-                                                            <Camera className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                            onClick={() => onVisibilityChange(token.id, !token.visible)}
-                                                            title={token.visible ? "Hide Token" : "Show Token"}
-                                                        >
-                                                            {token.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                            title="Duplicate Token"
-                                                            onClick={() => onTokenDuplicate(token.id)}
-                                                        >
-                                                            <Copy className="h-4 w-4" />
-                                                        </Button>
-                                                    </>
-                                                )}
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="text-destructive hover:text-destructive h-8 w-8"
-                                                    title="Delete Token"
-                                                    onClick={() => onTokenDelete(token.id)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
                                             </div>
                                         </div>
                                          <div className="pl-10 flex flex-col items-start gap-4">
@@ -402,3 +410,5 @@ export function TokenPanel({
         </div>
     );
 }
+
+    
