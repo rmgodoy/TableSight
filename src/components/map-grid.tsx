@@ -124,9 +124,10 @@ export function MapGrid({
   const playerViewResizeStartRef = useRef({
       mouseX: 0,
       mouseY: 0,
-      rectWidth: 0,
-      rectHeight: 0,
-      playerZoom: 1,
+      panX: 0,
+      panY: 0,
+      zoom: 1,
+      viewportWidth: 0,
   });
 
   useEffect(() => {
@@ -363,29 +364,51 @@ export function MapGrid({
   };
 
   const handleGlobalMouseMove = (e: MouseEvent) => {
-    if (isResizingPlayerViewport && onPlayerZoomChange && playerViewport && playerZoom) {
+     if (isResizingPlayerViewport && onPlayerPanChange && onPlayerZoomChange && playerViewport && playerZoom) {
         const dx = e.clientX - playerViewResizeStartRef.current.mouseX;
-        const dy = e.clientY - playerViewResizeStartRef.current.mouseY;
 
-        const aspect = playerViewport.width / playerViewport.height;
-        const delta = Math.abs(dx) > Math.abs(dy) ? dx * Math.sign(aspect) : dy;
+        // Calculate new viewport width on GM's screen
+        const newGmViewportWidth = playerViewResizeStartRef.current.viewportWidth + dx;
         
-        const newWidth = playerViewResizeStartRef.current.rectWidth + delta;
-        const scaleFactor = newWidth / playerViewResizeStartRef.current.rectWidth;
+        // Calculate the ratio of the new width to the old width
+        const scaleFactor = newGmViewportWidth / playerViewResizeStartRef.current.viewportWidth;
+        
+        // The new player zoom is the old player zoom divided by the scale factor
+        const newPlayerZoom = playerViewResizeStartRef.current.zoom / scaleFactor;
+        const clampedNewPlayerZoom = Math.max(0.1, Math.min(5, newPlayerZoom));
+        
+        // To keep the center of the viewport fixed, we need to adjust the pan
+        const oldPlayerZoom = playerViewResizeStartRef.current.zoom;
+        const oldPan = {x: playerViewResizeStartRef.current.panX, y: playerViewResizeStartRef.current.panY};
+        
+        const oldCenterWorld = {
+            x: (-oldPan.x + playerViewport.width / 2) / oldPlayerZoom,
+            y: (-oldPan.y + playerViewport.height / 2) / oldPlayerZoom
+        };
+        
+        const newPan = {
+            x: -(oldCenterWorld.x * clampedNewPlayerZoom - playerViewport.width / 2),
+            y: -(oldCenterWorld.y * clampedNewPlayerZoom - playerViewport.height / 2)
+        };
 
-        const newPlayerZoom = playerViewResizeStartRef.current.playerZoom / scaleFactor;
-        
-        onPlayerZoomChange(Math.max(0.1, Math.min(5, newPlayerZoom)));
+        onPlayerZoomChange(clampedNewPlayerZoom);
+        onPlayerPanChange(newPan);
         return;
     }
+
 
     if (isDraggingPlayerViewport && onPlayerPanChange) {
         const dx = e.clientX - playerViewDragStartRef.current.mouseX;
         const dy = e.clientY - playerViewDragStartRef.current.mouseY;
+        
+        // The change in mouse position needs to be scaled by the GM's zoom to affect the world space correctly
+        const panDeltaX = dx / activeZoom;
+        const panDeltaY = dy / activeZoom;
 
+        // Player pan is in screen space, so the change needs to be scaled by player's zoom
         onPlayerPanChange({
-            x: playerViewDragStartRef.current.panX - dx,
-            y: playerViewDragStartRef.current.panY - dy,
+            x: playerViewDragStartRef.current.panX - (panDeltaX * playerZoom),
+            y: playerViewDragStartRef.current.panY - (panDeltaY * playerZoom),
         });
         return;
     }
@@ -446,7 +469,7 @@ export function MapGrid({
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draggingToken, pan, zoom, dragOffset, isDraggingPlayerViewport, isResizingPlayerViewport]);
+  }, [draggingToken, pan, zoom, dragOffset, isDraggingPlayerViewport, isResizingPlayerViewport, playerPan, playerZoom]);
 
   useEffect(() => {
     const handleSpacebarPan = (e: KeyboardEvent) => {
@@ -676,9 +699,10 @@ export function MapGrid({
         playerViewResizeStartRef.current = {
             mouseX: e.clientX,
             mouseY: e.clientY,
-            rectWidth: rectWidth,
-            rectHeight: rectHeight,
-            playerZoom: playerZoom,
+            panX: playerPan.x,
+            panY: playerPan.y,
+            zoom: playerZoom,
+            viewportWidth: rectWidth,
         };
     };
 
