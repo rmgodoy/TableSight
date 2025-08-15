@@ -3,7 +3,7 @@
 
 import type { Path } from '@/components/gm-view';
 import type { Point } from '@/lib/raycasting';
-import polygonClipping, { type Polygon as ClippingPolygon } from 'polygon-clipping';
+import polygonClipping, { type Polygon as ClippingPolygon, type MultiPolygon as ClippingMultiPolygon } from 'polygon-clipping';
 
 
 // The polygon-clipping library expects points in [x, y] tuple format.
@@ -11,7 +11,7 @@ type PolygonPoint = [number, number];
 // It operates on arrays of polygons, where a polygon is an array of rings,
 // and a ring is an array of points. For our simple, non-holed shapes,
 // this will be an array with a single polygon, which has a single ring.
-type PathClippingPolygon = ClippingPolygon[];
+type PathClippingPolygon = ClippingPolygon;
 
 function pathToClippingPolygon(path: Path): PathClippingPolygon {
     // A path is an array of polygons (the first is the exterior, the rest are holes)
@@ -40,7 +40,7 @@ export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id'>[] | n
     try {
         // Convert our Path objects into the format the library expects.
         // We need to flatten the structure since the library's union function takes individual polygons.
-        const allPolygons: PathClippingPolygon[] = paths.flatMap(pathToClippingPolygon);
+        const allPolygons: ClippingMultiPolygon = paths.map(pathToClippingPolygon);
 
         // Use the spread operator to pass all polygons to the union function.
         // The type assertion is needed because the library's types expect at least one polygon.
@@ -87,7 +87,7 @@ export function pathIntersects(pathA: Path, pathB: Path): boolean {
         const polyA = pathToClippingPolygon(pathA);
         const polyB = pathToClippingPolygon(pathB);
         // The intersection function expects arrays of polygons.
-        const intersection = polygonClipping.intersection(polyA, polyB);
+        const intersection = polygonClipping.intersection([polyA], [polyB]);
         // If the intersection has any area, the length will be > 0.
         return intersection.length > 0;
     } catch (error) {
