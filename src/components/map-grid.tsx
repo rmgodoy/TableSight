@@ -451,12 +451,23 @@ export function MapGrid({
     }
 
     const isHiddenEnemy = !isPlayerView && token.type === 'Enemy' && !token.visible;
+    const hpRingColor = useMemo(() => {
+        if (!isPlayerView || hpStatus === 'Unscathed' || !hpStatus) return 'ring-white/50';
+        switch (hpStatus) {
+            case 'Hurt': return 'ring-yellow-500';
+            case 'Bloodied': return 'ring-orange-500';
+            case 'Near Death': return 'ring-red-600';
+            default: return 'ring-white/50';
+        }
+    }, [isPlayerView, hpStatus]);
+
 
     return (
       <div className="relative w-full h-full">
         <div
             className={cn(
-            "relative rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg bg-cover bg-center w-full h-full",
+            "relative rounded-full flex items-center justify-center ring-2 shadow-lg bg-cover bg-center w-full h-full",
+            hpRingColor,
             (token.type === 'Light' || token.type === 'Portal') && 'cursor-pointer'
             )}
             style={{ 
@@ -480,14 +491,6 @@ export function MapGrid({
             />
             )}
         </div>
-        {isPlayerView && hpStatus && hpStatus !== 'Unscathed' && (
-             <Badge 
-                variant={hpStatus === 'Near Death' ? 'destructive' : 'secondary'}
-                className="absolute -bottom-1 -right-2 text-xs px-1 py-0"
-            >
-                {hpStatus}
-            </Badge>
-        )}
        </div>
     );
   };
