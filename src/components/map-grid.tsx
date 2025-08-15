@@ -1,7 +1,7 @@
 
 'use client';
 
-import { CircleUserRound, Shield, Lightbulb, DoorClosed, DoorOpen, EyeOff } from 'lucide-react';
+import { CircleUserRound, Shield, Lightbulb, DoorClosed, DoorOpen, EyeOff, Skull } from 'lucide-react';
 import type { Token, Tool, Path, EraseMode, DrawMode } from './gm-view';
 import type { Point } from '@/lib/raycasting';
 import { calculateVisibilityPolygon } from '@/lib/raycasting';
@@ -422,7 +422,7 @@ export function MapGrid({
     const getHpRingColor = (token: Token): HpColorRing => {
         if (token.type !== 'Enemy' || !token.hp) return 'ring-white/50';
 
-        // For player view, only show colors for visible tokens
+        // In GM view, always show the color. In Player view, only for visible tokens.
         if (isPlayerView && !token.visible) return 'ring-white/50';
 
         const percent = (token.hp.current / token.hp.max) * 100;
@@ -456,6 +456,7 @@ export function MapGrid({
     }
 
     const isHiddenEnemy = !isPlayerView && token.type === 'Enemy' && !token.visible;
+    const isDefeated = token.type === 'Enemy' && token.hp && token.hp.current <= 0;
     const hpRingColor = getHpRingColor(token);
 
 
@@ -465,7 +466,7 @@ export function MapGrid({
             className={cn(
             "relative rounded-full flex items-center justify-center ring-2 shadow-lg bg-cover bg-center w-full h-full",
             hpRingColor,
-            isHovered && (token.type === 'PC' || token.type === 'Enemy') && 'bg-primary/30',
+            isHovered && 'bg-primary/30',
             (token.type === 'Light' || token.type === 'Portal') && 'cursor-pointer'
             )}
             style={{ 
@@ -474,6 +475,11 @@ export function MapGrid({
             }}
         >
             {iconContent()}
+            {isDefeated && !isHiddenEnemy && (
+                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                    <Skull className="w-1/2 h-1/2 text-white/90"/>
+                </div>
+            )}
             {isHiddenEnemy && (
             <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
                 <EyeOff className="w-1/2 h-1/2 text-white/70"/>
@@ -803,4 +809,6 @@ export function MapGrid({
 
 
     
+    
+
     
