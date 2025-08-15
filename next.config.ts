@@ -1,3 +1,4 @@
+
 import type { NextConfig } from "next";
 
 const repoName = 'TableSight';

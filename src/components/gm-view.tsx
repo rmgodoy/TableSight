@@ -119,7 +119,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [playerPan, setPlayerPan] = useState({ x: 0, y: 0 });
     const [showFogOfWar, setShowFogOfWar] = useState(true);
     const { toast } = useToast();
-    const storageKey = `tabletop-alchemist-session-${sessionId}`;
+    const storageKey = `tablesight-session-${sessionId}`;
     const [importAlertOpen, setImportAlertOpen] = useState(false);
     const pendingImportFile = useRef<File | null>(null);
 

@@ -26,7 +26,7 @@ export default function Home() {
         backgroundImage: null,
         cellSize: 40,
     };
-    localStorage.setItem(`tabletop-alchemist-session-${newSessionId}`, JSON.stringify(initialState));
+    localStorage.setItem(`tablesight-session-${newSessionId}`, JSON.stringify(initialState));
 
     router.push(`/gm#${newSessionId}`);
   };
@@ -39,7 +39,7 @@ export default function Home() {
                 <Rocket className="h-12 w-12 text-primary" />
             </div>
         </div>
-        <h1 className="text-5xl font-bold font-headline text-primary mb-2">Tabletop Alchemist</h1>
+        <h1 className="text-5xl font-bold font-headline text-primary mb-2">TableSight</h1>
         <p className="text-lg text-muted-foreground max-w-2xl">
           Your digital companion for immersive, in-person tabletop RPGs. Create maps, manage tokens, and reveal the world to your players in real-time.
         </p>
@@ -66,7 +66,7 @@ export default function Home() {
         <SessionList />
       </div>
        <footer className="absolute bottom-4 text-center text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} Tabletop Alchemist. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} TableSight. All rights reserved.</p>
       </footer>
     </div>
   );

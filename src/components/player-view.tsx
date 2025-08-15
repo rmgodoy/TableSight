@@ -13,7 +13,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [cellSize, setCellSize] = useState(40);
-  const storageKey = `tabletop-alchemist-session-${sessionId}`;
+  const storageKey = `tablesight-session-${sessionId}`;
 
   const applyState = useCallback((savedState: string | null) => {
     if (!savedState) return;
@@ -55,7 +55,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     if (!sessionId) return;
     // Initial load from localStorage
-    const storageKey = `tabletop-alchemist-session-${sessionId}`;
+    const storageKey = `tablesight-session-${sessionId}`;
     applyState(localStorage.getItem(storageKey));
     
     const listener = (event: StorageEvent) => {

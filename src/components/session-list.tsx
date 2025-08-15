@@ -35,12 +35,12 @@ export function SessionList() {
       const foundSessions: SessionInfo[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('tabletop-alchemist-session-')) {
+        if (key && key.startsWith('tablesight-session-')) {
           try {
             const item = localStorage.getItem(key);
             if (item) {
               const gameState: GameState = JSON.parse(item);
-              const sessionId = key.replace('tabletop-alchemist-session-', '');
+              const sessionId = key.replace('tablesight-session-', '');
               foundSessions.push({
                 id: sessionId,
                 name: gameState.sessionName || `Session ${sessionId.substring(0, 4)}`,
@@ -63,13 +63,13 @@ export function SessionList() {
   }, []);
 
   const deleteSession = (sessionId: string) => {
-    localStorage.removeItem(`tabletop-alchemist-session-${sessionId}`);
+    localStorage.removeItem(`tablesight-session-${sessionId}`);
     setSessions(currentSessions => currentSessions.filter(s => s.id !== sessionId));
   };
   
   const clearAllSessions = () => {
     sessions.forEach(session => {
-        localStorage.removeItem(`tabletop-alchemist-session-${session.id}`);
+        localStorage.removeItem(`tablesight-session-${session.id}`);
     });
     setSessions([]);
   }

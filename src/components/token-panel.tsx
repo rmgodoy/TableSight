@@ -389,8 +389,3 @@ export function TokenPanel({
         </div>
     );
 }
-
-    
-
-    
-
