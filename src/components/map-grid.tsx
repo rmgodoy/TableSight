@@ -93,7 +93,7 @@ export function MapGrid({
   playerPan = { x: 0, y: 0},
   playerZoom = 1,
   playerViewport = null,
-  showPlayerViewport = true,
+  showPlayerViewport = false,
   followedTokenId = null,
 }: MapGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
