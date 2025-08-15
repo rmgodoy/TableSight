@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { MapGrid } from '@/components/map-grid';
 import { Eye } from 'lucide-react';
 import type { GameState, Path, Token, EraseMode, DrawMode } from './gm-view';
@@ -14,6 +14,8 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [cellSize, setCellSize] = useState(40);
   const storageKey = `tablesight-session-${sessionId}`;
+  const containerRef = useRef<HTMLDivElement>(null);
+
 
   const applyState = useCallback((savedState: string | null) => {
     if (!savedState) return;
@@ -71,8 +73,35 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     };
   }, [sessionId, applyState]);
 
+  // Effect to save viewport dimensions to localStorage
+  useEffect(() => {
+        const updateViewportInStorage = () => {
+            if (containerRef.current) {
+                const { clientWidth, clientHeight } = containerRef.current;
+                const savedState = localStorage.getItem(storageKey);
+                if (savedState) {
+                    try {
+                        const gameState: GameState = JSON.parse(savedState);
+                        gameState.playerViewport = { width: clientWidth, height: clientHeight };
+                        localStorage.setItem(storageKey, JSON.stringify(gameState));
+                    } catch (error) {
+                        console.error("Could not update player viewport in storage", error);
+                    }
+                }
+            }
+        };
+
+        const debouncedUpdate = setTimeout(updateViewportInStorage, 500);
+        window.addEventListener('resize', updateViewportInStorage);
+
+        return () => {
+            clearTimeout(debouncedUpdate);
+            window.removeEventListener('resize', updateViewportInStorage);
+        };
+    }, [storageKey]);
+
   return (
-    <div className="w-screen h-dvh bg-black relative flex items-center justify-center overflow-hidden">
+    <div ref={containerRef} className="w-screen h-dvh bg-black relative flex items-center justify-center overflow-hidden">
       <div className="w-full h-full">
         <MapGrid 
           showGrid={true} 

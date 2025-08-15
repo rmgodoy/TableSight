@@ -73,6 +73,7 @@ export type GameState = {
     pan?: { x: number, y: number };
     playerZoom?: number;
     playerPan?: { x: number, y: number };
+    playerViewport?: { width: number, height: number };
     backgroundImage?: string | null;
     cellSize?: number;
     lastModified?: number;
@@ -111,6 +112,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [hoveredTokenId, setHoveredTokenId] = useState<string | null>(null);
     const [isPlayerViewFrozen, setPlayerViewFrozen] = useState(false);
     
+    // This state is read from local storage but not part of the undo/redo history
+    const [playerViewport, setPlayerViewport] = useState<{width: number, height: number} | null>(null);
+    
     // Derived state from history
     const currentHistoryState = history[historyIndex] || { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
     const { paths, tokens, backgroundImage, cellSize, sessionName } = currentHistoryState;
@@ -139,51 +143,77 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     
     // This effect handles initializing the session from localStorage
     useEffect(() => {
-        try {
-            const savedState = localStorage.getItem(storageKey);
-            if (savedState) {
-                const gameState: GameState = JSON.parse(savedState);
-                const loadedPaths = (gameState.paths || []).map(p => ({
-                    ...p,
-                    id: p.id || `path-${Math.random()}`,
-                    isPortal: p.isPortal || false,
-                    isHiddenWall: p.isHiddenWall || false,
-                    // backwards compatibility for points structure
-                    points: p.points && p.points.length > 0 && Array.isArray(p.points[0]) ? p.points : [p.points || []],
-                    tool: p.tool || 'draw',
-                    isClosed: p.isClosed !== undefined ? p.isClosed : (p.tool !== 'draw') // Backwards compatibility
-                }));
-                const loadedTokens = (gameState.tokens || []).map(t => ({
-                    ...t,
-                    type: t.type || (t.id.startsWith('pc-') ? 'PC' : 'Enemy'),
-                    size: t.size || 1,
-                    torch: t.torch || { enabled: false, radius: 5 },
-                    hp: t.hp || (t.type === 'Enemy' ? { current: 10, max: 10 } : undefined)
-                }));
-                const loadedBg = gameState.backgroundImage || null;
-                const loadedCellSize = gameState.cellSize || 40;
-                const loadedSessionName = gameState.sessionName || '';
-                
-                const initialHistory: HistoryState = { sessionName: loadedSessionName, paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize };
-                setHistory([initialHistory]);
-                setHistoryIndex(0);
+        const loadState = () => {
+             try {
+                const savedState = localStorage.getItem(storageKey);
+                if (savedState) {
+                    const gameState: GameState = JSON.parse(savedState);
+                    const loadedPaths = (gameState.paths || []).map(p => ({
+                        ...p,
+                        id: p.id || `path-${Math.random()}`,
+                        isPortal: p.isPortal || false,
+                        isHiddenWall: p.isHiddenWall || false,
+                        // backwards compatibility for points structure
+                        points: p.points && p.points.length > 0 && Array.isArray(p.points[0]) ? p.points : [p.points || []],
+                        tool: p.tool || 'draw',
+                        isClosed: p.isClosed !== undefined ? p.isClosed : (p.tool !== 'draw') // Backwards compatibility
+                    }));
+                    const loadedTokens = (gameState.tokens || []).map(t => ({
+                        ...t,
+                        type: t.type || (t.id.startsWith('pc-') ? 'PC' : 'Enemy'),
+                        size: t.size || 1,
+                        torch: t.torch || { enabled: false, radius: 5 },
+                        hp: t.hp || (t.type === 'Enemy' ? { current: 10, max: 10 } : undefined)
+                    }));
+                    const loadedBg = gameState.backgroundImage || null;
+                    const loadedCellSize = gameState.cellSize || 40;
+                    const loadedSessionName = gameState.sessionName || '';
+                    
+                    const initialHistory: HistoryState = { sessionName: loadedSessionName, paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize };
+                    setHistory([initialHistory]);
+                    setHistoryIndex(0);
 
-                if (gameState.zoom) setZoom(gameState.zoom);
-                if (gameState.pan) setPan(gameState.pan);
-                if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
-                if (gameState.playerPan) setPlayerPan(gameState.playerPan);
-                if (gameState.isPlayerViewFrozen) setPlayerViewFrozen(gameState.isPlayerViewFrozen);
-            } else {
-                const initialState: HistoryState = { sessionName: '', paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
+                    if (gameState.zoom) setZoom(gameState.zoom);
+                    if (gameState.pan) setPan(gameState.pan);
+                    if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
+                    if (gameState.playerPan) setPlayerPan(gameState.playerPan);
+                    if (gameState.isPlayerViewFrozen) setPlayerViewFrozen(gameState.isPlayerViewFrozen);
+                    if (gameState.playerViewport) setPlayerViewport(gameState.playerViewport);
+
+                } else {
+                    const initialState: HistoryState = { sessionName: '', paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
+                    setHistory([initialState]);
+                    setHistoryIndex(0);
+                }
+            } catch (error) {
+                console.error("Failed to load game state from localStorage", error);
+                    const initialState: HistoryState = { sessionName: '', paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
                 setHistory([initialState]);
                 setHistoryIndex(0);
             }
-        } catch (error) {
-            console.error("Failed to load game state from localStorage", error);
-                const initialState: HistoryState = { sessionName: '', paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
-            setHistory([initialState]);
-            setHistoryIndex(0);
-        }
+        };
+
+        loadState();
+        
+        // Also listen for storage changes from other tabs (like the player view)
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === storageKey) {
+                const savedState = e.newValue;
+                if (savedState) {
+                     const gameState: GameState = JSON.parse(savedState);
+                     // Only update non-history state from the listener to avoid conflicts
+                     if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
+                     if (gameState.playerPan) setPlayerPan(gameState.playerPan);
+                     if (gameState.isPlayerViewFrozen) setPlayerViewFrozen(gameState.isPlayerViewFrozen);
+                     if (gameState.playerViewport) setPlayerViewport(gameState.playerViewport);
+                }
+            }
+        };
+        window.addEventListener('storage', handleStorageChange);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId]);
 
@@ -199,6 +229,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             pan,
             playerZoom,
             playerPan,
+            playerViewport: playerViewport ?? undefined,
             lastModified: Date.now(),
             isPlayerViewFrozen,
         };
@@ -217,7 +248,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }, 500);
 
         return () => clearTimeout(handler);
-    }, [currentHistoryState, zoom, pan, playerZoom, playerPan, historyIndex, storageKey, toast, isPlayerViewFrozen]);
+    }, [currentHistoryState, zoom, pan, playerZoom, playerPan, playerViewport, historyIndex, storageKey, toast, isPlayerViewFrozen]);
 
 
     const undo = useCallback(() => {
@@ -296,7 +327,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const handleNewPath = useCallback(async (path: Omit<Path, 'id'>) => {
         const isPortalTool = selectedTool === 'portal';
         const isHiddenWallTool = selectedTool === 'hidden-wall';
-        const isDrawingTool = selectedTool === 'draw';
         
         const newPathData: Path = { 
             ...path, 
@@ -664,6 +694,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                             onPanChange={setPan}
                             showFogOfWar={showFogOfWar}
                             hoveredTokenId={hoveredTokenId}
+                            playerPan={playerPan}
+                            playerZoom={playerZoom}
+                            playerViewport={playerViewport}
                         />
                     </div>
                 </main>
@@ -695,4 +728,3 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         </>
     );
 }
-

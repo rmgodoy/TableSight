@@ -40,6 +40,9 @@ interface MapGridProps {
   onPanChange?: (pan: { x: number; y: number }) => void;
   showFogOfWar?: boolean;
   hoveredTokenId?: string | null;
+  playerPan?: { x: number; y: number };
+  playerZoom?: number;
+  playerViewport?: { width: number; height: number } | null;
 }
 
 function getSvgPathFromPoints(rings: Point[][], scale: number = 1, shouldClose: boolean) {
@@ -81,6 +84,9 @@ export function MapGrid({
   onPanChange,
   showFogOfWar = false,
   hoveredTokenId = null,
+  playerPan = { x: 0, y: 0},
+  playerZoom = 1,
+  playerViewport = null,
 }: MapGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
@@ -573,6 +579,44 @@ export function MapGrid({
   const isBrushToolActive = !isPlayerView && (selectedTool === 'draw' || selectedTool === 'portal' || selectedTool === 'hidden-wall' || (selectedTool === 'erase' && eraseMode === 'brush'));
   const currentBrushSize = selectedTool === 'erase' ? eraseBrushSize : brushSize;
 
+  const PlayerViewportRect = () => {
+    if (isPlayerView || !playerViewport) {
+        return null;
+    }
+
+    // Convert player pan/zoom to GM's screen coordinates
+    // 1. Find the top-left of the player's viewport in world coordinates
+    const playerViewTopLeftWorld = {
+        x: -playerPan.x / playerZoom,
+        y: -playerPan.y / playerZoom
+    };
+
+    // 2. Find the dimensions of the player's viewport in world coordinates
+    const playerViewWorldDim = {
+        width: playerViewport.width / playerZoom,
+        height: playerViewport.height / playerZoom
+    };
+
+    // 3. Convert these world coordinates to the GM's screen coordinates
+    const rectX = playerViewTopLeftWorld.x * activeZoom + activePan.x;
+    const rectY = playerViewTopLeftWorld.y * activeZoom + activePan.y;
+    const rectWidth = playerViewWorldDim.width * activeZoom;
+    const rectHeight = playerViewWorldDim.height * activeZoom;
+
+
+    return (
+        <div 
+            className="absolute border-2 border-dashed border-blue-500 pointer-events-none"
+            style={{
+                left: `${rectX}px`,
+                top: `${rectY}px`,
+                width: `${rectWidth}px`,
+                height: `${rectHeight}px`,
+            }}
+        />
+    )
+  }
+
   const MapContent = () => {
     let renderTokens = tokens;
     if (isPlayerView) {
@@ -785,6 +829,7 @@ export function MapGrid({
           <>
             {showGrid && <GridLayer bright={true} />}
             <MapContent />
+            <PlayerViewportRect />
             {isBrushToolActive && cursorPosition && (
                 <div
                     className="absolute rounded-full bg-primary/20 border-2 border-primary pointer-events-none"
