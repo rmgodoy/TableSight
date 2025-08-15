@@ -130,9 +130,20 @@ export function TokenPanel({
         <div className="h-full flex flex-col gap-4">
             <Card className="w-full flex flex-col flex-1 min-h-0">
                 <CardHeader>
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-start">
                         <CardTitle>{ sessionName || 'Tokens' }</CardTitle>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-end gap-2">
+                             <ToggleGroup type="single" value={filter} onValueChange={(value: TokenFilter) => value && setFilter(value)} size="sm">
+                                <ToggleGroupItem value="combatants" aria-label="Combatants">
+                                    <Users className="h-4 w-4" />
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value="lights" aria-label="Lights">
+                                    <Lightbulb className="h-4 w-4" />
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value="portals" aria-label="Portals">
+                                    <DoorClosed className="h-4 w-4" />
+                                </ToggleGroupItem>
+                            </ToggleGroup>
                             {filter === 'combatants' && enemyTokens.length > 0 && (
                                 <Button
                                     variant="outline"
@@ -144,17 +155,6 @@ export function TokenPanel({
                                     {areAllEnemiesVisible ? 'Hide All' : 'Show All'}
                                 </Button>
                             )}
-                            <ToggleGroup type="single" value={filter} onValueChange={(value: TokenFilter) => value && setFilter(value)} size="sm">
-                                <ToggleGroupItem value="combatants" aria-label="Combatants">
-                                    <Users className="h-4 w-4" />
-                                </ToggleGroupItem>
-                                <ToggleGroupItem value="lights" aria-label="Lights">
-                                    <Lightbulb className="h-4 w-4" />
-                                </ToggleGroupItem>
-                                <ToggleGroupItem value="portals" aria-label="Portals">
-                                    <DoorClosed className="h-4 w-4" />
-                                </ToggleGroupItem>
-                            </ToggleGroup>
                         </div>
                     </div>
                 </CardHeader>
