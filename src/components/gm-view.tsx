@@ -40,6 +40,7 @@ export type Path = {
     blocksLight: boolean;
     isPortal?: boolean;
     isHiddenWall?: boolean;
+    tool: Tool;
 };
 
 export type Token = {
@@ -149,7 +150,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     isPortal: p.isPortal || false,
                     isHiddenWall: p.isHiddenWall || false,
                     // backwards compatibility for points structure
-                    points: p.points && p.points.length > 0 && Array.isArray(p.points[0]) ? p.points : [p.points || []]
+                    points: p.points && p.points.length > 0 && Array.isArray(p.points[0]) ? p.points : [p.points || []],
+                    tool: p.tool || 'draw'
                 }));
                 const loadedTokens = (gameState.tokens || []).map(t => ({
                     ...t,
@@ -232,6 +234,12 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // Check if the event target is an input, textarea, or contenteditable element
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return; // Don't trigger shortcuts if user is typing
+            }
+
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === 'z') {
                     e.preventDefault();
@@ -333,6 +341,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     const newMergedPaths = mergedPathData.map((mergedPath, index) => ({
                         ...mergedPath,
                         id: `path-${Date.now()}-merged-${index}`,
+                        tool: selectedTool // Keep track of what tool created this
                     }));
                     const intersectingPathIds = new Set(intersectingPaths.map(p => p.id));
                     const remainingPaths = paths.filter(p => !intersectingPathIds.has(p.id));
@@ -504,6 +513,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     blocksLight: true,
                     isPortal: false,
                     isHiddenWall: false,
+                    tool: 'draw',
                 }));
                 
                 const portalWalls: Path[] = [];
@@ -520,6 +530,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         blocksLight: true, // Portals are closed by default
                         isPortal: true,
                         isHiddenWall: false,
+                        tool: 'portal',
                     });
 
                     portalTokens.push({
@@ -733,6 +744,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         <MapGrid 
                             showGrid={showGrid} 
                             snapToGrid={snapToGrid}
+                            smartMode={smartMode}
                             tokens={tokens}
                             paths={paths}
                             backgroundImage={backgroundImage}

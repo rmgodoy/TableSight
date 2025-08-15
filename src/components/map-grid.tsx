@@ -15,6 +15,7 @@ type HpColorRing = 'ring-green-500' | 'ring-yellow-500' | 'ring-orange-500' | 'r
 interface MapGridProps {
   showGrid: boolean;
   snapToGrid: boolean;
+  smartMode: boolean;
   tokens: Token[];
   paths: Path[];
   backgroundImage: string | null;
@@ -41,12 +42,13 @@ interface MapGridProps {
   hoveredTokenId?: string | null;
 }
 
-function getSvgPathFromPoints(rings: Point[][], scale: number = 1) {
+function getSvgPathFromPoints(rings: Point[][], scale: number = 1, shouldClose: boolean) {
     if (!rings || rings.length === 0) return '';
     
     return rings.map(ring => {
         if (ring.length === 0) return '';
-        return `M ${ring[0].x * scale} ${ring[0].y * scale} ` + ring.slice(1).map(p => `L ${p.x * scale} ${p.y * scale}`).join(' ') + ' Z';
+        const pathData = `M ${ring[0].x * scale} ${ring[0].y * scale} ` + ring.slice(1).map(p => `L ${p.x * scale} ${p.y * scale}`).join(' ');
+        return shouldClose ? pathData + ' Z' : pathData;
     }).join(' ');
 }
 
@@ -54,6 +56,7 @@ function getSvgPathFromPoints(rings: Point[][], scale: number = 1) {
 export function MapGrid({ 
   showGrid, 
   snapToGrid,
+  smartMode,
   tokens, 
   paths,
   backgroundImage,
@@ -263,7 +266,8 @@ export function MapGrid({
           points: [currentPath], // Wrap points in another array for the new data structure
           color: selectedTool === 'portal' ? '#ff00ff' : (selectedTool === 'hidden-wall' ? '#000000' : brushColor),
           width: brushSize,
-          blocksLight: drawMode === 'wall'
+          blocksLight: drawMode === 'wall',
+          tool: selectedTool,
       });
     }
     setIsDrawing(false);
@@ -422,8 +426,10 @@ export function MapGrid({
     const getHpRingColor = (token: Token): HpColorRing => {
         if (token.type !== 'Enemy' || !token.hp) return 'ring-white/50';
 
-        // In GM view, always show the color. In Player view, only for visible tokens.
+        // In GM view, show for all enemies. In Player view, only for visible tokens.
         if (isPlayerView && !token.visible) return 'ring-white/50';
+        
+        if (token.hp.current <= 0) return 'ring-white/50'; // No ring for defeated tokens
 
         const percent = (token.hp.current / token.hp.max) * 100;
         if (percent > 75) return 'ring-green-500';
@@ -591,15 +597,16 @@ export function MapGrid({
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                 {renderPaths.map((path) => {
-                    const isShape = selectedTool === 'rectangle' || selectedTool === 'circle';
-                    const pathD = getSvgPathFromPoints(path.points, 1);
+                    const alwaysClose = path.tool === 'rectangle' || path.tool === 'circle' || path.isPortal || path.isHiddenWall;
+                    const shouldClosePath = alwaysClose || (path.tool === 'draw' && smartMode);
+                    const pathD = getSvgPathFromPoints(path.points, 1, shouldClosePath);
                     return (
                         <path
                             key={path.id}
                             d={pathD}
                             stroke={path.color}
                             strokeWidth={path.width}
-                            fill={isShape ? 'rgba(0,0,0,0.5)' : 'none'}
+                            fill={alwaysClose ? 'rgba(0,0,0,0.5)' : 'none'}
                             fillRule="evenodd"
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -610,7 +617,7 @@ export function MapGrid({
                 })}
                 {!isPlayerView && isDrawing && currentPath.length > 0 && (
                     <path
-                        d={getSvgPathFromPoints([currentPath])}
+                        d={getSvgPathFromPoints([currentPath], 1, selectedTool !== 'draw' || smartMode)}
                         stroke={selectedTool === 'portal' ? '#ff00ff' : (selectedTool === 'hidden-wall' ? '#000000' : brushColor)}
                         strokeWidth={brushSize}
                         fill={selectedTool === 'rectangle' || selectedTool === 'circle' ? 'rgba(0,0,0,0.5)' : 'none'}
@@ -806,9 +813,3 @@ export function MapGrid({
     </div>
   );
 }
-
-
-    
-    
-
-    
