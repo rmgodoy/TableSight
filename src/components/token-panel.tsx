@@ -32,6 +32,7 @@ interface TokenPanelProps {
     tokens: Token[];
     sessionName?: string;
     onVisibilityChange: (tokenId: string, isVisible: boolean) => void;
+    onToggleAllEnemiesVisibility: () => void;
     onTokenDelete: (tokenId: string) => void;
     onTokenDuplicate: (tokenId: string) => void;
     onTokenNameChange: (tokenId: string, newName: string) => void;
@@ -49,6 +50,7 @@ export function TokenPanel({
     tokens, 
     sessionName,
     onVisibilityChange, 
+    onToggleAllEnemiesVisibility,
     onTokenDelete, 
     onTokenDuplicate,
     onTokenNameChange, 
@@ -94,6 +96,9 @@ export function TokenPanel({
         }
     }, [tokens, filter]);
 
+    const enemyTokens = tokens.filter(t => t.type === 'Enemy');
+    const areAllEnemiesVisible = enemyTokens.length > 0 && enemyTokens.every(t => t.visible);
+
 
     const handleIconUpload = (tokenId: string, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -127,17 +132,30 @@ export function TokenPanel({
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>{ sessionName || 'Tokens' }</CardTitle>
-                        <ToggleGroup type="single" value={filter} onValueChange={(value: TokenFilter) => value && setFilter(value)} size="sm">
-                            <ToggleGroupItem value="combatants" aria-label="Combatants">
-                                <Users className="h-4 w-4" />
-                            </ToggleGroupItem>
-                            <ToggleGroupItem value="lights" aria-label="Lights">
-                                <Lightbulb className="h-4 w-4" />
-                            </ToggleGroupItem>
-                            <ToggleGroupItem value="portals" aria-label="Portals">
-                                <DoorClosed className="h-4 w-4" />
-                            </ToggleGroupItem>
-                        </ToggleGroup>
+                        <div className="flex items-center gap-2">
+                            {filter === 'combatants' && enemyTokens.length > 0 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={onToggleAllEnemiesVisibility}
+                                    title={areAllEnemiesVisible ? 'Hide All Enemies' : 'Show All Enemies'}
+                                >
+                                    {areAllEnemiesVisible ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                                    {areAllEnemiesVisible ? 'Hide All' : 'Show All'}
+                                </Button>
+                            )}
+                            <ToggleGroup type="single" value={filter} onValueChange={(value: TokenFilter) => value && setFilter(value)} size="sm">
+                                <ToggleGroupItem value="combatants" aria-label="Combatants">
+                                    <Users className="h-4 w-4" />
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value="lights" aria-label="Lights">
+                                    <Lightbulb className="h-4 w-4" />
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value="portals" aria-label="Portals">
+                                    <DoorClosed className="h-4 w-4" />
+                                </ToggleGroupItem>
+                            </ToggleGroup>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent className='flex-1 overflow-hidden p-0'>

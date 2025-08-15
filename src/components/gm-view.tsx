@@ -405,6 +405,23 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
         recordHistory({ tokens: [...tokens, newToken] });
     };
+    
+    const handleToggleAllEnemiesVisibility = useCallback(() => {
+        const enemyTokens = tokens.filter(t => t.type === 'Enemy');
+        if (enemyTokens.length === 0) return;
+
+        // If any enemy is hidden, show all. Otherwise, hide all.
+        const shouldBeVisible = enemyTokens.some(t => !t.visible);
+
+        const newTokens = tokens.map(t => {
+            if (t.type === 'Enemy') {
+                return { ...t, visible: shouldBeVisible };
+            }
+            return t;
+        });
+
+        recordHistory({ tokens: newTokens });
+    }, [tokens, recordHistory]);
 
     const handleTokenVisibilityChange = (tokenId: string, isVisible: boolean) => updateToken(tokenId, { visible: isVisible });
     const handleTokenMove = (tokenId:string, x: number, y: number) => updateToken(tokenId, { x, y });
@@ -727,6 +744,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         tokens={tokens}
                         sessionName={sessionName}
                         onVisibilityChange={handleTokenVisibilityChange}
+                        onToggleAllEnemiesVisibility={handleToggleAllEnemiesVisibility}
                         onTokenDelete={handleTokenDelete}
                         onTokenDuplicate={handleTokenDuplicate}
                         onTokenNameChange={handleTokenNameChange}
