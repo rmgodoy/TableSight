@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import Image from 'next/image';
+import { ScrollArea } from './ui/scroll-area';
 
 interface GmSidebarProps {
     selectedTool: Tool;
@@ -60,45 +61,49 @@ export function GmSidebar({
             <aside className="w-16 h-full flex flex-col items-center p-2 gap-2 border-r border-border bg-card z-20">
                 <Image src="icons/icon.svg" alt="TableSight Logo" width={32} height={32} className="text-primary my-1" />
                 <Separator />
-                <div className="flex flex-col gap-2">
-                    {tools.map(tool => (
-                        <Tooltip key={tool.id}>
-                            <TooltipTrigger asChild>
-                                 <Button 
-                                    size="icon"
-                                    variant={selectedTool === tool.id ? 'default' : 'ghost'}
-                                    className="w-10 h-10"
-                                    onClick={() => onToolSelect(tool.id)}
-                                >
-                                    {tool.icon}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                                <p>{tool.label}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    ))}
-                </div>
-                 <Separator />
-                <div className="flex flex-col gap-2">
-                    {viewTools.map(tool => (
-                        <Tooltip key={tool.id}>
-                            <TooltipTrigger asChild>
-                                 <Button 
-                                    size="icon"
-                                    variant='ghost'
-                                    className="w-10 h-10"
-                                    onClick={tool.action}
-                                >
-                                    {tool.icon}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                                <p>{tool.label}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    ))}
-                </div>
+                <ScrollArea className="flex-1 w-full">
+                    <div className="flex flex-col items-center gap-2 py-2">
+                        <div className="flex flex-col gap-2">
+                            {tools.map(tool => (
+                                <Tooltip key={tool.id}>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            size="icon"
+                                            variant={selectedTool === tool.id ? 'default' : 'ghost'}
+                                            className="w-10 h-10"
+                                            onClick={() => onToolSelect(tool.id)}
+                                        >
+                                            {tool.icon}
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p>{tool.label}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ))}
+                        </div>
+                        <Separator className="my-2" />
+                        <div className="flex flex-col gap-2">
+                            {viewTools.map(tool => (
+                                <Tooltip key={tool.id}>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            size="icon"
+                                            variant='ghost'
+                                            className="w-10 h-10"
+                                            onClick={tool.action}
+                                        >
+                                            {tool.icon}
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p>{tool.label}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ))}
+                        </div>
+                    </div>
+                </ScrollArea>
             </aside>
         </TooltipProvider>
     );
