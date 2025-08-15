@@ -42,6 +42,7 @@ interface MapGridProps {
   hoveredTokenId?: string | null;
   playerPan?: { x: number; y: number };
   playerZoom?: number;
+  onPlayerPanChange?: (pan: { x: number; y: number }) => void;
   playerViewport?: { width: number; height: number } | null;
   showPlayerViewport?: boolean;
 }
@@ -83,6 +84,7 @@ export function MapGrid({
   pan = { x: 0, y: 0 },
   onZoomChange,
   onPanChange,
+  onPlayerPanChange,
   showFogOfWar = false,
   hoveredTokenId = null,
   playerPan = { x: 0, y: 0},
@@ -110,6 +112,9 @@ export function MapGrid({
   const [cursorPosition, setCursorPosition] = useState<Point | null>(null);
   
   const drawingStartPoint = useRef<Point | null>(null);
+  
+  const [isDraggingPlayerViewport, setIsDraggingPlayerViewport] = useState(false);
+  const playerViewDragStartRef = useRef({ mouseX: 0, mouseY: 0, panX: 0, panY: 0 });
 
   useEffect(() => {
     // For GM view, always sync with props
@@ -345,6 +350,18 @@ export function MapGrid({
   };
 
   const handleGlobalMouseMove = (e: MouseEvent) => {
+    if (isDraggingPlayerViewport && onPlayerPanChange) {
+        const dx = e.clientX - playerViewDragStartRef.current.mouseX;
+        const dy = e.clientY - playerViewDragStartRef.current.mouseY;
+
+        // We need to adjust the pan delta by the player's zoom, not the GM's
+        onPlayerPanChange({
+            x: playerViewDragStartRef.current.panX + dx,
+            y: playerViewDragStartRef.current.panY + dy,
+        });
+        return;
+    }
+
     if (!draggingToken || !onTokenMove || !dragOffset) return;
     // Use non-snapped points for smooth ghost positioning
     const point = getTransformedPoint(e, false);
@@ -359,6 +376,11 @@ export function MapGrid({
   };
   
   const handleGlobalMouseUp = (e: MouseEvent) => {
+    if (isDraggingPlayerViewport) {
+        setIsDraggingPlayerViewport(false);
+        return;
+    }
+
     if (!draggingToken || !onTokenMove || !dragOffset) return;
     
     // Use non-snapped points for final calculation
@@ -378,7 +400,7 @@ export function MapGrid({
   };
 
   useEffect(() => {
-    if (draggingToken) {
+    if (draggingToken || isDraggingPlayerViewport) {
       document.addEventListener('mousemove', handleGlobalMouseMove);
       document.addEventListener('mouseup', handleGlobalMouseUp);
     } else {
@@ -391,7 +413,7 @@ export function MapGrid({
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draggingToken, pan, zoom, dragOffset]);
+  }, [draggingToken, pan, zoom, dragOffset, isDraggingPlayerViewport]);
 
   useEffect(() => {
     const handleSpacebarPan = (e: KeyboardEvent) => {
@@ -605,16 +627,30 @@ export function MapGrid({
     const rectWidth = playerViewWorldDim.width * activeZoom;
     const rectHeight = playerViewWorldDim.height * activeZoom;
 
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        e.stopPropagation();
+        setIsDraggingPlayerViewport(true);
+        playerViewDragStartRef.current = {
+            mouseX: e.clientX,
+            mouseY: e.clientY,
+            panX: playerPan.x,
+            panY: playerPan.y
+        };
+    };
 
     return (
         <div 
-            className="absolute border-2 border-dashed border-blue-500 pointer-events-none"
+            className={cn(
+                "absolute border-2 border-dashed border-blue-500",
+                isDraggingPlayerViewport ? "cursor-grabbing" : "cursor-grab"
+            )}
             style={{
                 left: `${rectX}px`,
                 top: `${rectY}px`,
                 width: `${rectWidth}px`,
                 height: `${rectHeight}px`,
             }}
+            onMouseDown={handleMouseDown}
         />
     )
   }
@@ -864,3 +900,5 @@ export function MapGrid({
     </div>
   );
 }
+
+    
