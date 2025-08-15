@@ -3,12 +3,12 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Rocket } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SessionList } from '@/components/session-list';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import type { GameState } from '@/components/gm-view';
+import Image from 'next/image';
 
 export default function Home() {
   const router = useRouter();
@@ -36,7 +36,7 @@ export default function Home() {
       <div className="flex flex-col items-center text-center mb-12">
         <div className="bg-primary/20 p-4 rounded-full mb-6">
             <div className="bg-primary/30 p-4 rounded-full">
-                <Rocket className="h-12 w-12 text-primary" />
+                <Image src="icons/icon-color.svg" alt="TableSight Logo" width={48} height={48} />
             </div>
         </div>
         <h1 className="text-5xl font-bold font-headline text-primary mb-2">TableSight</h1>

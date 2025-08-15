@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useRef } from 'react';
+import Image from 'next/image';
 
 interface GmSidebarProps {
     selectedTool: Tool;
@@ -33,7 +33,6 @@ export function GmSidebar({
     zoomIn,
     zoomOut
 }: GmSidebarProps) {
-    const importInputRef = useRef<HTMLInputElement>(null);
 
     const tools: { id: Tool, label: string, icon: React.ReactNode }[] = [
         { id: 'select', label: 'Select', icon: <MousePointer /> },
@@ -59,7 +58,7 @@ export function GmSidebar({
     return (
         <TooltipProvider delayDuration={100}>
             <aside className="w-16 h-full flex flex-col items-center p-2 gap-2 border-r border-border bg-card z-20">
-                <h1 className="text-2xl font-bold font-headline text-primary pb-2">TA</h1>
+                <Image src="icons/icon.svg" alt="TableSight Logo" width={32} height={32} className="text-primary my-1" />
                 <Separator />
                 <div className="flex flex-col gap-2">
                     {tools.map(tool => (
