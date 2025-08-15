@@ -123,7 +123,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [playerZoom, setPlayerZoom] = useState(1);
-    const [playerPan, setPlayerPan] = useState({ x: number, y: number });
+    const [playerPan, setPlayerPan] = useState({ x: 0, y: 0 });
     const [showFogOfWar, setShowFogOfWar] = useState(true);
     const { toast } = useToast();
     const storageKey = `tablesight-session-${sessionId}`;
@@ -735,4 +735,5 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     );
 }
 
+    
     
