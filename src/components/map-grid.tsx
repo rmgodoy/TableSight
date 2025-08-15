@@ -524,7 +524,13 @@ export function MapGrid({
     
     let renderPaths = paths;
     if (isPlayerView) {
-        renderPaths = paths.filter(p => !p.isPortal);
+        renderPaths = paths.filter(p => {
+            // Don't render portals
+            if (p.isPortal) return false;
+            // Don't render open hidden walls
+            if (p.isHiddenWall && !p.blocksLight) return false;
+            return true;
+        });
     }
     
     return (
