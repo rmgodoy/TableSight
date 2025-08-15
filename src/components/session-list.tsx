@@ -7,6 +7,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import type { GameState } from './gm-view';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 type SessionInfo = {
   id: string;
@@ -49,10 +60,8 @@ export function SessionList() {
   }, []);
 
   const deleteSession = (sessionId: string) => {
-    if (window.confirm(`Are you sure you want to delete session "${sessionId}"? This cannot be undone.`)) {
-      localStorage.removeItem(`tabletop-alchemist-session-${sessionId}`);
-      setSessions(sessions.filter(s => s.id !== sessionId));
-    }
+    localStorage.removeItem(`tabletop-alchemist-session-${sessionId}`);
+    setSessions(currentSessions => currentSessions.filter(s => s.id !== sessionId));
   };
   
   const resumeSession = (sessionId: string) => {
@@ -83,9 +92,27 @@ export function SessionList() {
                  <Button onClick={() => resumeSession(session.id)}>
                     Continue Session
                 </Button>
-                <Button variant="destructive" size="icon" onClick={() => deleteSession(session.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="icon">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete the session "{session.id}". This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteSession(session.id)}>
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </li>
           ))}
