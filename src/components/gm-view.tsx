@@ -59,6 +59,7 @@ export type Token = {
 };
 
 export type GameState = {
+    sessionName?: string;
     tokens: Token[];
     paths: Path[];
     zoom?: number;
@@ -72,6 +73,7 @@ export type GameState = {
 
 // Represents a single state in the history for undo/redo
 type HistoryState = {
+    sessionName?: string;
     paths: Path[];
     tokens: Token[];
     backgroundImage: string | null;
@@ -101,7 +103,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     
     // Derived state from history
     const currentHistoryState = history[historyIndex] || { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
-    const { paths, tokens, backgroundImage, cellSize } = currentHistoryState;
+    const { paths, tokens, backgroundImage, cellSize, sessionName } = currentHistoryState;
 
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -117,7 +119,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const recordHistory = useCallback((newState: Partial<HistoryState>) => {
         setHistory(prevHistory => {
             const newHistory = prevHistory.slice(0, historyIndex + 1);
-            const currentState = newHistory[newHistory.length -1] || {paths: [], tokens: [], backgroundImage: null, cellSize: 40};
+            const currentState = newHistory[newHistory.length -1] || {paths: [], tokens: [], backgroundImage: null, cellSize: 40, sessionName: ''};
             newHistory.push({
                 ...currentState,
                 ...newState
@@ -138,7 +140,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     id: p.id || `path-${Math.random()}`,
                     isPortal: p.isPortal || false,
                     // backwards compatibility for points structure
-                    points: Array.isArray(p.points[0]) ? p.points : [p.points]
+                    points: p.points && p.points.length > 0 && Array.isArray(p.points[0]) ? p.points : [p.points || []]
                 }));
                 const loadedTokens = (gameState.tokens || []).map(t => ({
                     ...t,
@@ -148,8 +150,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 }));
                 const loadedBg = gameState.backgroundImage || null;
                 const loadedCellSize = gameState.cellSize || 40;
+                const loadedSessionName = gameState.sessionName || '';
                 
-                const initialHistory: HistoryState = { paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize };
+                const initialHistory: HistoryState = { sessionName: loadedSessionName, paths: loadedPaths, tokens: loadedTokens, backgroundImage: loadedBg, cellSize: loadedCellSize };
                 setHistory([initialHistory]);
                 setHistoryIndex(0);
 
@@ -158,13 +161,13 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 if (gameState.playerZoom) setPlayerZoom(gameState.playerZoom);
                 if (gameState.playerPan) setPlayerPan(gameState.playerPan);
             } else {
-                const initialState: HistoryState = { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
+                const initialState: HistoryState = { sessionName: '', paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
                 setHistory([initialState]);
                 setHistoryIndex(0);
             }
         } catch (error) {
             console.error("Failed to load game state from localStorage", error);
-                const initialState: HistoryState = { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
+                const initialState: HistoryState = { sessionName: '', paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
             setHistory([initialState]);
             setHistoryIndex(0);
         }
@@ -699,6 +702,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                 <aside className="w-80 h-full flex flex-col p-4 gap-4 border-l border-border bg-card z-20 overflow-hidden">
                     <TokenPanel 
                         tokens={tokens}
+                        sessionName={sessionName}
                         onVisibilityChange={handleTokenVisibilityChange}
                         onTokenDelete={handleTokenDelete}
                         onTokenNameChange={handleTokenNameChange}

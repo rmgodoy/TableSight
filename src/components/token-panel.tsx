@@ -30,6 +30,7 @@ type TokenFilter = 'combatants' | 'lights' | 'portals';
 
 interface TokenPanelProps {
     tokens: Token[];
+    sessionName?: string;
     onVisibilityChange: (tokenId: string, isVisible: boolean) => void;
     onTokenDelete: (tokenId: string) => void;
     onTokenNameChange: (tokenId: string, newName: string) => void;
@@ -45,6 +46,7 @@ interface TokenPanelProps {
 
 export function TokenPanel({ 
     tokens, 
+    sessionName,
     onVisibilityChange, 
     onTokenDelete, 
     onTokenNameChange, 
@@ -117,7 +119,7 @@ export function TokenPanel({
             <Card className="w-full flex flex-col flex-1 min-h-0">
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                        <CardTitle>Tokens</CardTitle>
+                        <CardTitle>{ sessionName || 'Tokens' }</CardTitle>
                         <ToggleGroup type="single" value={filter} onValueChange={(value: TokenFilter) => value && setFilter(value)} size="sm">
                             <ToggleGroupItem value="combatants" aria-label="Combatants">
                                 <Users className="h-4 w-4" />

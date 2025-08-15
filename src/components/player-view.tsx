@@ -30,6 +30,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
             ...p,
             id: p.id || `path-${Math.random()}`,
             isPortal: p.isPortal || false,
+            points: p.points && p.points.length > 0 && Array.isArray(p.points[0]) ? p.points : [p.points || []]
        }));
 
       setTokens(updatedTokens);

@@ -22,6 +22,7 @@ import { ScrollArea } from './ui/scroll-area';
 
 type SessionInfo = {
   id: string;
+  name: string;
   lastModified: number;
 };
 
@@ -39,8 +40,10 @@ export function SessionList() {
             const item = localStorage.getItem(key);
             if (item) {
               const gameState: GameState = JSON.parse(item);
+              const sessionId = key.replace('tabletop-alchemist-session-', '');
               foundSessions.push({
-                id: key.replace('tabletop-alchemist-session-', ''),
+                id: sessionId,
+                name: gameState.sessionName || `Session ${sessionId.substring(0, 4)}`,
                 lastModified: gameState.lastModified || new Date(0).getTime(),
               });
             }
@@ -112,7 +115,7 @@ export function SessionList() {
             {sessions.map(session => (
                 <li key={session.id} className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
                 <div>
-                    <p className="font-semibold text-primary">{session.id}</p>
+                    <p className="font-semibold text-primary">{session.name}</p>
                     <p className="text-sm text-muted-foreground">
                     Last updated: {new Date(session.lastModified).toLocaleString()}
                     </p>
@@ -131,7 +134,7 @@ export function SessionList() {
                         <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete the session "{session.id}". This action cannot be undone.
+                            This will permanently delete the session "{session.name}". This action cannot be undone.
                         </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

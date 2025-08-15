@@ -6,12 +6,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Rocket } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SessionList } from '@/components/session-list';
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import type { GameState } from '@/components/gm-view';
 
 export default function Home() {
   const router = useRouter();
+  const [sessionName, setSessionName] = useState('');
 
   const createNewSession = () => {
     const newSessionId = Math.random().toString(36).substring(2, 11);
+    
+    // Create the initial state in localStorage so the name is available immediately
+    const initialState: GameState = {
+        sessionName: sessionName.trim() || `Session ${newSessionId.substring(0, 4)}`,
+        paths: [],
+        tokens: [],
+        lastModified: Date.now(),
+        backgroundImage: null,
+        cellSize: 40,
+    };
+    localStorage.setItem(`tabletop-alchemist-session-${newSessionId}`, JSON.stringify(initialState));
+
     router.push(`/gm#${newSessionId}`);
   };
 
@@ -35,7 +51,12 @@ export default function Home() {
             <CardTitle>Game Master</CardTitle>
             <CardDescription>Create a new adventure.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <Input 
+              placeholder="Optional: Enter a session name"
+              value={sessionName}
+              onChange={(e) => setSessionName(e.target.value)}
+            />
             <Button size="lg" className="w-full" onClick={createNewSession}>
               Start a New Game Session
             </Button>
