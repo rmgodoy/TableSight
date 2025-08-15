@@ -420,7 +420,10 @@ export function MapGrid({
   }
 
     const getHpRingColor = (token: Token): HpColorRing => {
-        if (!isPlayerView || !token.hp || token.type !== 'Enemy' || !token.visible) return 'ring-white/50';
+        if (token.type !== 'Enemy' || !token.hp) return 'ring-white/50';
+
+        // For player view, only show colors for visible tokens
+        if (isPlayerView && !token.visible) return 'ring-white/50';
 
         const percent = (token.hp.current / token.hp.max) * 100;
         if (percent > 75) return 'ring-green-500';
@@ -799,4 +802,5 @@ export function MapGrid({
 }
 
 
+    
     
