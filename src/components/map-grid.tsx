@@ -45,6 +45,7 @@ interface MapGridProps {
   onPlayerPanChange?: (pan: { x: number; y: number }) => void;
   playerViewport?: { width: number; height: number } | null;
   showPlayerViewport?: boolean;
+  followedTokenId?: string | null;
 }
 
 function getSvgPathFromPoints(rings: Point[][], scale: number = 1, shouldClose: boolean) {
@@ -91,6 +92,7 @@ export function MapGrid({
   playerZoom = 1,
   playerViewport = null,
   showPlayerViewport = true,
+  followedTokenId = null,
 }: MapGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
@@ -457,9 +459,6 @@ export function MapGrid({
 
     const getHpRingColor = (token: Token): HpColorRing => {
         if (token.type !== 'Enemy' || !token.hp) return 'ring-white/50';
-
-        // In GM view, show for all enemies. In Player view, only for visible tokens.
-        if (isPlayerView && !token.visible) return 'ring-white/50';
         
         if (token.hp.current <= 0) return 'ring-white/50'; // No ring for defeated tokens
 
@@ -627,6 +626,7 @@ export function MapGrid({
     const rectHeight = playerViewWorldDim.height * activeZoom;
 
     const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (followedTokenId) return; // Don't allow dragging if following a token
         e.stopPropagation();
         setIsDraggingPlayerViewport(true);
         playerViewDragStartRef.current = {
@@ -641,7 +641,9 @@ export function MapGrid({
         <div 
             className={cn(
                 "absolute border-2 border-dashed border-blue-500",
-                isDraggingPlayerViewport ? "cursor-grabbing" : "cursor-grab"
+                isDraggingPlayerViewport && "cursor-grabbing",
+                !followedTokenId && !isDraggingPlayerViewport && "cursor-grab",
+                followedTokenId && "cursor-not-allowed"
             )}
             style={{
                 left: `${rectX}px`,
@@ -691,7 +693,7 @@ export function MapGrid({
                             d={pathD}
                             stroke={path.color}
                             strokeWidth={path.width}
-                            fill={path.isClosed ? 'rgba(0,0,0,0.5)' : 'none'}
+                            fill={'none'}
                             fillRule="evenodd"
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -705,7 +707,7 @@ export function MapGrid({
                         d={getSvgPathFromPoints([currentPath], 1, selectedTool !== 'draw' || smartMode)}
                         stroke={selectedTool === 'portal' ? '#ff00ff' : (selectedTool === 'hidden-wall' ? '#000000' : brushColor)}
                         strokeWidth={brushSize}
-                        fill={selectedTool === 'rectangle' || selectedTool === 'circle' ? 'rgba(0,0,0,0.5)' : 'none'}
+                        fill={'none'}
                         fillRule="evenodd"
                         strokeLinecap="round"
                         strokeLinejoin="round"

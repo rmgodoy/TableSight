@@ -22,8 +22,20 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
     try {
       const gameState: GameState = JSON.parse(savedState);
       
-      // If player view is frozen, don't apply any updates
+      // If player view is frozen, don't apply any updates from the GM's main state.
+      // However, we still need to apply player-specific view changes like pan and zoom.
       if (gameState.isPlayerViewFrozen) {
+          setZoom(gameState.playerZoom || 1);
+          setPan(gameState.playerPan || { x: 0, y: 0 });
+          // If the GM starts following a token, the player view should still update
+          // to that new pan/zoom, even if frozen.
+          const isFollowing = !!gameState.followedTokenId;
+          if (isFollowing) {
+               setTokens(gameState.tokens || []);
+               setPaths(gameState.paths || []);
+               setBackgroundImage(gameState.backgroundImage || null);
+               setCellSize(gameState.cellSize || 40);
+          }
           return;
       }
 
@@ -82,8 +94,11 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
                 if (savedState) {
                     try {
                         const gameState: GameState = JSON.parse(savedState);
-                        gameState.playerViewport = { width: clientWidth, height: clientHeight };
-                        localStorage.setItem(storageKey, JSON.stringify(gameState));
+                        // Only update if dimensions have changed
+                        if (gameState.playerViewport?.width !== clientWidth || gameState.playerViewport?.height !== clientHeight) {
+                            gameState.playerViewport = { width: clientWidth, height: clientHeight };
+                            localStorage.setItem(storageKey, JSON.stringify(gameState));
+                        }
                     } catch (error) {
                         console.error("Could not update player viewport in storage", error);
                     }
@@ -91,6 +106,8 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
             }
         };
 
+        // Run once on mount and then on resize
+        updateViewportInStorage();
         const debouncedUpdate = setTimeout(updateViewportInStorage, 500);
         window.addEventListener('resize', updateViewportInStorage);
 

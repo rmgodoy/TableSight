@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, PanelRight, Heart, Snowflake } from 'lucide-react';
+import { Eye, EyeOff, CircleUserRound, Shield, Trash2, Palette, Flame, Plus, Minus, Copy, Users, Link as LinkIcon, Home, Scaling, Lightbulb, DoorClosed, PanelRight, Heart, Snowflake, Camera } from 'lucide-react';
 import type { Token } from './gm-view';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -48,6 +48,8 @@ interface TokenPanelProps {
     syncPlayerView: () => void;
     matchPlayerView: () => void;
     togglePlayerViewFreeze: () => void;
+    followedTokenId: string | null;
+    onToggleFollowToken: (tokenId: string) => void;
 }
 
 const HpInput = ({ token, onTokenHpChange }: { token: Token, onTokenHpChange: (tokenId: string, hp: { current: number, max: number }) => void }) => {
@@ -114,6 +116,8 @@ export function TokenPanel({
     syncPlayerView,
     matchPlayerView,
     togglePlayerViewFreeze,
+    followedTokenId,
+    onToggleFollowToken
 }: TokenPanelProps) {
     const { toast } = useToast();
     const [playerUrl, setPlayerUrl] = useState('');
@@ -293,6 +297,15 @@ export function TokenPanel({
                                             <div className="flex items-center shrink-0">
                                                 {token.type !== 'Light' && token.type !== 'Portal' && (
                                                     <>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className={cn("h-8 w-8", followedTokenId === token.id && "bg-accent text-accent-foreground")}
+                                                            title={followedTokenId === token.id ? "Unfollow Token" : "Follow Token"}
+                                                            onClick={() => onToggleFollowToken(token.id)}
+                                                        >
+                                                            <Camera className="h-4 w-4" />
+                                                        </Button>
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon"

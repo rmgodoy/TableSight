@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb, Grid3x3, Waves, BrainCircuit, PanelRight, Snowflake, Users } from 'lucide-react';
+import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb, Grid3x3, Waves, BrainCircuit, PanelRight, Snowflake, Users, Camera } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { GmSidebar } from '@/components/gm-sidebar';
 import { TokenPanel } from '@/components/token-panel';
@@ -78,6 +78,7 @@ export type GameState = {
     cellSize?: number;
     lastModified?: number;
     isPlayerViewFrozen?: boolean;
+    followedTokenId?: string | null;
 };
 
 // Represents a single state in the history for undo/redo
@@ -115,6 +116,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     // This state is read from local storage but not part of the undo/redo history
     const [playerViewport, setPlayerViewport] = useState<{width: number, height: number} | null>(null);
     const [showPlayerViewport, setShowPlayerViewport] = useState(true);
+    const [followedTokenId, setFollowedTokenId] = useState<string | null>(null);
     
     // Derived state from history
     const currentHistoryState = history[historyIndex] || { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
@@ -180,6 +182,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     if (gameState.playerPan) setPlayerPan(gameState.playerPan);
                     if (gameState.isPlayerViewFrozen) setPlayerViewFrozen(gameState.isPlayerViewFrozen);
                     if (gameState.playerViewport) setPlayerViewport(gameState.playerViewport);
+                    if (gameState.followedTokenId) setFollowedTokenId(gameState.followedTokenId);
+
 
                 } else {
                     const initialState: HistoryState = { sessionName: '', paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
@@ -233,6 +237,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             playerViewport: playerViewport ?? undefined,
             lastModified: Date.now(),
             isPlayerViewFrozen,
+            followedTokenId,
         };
 
         const handler = setTimeout(() => {
@@ -249,7 +254,31 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }, 500);
 
         return () => clearTimeout(handler);
-    }, [currentHistoryState, zoom, pan, playerZoom, playerPan, playerViewport, historyIndex, storageKey, toast, isPlayerViewFrozen]);
+    }, [currentHistoryState, zoom, pan, playerZoom, playerPan, playerViewport, historyIndex, storageKey, toast, isPlayerViewFrozen, followedTokenId]);
+
+    // Effect to update player pan when a token is followed
+    useEffect(() => {
+        if (!followedTokenId || !playerViewport) return;
+
+        const token = tokens.find(t => t.id === followedTokenId);
+        if (!token) {
+            setFollowedTokenId(null);
+            return;
+        }
+
+        // Calculate the world coordinates of the token's center
+        const tokenWorldX = (token.x * cellSize) + (token.size * cellSize / 2);
+        const tokenWorldY = (token.y * cellSize) + (token.size * cellSize / 2);
+
+        // Calculate the required pan to center the token in the player's viewport
+        const newPlayerPan = {
+            x: (playerViewport.width / 2) - (tokenWorldX * playerZoom),
+            y: (playerViewport.height / 2) - (tokenWorldY * playerZoom)
+        };
+
+        setPlayerPan(newPlayerPan);
+        
+    }, [followedTokenId, tokens, playerViewport, playerZoom, cellSize]);
 
 
     const undo = useCallback(() => {
@@ -449,6 +478,11 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             newPaths = paths.filter(p => p.id !== tokenToDelete.controls);
         }
 
+        // If the deleted token was being followed, unfollow it
+        if (tokenId === followedTokenId) {
+            setFollowedTokenId(null);
+        }
+
         const newTokens = tokens.filter(t => t.id !== tokenId);
         recordHistory({ tokens: newTokens, paths: newPaths });
     }
@@ -529,10 +563,14 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const syncPlayerView = () => {
         setPlayerPan(pan);
         setPlayerZoom(zoom);
+        setFollowedTokenId(null);
         toast({ title: "Player View Synced!", description: "The player's view now matches yours." });
     };
     const matchPlayerView = () => { setPan(playerPan); setZoom(playerZoom); };
     const togglePlayerViewFreeze = () => setPlayerViewFrozen(prev => !prev);
+    const handleToggleFollowToken = (tokenId: string) => {
+        setFollowedTokenId(prevId => (prevId === tokenId ? null : tokenId));
+    };
     
     const isDrawingTool = selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle';
     const isPortalTool = selectedTool === 'portal';
@@ -563,7 +601,12 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         </Button>
                     </div>
 
-                    {isPlayerViewFrozen && (
+                    {followedTokenId && (
+                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 p-2 rounded-lg bg-purple-600 text-white flex items-center gap-2 text-lg font-bold">
+                           <Camera className="h-6 w-6" /> Following {tokens.find(t => t.id === followedTokenId)?.name}
+                        </div>
+                    )}
+                    {isPlayerViewFrozen && !followedTokenId && (
                         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 p-2 rounded-lg bg-blue-600 text-white flex items-center gap-2 text-lg font-bold animate-pulse">
                             <Snowflake className="h-6 w-6" /> Player View Frozen
                         </div>
@@ -703,6 +746,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                             onPlayerPanChange={setPlayerPan}
                             playerViewport={playerViewport}
                             showPlayerViewport={showPlayerViewport}
+                            followedTokenId={followedTokenId}
                         />
                     </div>
                 </main>
@@ -728,6 +772,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         syncPlayerView={syncPlayerView}
                         matchPlayerView={matchPlayerView}
                         togglePlayerViewFreeze={togglePlayerViewFreeze}
+                        followedTokenId={followedTokenId}
+                        onToggleFollowToken={handleToggleFollowToken}
                     />
                 </aside>
             </div>
