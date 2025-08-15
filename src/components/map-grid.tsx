@@ -21,7 +21,7 @@ interface MapGridProps {
   backgroundImage: string | null;
   cellSize: number;
   onMapClick: (x: number, y: number, isPixelCoords?: boolean) => void;
-  onNewPath: (path: Omit<Path, 'id' | 'isPortal' | 'isHiddenWall'>) => void;
+  onNewPath: (path: Omit<Path, 'id' | 'isPortal' | 'isHiddenWall' | 'isClosed'>) => void;
   onEraseLine: (point: Point) => void;
   onEraseBrush: (updatedPaths: Path[]) => void;
   onTokenTorchToggle: (tokenId: string) => void;
@@ -509,11 +509,14 @@ export function MapGrid({
         .forEach(path => {
             path.points.forEach(ring => {
                 for (let i = 0; i < ring.length; i++) {
-                    segments.push({ 
-                        a: ring[i], 
-                        b: ring[(i + 1) % ring.length], // Connect last point to first
-                        width: path.width 
-                    });
+                    const nextIndex = (path.isClosed) ? (i + 1) % ring.length : i + 1;
+                    if (nextIndex < ring.length) {
+                        segments.push({ 
+                            a: ring[i], 
+                            b: ring[nextIndex],
+                            width: path.width 
+                        });
+                    }
                 }
             });
         });
@@ -597,16 +600,14 @@ export function MapGrid({
             )}
             <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                 {renderPaths.map((path) => {
-                    const alwaysClose = path.tool === 'rectangle' || path.tool === 'circle' || path.isPortal || path.isHiddenWall;
-                    const shouldClosePath = alwaysClose || (path.tool === 'draw' && smartMode);
-                    const pathD = getSvgPathFromPoints(path.points, 1, shouldClosePath);
+                    const pathD = getSvgPathFromPoints(path.points, 1, path.isClosed);
                     return (
                         <path
                             key={path.id}
                             d={pathD}
                             stroke={path.color}
                             strokeWidth={path.width}
-                            fill={alwaysClose ? 'rgba(0,0,0,0.5)' : 'none'}
+                            fill={path.isClosed ? 'rgba(0,0,0,0.5)' : 'none'}
                             fillRule="evenodd"
                             strokeLinecap="round"
                             strokeLinejoin="round"

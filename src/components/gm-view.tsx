@@ -41,6 +41,7 @@ export type Path = {
     isPortal?: boolean;
     isHiddenWall?: boolean;
     tool: Tool;
+    isClosed: boolean;
 };
 
 export type Token = {
@@ -121,8 +122,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [showFogOfWar, setShowFogOfWar] = useState(true);
     const { toast } = useToast();
     const storageKey = `tablesight-session-${sessionId}`;
-    const [importAlertOpen, setImportAlertOpen] = useState(false);
-    const pendingImportFile = useRef<File | null>(null);
 
 
     const recordHistory = useCallback((newState: Partial<HistoryState>) => {
@@ -151,7 +150,8 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     isHiddenWall: p.isHiddenWall || false,
                     // backwards compatibility for points structure
                     points: p.points && p.points.length > 0 && Array.isArray(p.points[0]) ? p.points : [p.points || []],
-                    tool: p.tool || 'draw'
+                    tool: p.tool || 'draw',
+                    isClosed: p.isClosed !== undefined ? p.isClosed : (p.tool !== 'draw') // Backwards compatibility
                 }));
                 const loadedTokens = (gameState.tokens || []).map(t => ({
                     ...t,
@@ -293,16 +293,19 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }
     };
 
-    const handleNewPath = useCallback(async (path: Omit<Path, 'id' | 'isPortal' | 'isHiddenWall'>) => {
+    const handleNewPath = useCallback(async (path: Omit<Path, 'id' | 'isPortal' | 'isHiddenWall' | 'isClosed'>) => {
         const isPortalTool = selectedTool === 'portal';
         const isHiddenWallTool = selectedTool === 'hidden-wall';
+        const isDrawingTool = selectedTool === 'draw';
+        const alwaysClose = selectedTool === 'rectangle' || selectedTool === 'circle' || isPortalTool || isHiddenWallTool;
         
         const newPathData: Path = { 
             ...path, 
             id: `path-${Date.now()}`, 
             isPortal: isPortalTool,
             isHiddenWall: isHiddenWallTool,
-            blocksLight: isPortalTool || isHiddenWallTool || drawMode === 'wall'
+            blocksLight: isPortalTool || isHiddenWallTool || drawMode === 'wall',
+            isClosed: alwaysClose || (isDrawingTool && smartMode)
         };
 
         const newTokens = [...tokens];
@@ -328,9 +331,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             newTokens.push(portalToken);
         }
     
-        if (smartMode && !isPortalTool && !isHiddenWallTool && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'draw')) {
+        if (smartMode && newPathData.isClosed && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'draw')) {
             const intersectingPaths = paths.filter(p =>
-                !p.isPortal && !p.isHiddenWall && pathIntersects(p, newPathData)
+                p.isClosed && pathIntersects(p, newPathData)
             );
     
             if (intersectingPaths.length > 0) {
@@ -348,7 +351,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     recordHistory({ paths: [...remainingPaths, ...newMergedPaths], tokens: newTokens });
                 } else {
                     // Merging failed, just add the new path
-                    recordHistory({ paths: [...paths, newPathData], tokens: newTokens });
+                    recordHistory({ paths: [...paths, ...newTokens.map(t => t.id === newPathData.id ? newPathData : t)], tokens: newTokens });
                 }
             } else {
                  // No intersections, just add the new path
@@ -379,6 +382,11 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         return true;
                     }
                 }
+                 if (!path.isClosed && ring.length > 0) {
+                     if (distToSegmentSq(point, ring[ring.length -1], ring[0]) < eraseRadius * eraseRadius) {
+                         return true;
+                     }
+                 }
             }
             return false;
         });
@@ -491,107 +499,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     };
     const matchPlayerView = () => { setPan(playerPan); setZoom(playerZoom); };
     const togglePlayerViewFreeze = () => setPlayerViewFrozen(prev => !prev);
-
-    const confirmImport = () => {
-        if (!pendingImportFile.current) return;
-
-        const file = pendingImportFile.current;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const text = event.target?.result as string;
-                const data = JSON.parse(text);
-
-                const pixelsPerGrid = data.resolution.pixels_per_grid;
-                const newBackgroundImage = `data:image/webp;base64,${data.image}`;
-                
-                const newWalls: Path[] = (data.line_of_sight || []).map((wall: any, index: number) => ({
-                    id: `wall-${Date.now()}-${index}`,
-                    points: [wall.map((p: {x: number, y: number}) => ({ x: p.x * pixelsPerGrid, y: p.y * pixelsPerGrid }))],
-                    color: '#000000',
-                    width: 5,
-                    blocksLight: true,
-                    isPortal: false,
-                    isHiddenWall: false,
-                    tool: 'draw',
-                }));
-                
-                const portalWalls: Path[] = [];
-                const portalTokens: Token[] = [];
-
-                (data.portals || []).forEach((portal: any, index: number) => {
-                    const portalWallId = `portal-wall-${Date.now()}-${index}`;
-                    
-                    portalWalls.push({
-                        id: portalWallId,
-                        points: [portal.bounds.map((p: {x: number, y: number}) => ({ x: p.x * pixelsPerGrid, y: p.y * pixelsPerGrid }))],
-                        color: '#ff0000', // Distinct color for portals
-                        width: 5,
-                        blocksLight: true, // Portals are closed by default
-                        isPortal: true,
-                        isHiddenWall: false,
-                        tool: 'portal',
-                    });
-
-                    portalTokens.push({
-                        id: `portal-token-${Date.now()}-${index}`,
-                        name: `Portal ${index + 1}`,
-                        x: portal.position.x * pixelsPerGrid,
-                        y: portal.position.y * pixelsPerGrid,
-                        type: 'Portal' as const,
-                        visible: false, // Not visible to players
-                        color: '#ff0000',
-                        size: 1,
-                        torch: { enabled: false, radius: 0 },
-                        controls: portalWallId,
-                    });
-                });
-
-                 const newLightTokens: Token[] = (data.lights || []).map((light: any, index: number) => ({
-                    id: `light-${Date.now()}-${index}`,
-                    name: `Light ${index + 1}`,
-                    x: light.position.x * pixelsPerGrid, 
-                    y: light.position.y * pixelsPerGrid,
-                    type: 'Light' as const,
-                    visible: false, // Lights are not directly visible, they just emit light
-                    color: '#fBBF24', // Not really used, but good to have
-                    size: 1,
-                    torch: {
-                        enabled: true,
-                        radius: light.range / 2 // This is in grid units
-                    }
-                }));
-
-                const finalPaths = [...newWalls, ...portalWalls];
-                const finalTokens = [...newLightTokens, ...portalTokens];
-                
-                // Reset state and load new map
-                setPan({ x: 0, y: 0 });
-                setZoom(1);
-                
-                recordHistory({ paths: finalPaths, tokens: finalTokens, backgroundImage: newBackgroundImage, cellSize: pixelsPerGrid });
-
-                toast({ title: "Map Imported!", description: `${file.name} was successfully imported.` });
-
-            } catch (e) {
-                console.error("Failed to parse dd2vtt file", e);
-                toast({
-                    title: "Import Failed",
-                    description: "The selected file could not be parsed. Please ensure it's a valid .dd2vtt file.",
-                    variant: "destructive"
-                });
-            } finally {
-                pendingImportFile.current = null;
-                setImportAlertOpen(false);
-            }
-        };
-        reader.readAsText(file);
-    };
-
-    const onImport = (file: File) => {
-        pendingImportFile.current = file;
-        setImportAlertOpen(true);
-    };
     
     const isDrawingTool = selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle';
     const isPortalTool = selectedTool === 'portal';
@@ -600,20 +507,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
     return (
         <>
-            <AlertDialog open={importAlertOpen} onOpenChange={setImportAlertOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle>Import New Map?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Importing a new map will clear all existing walls, drawings, and tokens from the current map. This action cannot be undone.
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => pendingImportFile.current = null}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={confirmImport}>Import</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
             <div className="flex h-dvh w-screen bg-background text-foreground">
                 <GmSidebar 
                     selectedTool={selectedTool}

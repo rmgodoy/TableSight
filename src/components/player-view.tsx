@@ -38,7 +38,8 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
             id: p.id || `path-${Math.random()}`,
             isPortal: p.isPortal || false,
             isHiddenWall: p.isHiddenWall || false,
-            points: p.points && p.points.length > 0 && Array.isArray(p.points[0]) ? p.points : [p.points || []]
+            points: p.points && p.points.length > 0 && Array.isArray(p.points[0]) ? p.points : [p.points || []],
+            isClosed: p.isClosed !== undefined ? p.isClosed : (p.tool !== 'draw') // Backwards compatibility
        }));
 
       setTokens(updatedTokens);
@@ -76,6 +77,7 @@ export default function PlayerView({ sessionId }: { sessionId: string }) {
         <MapGrid 
           showGrid={true} 
           snapToGrid={false}
+          smartMode={false}
           tokens={tokens}
           paths={paths}
           backgroundImage={backgroundImage}
