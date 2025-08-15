@@ -67,6 +67,7 @@ export type GameState = {
     playerPan?: { x: number, y: number };
     backgroundImage?: string | null;
     cellSize?: number;
+    lastModified?: number;
 };
 
 // Represents a single state in the history for undo/redo
@@ -182,6 +183,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             pan,
             playerZoom,
             playerPan,
+            lastModified: Date.now(),
         };
 
         const handler = setTimeout(() => {

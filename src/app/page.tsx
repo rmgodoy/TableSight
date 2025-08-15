@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Rocket } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { SessionList } from '@/components/session-list';
 
 export default function Home() {
   const router = useRouter();
@@ -36,12 +38,17 @@ export default function Home() {
           Your digital companion for immersive, in-person tabletop RPGs. Create maps, manage tokens, and reveal the world to your players in real-time.
         </p>
       </div>
+      
+      <div className="w-full max-w-4xl mb-12">
+        <SessionList />
+      </div>
+
 
       <div className="flex flex-wrap items-start justify-center gap-8">
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle>Game Master</CardTitle>
-            <CardDescription>Create and control the adventure.</CardDescription>
+            <CardDescription>Create a new adventure.</CardDescription>
           </CardHeader>
           <CardContent>
             <Button size="lg" className="w-full" onClick={createNewSession}>
