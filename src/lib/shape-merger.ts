@@ -23,7 +23,7 @@ function pathToClippingPolygon(path: Path): PathClippingPolygon {
  * @param paths An array of Path objects to merge.
  * @returns An array of new Path objects that is the union of the input paths, or null if merging fails.
  */
-export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id'>[] | null> {
+export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id' | 'tool'>[] | null> {
     if (paths.length === 0) {
         return null;
     }
@@ -34,6 +34,8 @@ export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id'>[] | n
             width: paths[0].width,
             blocksLight: paths[0].blocksLight,
             isPortal: false,
+            isClosed: true,
+            isHiddenWall: false
         }];
     }
 
@@ -65,6 +67,8 @@ export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id'>[] | n
                 width: representativePath.width,
                 blocksLight: paths.some(p => p.blocksLight), // If any part blocks light, the whole thing should.
                 isPortal: false,
+                isClosed: true,
+                isHiddenWall: false,
             };
         });
 

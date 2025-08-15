@@ -293,11 +293,10 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }
     };
 
-    const handleNewPath = useCallback(async (path: Omit<Path, 'id' | 'isPortal' | 'isHiddenWall' | 'isClosed'>) => {
+    const handleNewPath = useCallback(async (path: Omit<Path, 'id'>) => {
         const isPortalTool = selectedTool === 'portal';
         const isHiddenWallTool = selectedTool === 'hidden-wall';
         const isDrawingTool = selectedTool === 'draw';
-        const alwaysClose = selectedTool === 'rectangle' || selectedTool === 'circle' || isPortalTool || isHiddenWallTool;
         
         const newPathData: Path = { 
             ...path, 
@@ -305,7 +304,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             isPortal: isPortalTool,
             isHiddenWall: isHiddenWallTool,
             blocksLight: isPortalTool || isHiddenWallTool || drawMode === 'wall',
-            isClosed: alwaysClose || (isDrawingTool && smartMode)
         };
 
         const newTokens = [...tokens];
@@ -331,27 +329,32 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             newTokens.push(portalToken);
         }
     
-        if (smartMode && newPathData.isClosed && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'draw')) {
+        if (smartMode && newPathData.isClosed) {
             const intersectingPaths = paths.filter(p =>
-                p.isClosed && pathIntersects(p, newPathData)
+                pathIntersects(p, newPathData)
             );
     
             if (intersectingPaths.length > 0) {
-                const pathsToMerge = [...intersectingPaths, newPathData];
+                const pathsToMerge = [...intersectingPaths, newPathData].map(p => ({
+                    ...p,
+                    isClosed: true, // Treat all intersecting paths as closed for the merge operation
+                }));
+
                 const mergedPathData = await mergeShapes(pathsToMerge);
     
                 if (mergedPathData && mergedPathData.length > 0) {
                     const newMergedPaths = mergedPathData.map((mergedPath, index) => ({
                         ...mergedPath,
                         id: `path-${Date.now()}-merged-${index}`,
-                        tool: selectedTool // Keep track of what tool created this
+                        tool: selectedTool, // Keep track of what tool created this
+                        isClosed: true, // Merged paths are always closed
                     }));
                     const intersectingPathIds = new Set(intersectingPaths.map(p => p.id));
                     const remainingPaths = paths.filter(p => !intersectingPathIds.has(p.id));
                     recordHistory({ paths: [...remainingPaths, ...newMergedPaths], tokens: newTokens });
                 } else {
                     // Merging failed, just add the new path
-                    recordHistory({ paths: [...paths, ...newTokens.map(t => t.id === newPathData.id ? newPathData : t)], tokens: newTokens });
+                    recordHistory({ paths: [...paths, newPathData], tokens: newTokens });
                 }
             } else {
                  // No intersections, just add the new path
@@ -637,7 +640,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         <MapGrid 
                             showGrid={showGrid} 
                             snapToGrid={snapToGrid}
-                            smartMode={smartMode}
                             tokens={tokens}
                             paths={paths}
                             backgroundImage={backgroundImage}
@@ -651,6 +653,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                             selectedTool={selectedTool}
                             eraseMode={eraseMode}
                             drawMode={drawMode}
+                            smartMode={smartMode}
                             onTokenMove={handleTokenMove}
                             brushColor={brushColor}
                             brushSize={brushSize}
@@ -692,3 +695,4 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         </>
     );
 }
+

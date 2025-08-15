@@ -21,7 +21,7 @@ interface MapGridProps {
   backgroundImage: string | null;
   cellSize: number;
   onMapClick: (x: number, y: number, isPixelCoords?: boolean) => void;
-  onNewPath: (path: Omit<Path, 'id' | 'isPortal' | 'isHiddenWall' | 'isClosed'>) => void;
+  onNewPath: (path: Omit<Path, 'id'>) => void;
   onEraseLine: (point: Point) => void;
   onEraseBrush: (updatedPaths: Path[]) => void;
   onTokenTorchToggle: (tokenId: string) => void;
@@ -89,7 +89,6 @@ export function MapGrid({
   const [dropTargetCell, setDropTargetCell] = useState<Point | null>(null);
   
   const [isDrawing, setIsDrawing] = useState(false);
-  const [isDrawingPortal, setIsDrawingPortal] = useState(false);
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
   const isErasingRef = useRef(false);
 
@@ -262,13 +261,17 @@ export function MapGrid({
     if (isPlayerView) return;
     
     if (isDrawing && currentPath.length > 1) {
-      onNewPath({ 
-          points: [currentPath], // Wrap points in another array for the new data structure
-          color: selectedTool === 'portal' ? '#ff00ff' : (selectedTool === 'hidden-wall' ? '#000000' : brushColor),
-          width: brushSize,
-          blocksLight: drawMode === 'wall',
-          tool: selectedTool,
-      });
+        const alwaysClose = selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'portal' || selectedTool === 'hidden-wall';
+        const isClosed = alwaysClose || (selectedTool === 'draw' && smartMode);
+
+        onNewPath({ 
+            points: [currentPath], // Wrap points in another array for the new data structure
+            color: selectedTool === 'portal' ? '#ff00ff' : (selectedTool === 'hidden-wall' ? '#000000' : brushColor),
+            width: brushSize,
+            blocksLight: drawMode === 'wall',
+            tool: selectedTool,
+            isClosed: isClosed
+        });
     }
     setIsDrawing(false);
     setCurrentPath([]);
@@ -733,7 +736,7 @@ export function MapGrid({
       onMouseLeave={(e) => {
           if (!isPlayerView) {
               setCursorPosition(null);
-              if (isDrawing || isDrawingPortal) handleMouseUp(e);
+              if (isDrawing) handleMouseUp(e);
               if (isErasingRef.current) isErasingRef.current = false;
           }
           if (isPanning) setIsPanning(false);
