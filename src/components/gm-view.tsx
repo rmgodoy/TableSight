@@ -115,7 +115,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     
     // This state is read from local storage but not part of the undo/redo history
     const [playerViewport, setPlayerViewport] = useState<{width: number, height: number} | null>(null);
-    const [showPlayerViewport, setShowPlayerViewport] = useState(true);
+    const [showPlayerViewport, setShowPlayerViewport] = useState(false);
     const [followedTokenId, setFollowedTokenId] = useState<string | null>(null);
     
     // Derived state from history
@@ -782,4 +782,6 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 }
 
     
+    
+
     
