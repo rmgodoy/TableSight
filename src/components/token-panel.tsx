@@ -184,7 +184,7 @@ export function TokenPanel({
                                                                 "w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-white/50 shadow-lg shrink-0 bg-cover bg-center",
                                                                 (token.type !== 'Light' && token.type !== 'Portal') && "cursor-pointer"
                                                             )}
-                                                            style={{ backgroundColor: token.color, backgroundImage: token.iconUrl ? `url(${token.iconUrl})` : 'none' }}
+                                                            style={{ backgroundColor: token.color, backgroundImage: token.iconUrl ? `url(${'\'\'\''}${token.iconUrl}'\'\'')` : 'none' }}
                                                         >
                                                             {!token.iconUrl && renderIcon(token)}
                                                         </div>
@@ -218,6 +218,18 @@ export function TokenPanel({
                                                                         className="h-8 w-20 text-center"
                                                                     />
                                                                 </div>
+                                                                 {token.type === 'Enemy' && token.hp && (
+                                                                    <div className='flex items-center gap-2'>
+                                                                        <Label>Max HP</Label>
+                                                                        <Input
+                                                                            type="number"
+                                                                            value={token.hp.max}
+                                                                            onChange={(e) => onTokenHpChange(token.id, { ...token.hp!, max: parseInt(e.target.value, 10) || 0 })}
+                                                                            className="h-8 w-20 text-center"
+                                                                            aria-label="Maximum HP"
+                                                                        />
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </PopoverContent>
@@ -276,14 +288,6 @@ export function TokenPanel({
                                                         onChange={(e) => onTokenHpChange(token.id, { ...token.hp!, current: parseInt(e.target.value, 10) || 0 })}
                                                         className="h-8 w-20 text-center"
                                                         aria-label="Current HP"
-                                                    />
-                                                    <span>/</span>
-                                                    <Input
-                                                        type="number"
-                                                        value={token.hp.max}
-                                                        onChange={(e) => onTokenHpChange(token.id, { ...token.hp!, max: parseInt(e.target.value, 10) || 0 })}
-                                                        className="h-8 w-20 text-center"
-                                                        aria-label="Maximum HP"
                                                     />
                                                 </div>
                                             )}
@@ -362,3 +366,5 @@ export function TokenPanel({
         </div>
     );
 }
+
+    
