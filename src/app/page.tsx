@@ -30,8 +30,6 @@ export default function Home() {
       </div>
       
       <div className="w-full max-w-2xl flex flex-col gap-8">
-        <SessionList />
-
         <Card>
           <CardHeader>
             <CardTitle>Game Master</CardTitle>
@@ -43,6 +41,8 @@ export default function Home() {
             </Button>
           </CardContent>
         </Card>
+
+        <SessionList />
       </div>
        <footer className="absolute bottom-4 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} Tabletop Alchemist. All rights reserved.</p>
