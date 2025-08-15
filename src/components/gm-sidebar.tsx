@@ -2,7 +2,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Brush, Circle as CircleIcon, CircleUserRound, Eraser, Hand, Maximize, MousePointer, PenLine, Redo, Shield, Square, Undo, Upload, ZoomIn, ZoomOut, DoorOpen, Lightbulb } from 'lucide-react';
+import { Brush, Circle as CircleIcon, CircleUserRound, Eraser, Hand, Maximize, MousePointer, PenLine, Redo, Shield, Square, Undo, Upload, ZoomIn, ZoomOut, DoorOpen, Lightbulb, PanelRight } from 'lucide-react';
 import type { Tool } from './gm-view';
 import { cn } from '@/lib/utils';
 import {
@@ -43,6 +43,7 @@ export function GmSidebar({
         { id: 'rectangle', label: 'Rectangle', icon: <Square /> },
         { id: 'circle', label: 'Circle', icon: <CircleIcon /> },
         { id: 'portal', label: 'Portal', icon: <DoorOpen /> },
+        { id: 'hidden-wall', label: 'Hidden Wall', icon: <PanelRight /> },
         { id: 'erase', label: 'Erase', icon: <Eraser /> },
         { id: 'add-pc', label: 'Add PC', icon: <CircleUserRound /> },
         { id: 'add-enemy', label: 'Add Enemy', icon: <Shield /> },

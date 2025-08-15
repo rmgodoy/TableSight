@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb, Grid3x3, Waves, BrainCircuit } from 'lucide-react';
+import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb, Grid3x3, Waves, BrainCircuit, PanelRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { GmSidebar } from '@/components/gm-sidebar';
 import { TokenPanel } from '@/components/token-panel';
@@ -28,7 +28,7 @@ import type { Point } from '@/lib/raycasting';
 import { Switch } from './ui/switch';
 import { mergeShapes, pathIntersects } from '@/lib/shape-merger';
 
-export type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'erase' | 'add-pc' | 'add-enemy' | 'portal' | 'add-light';
+export type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'erase' | 'add-pc' | 'add-enemy' | 'portal' | 'add-light' | 'hidden-wall';
 export type EraseMode = 'line' | 'brush';
 export type DrawMode = 'wall' | 'detail';
 
@@ -39,6 +39,7 @@ export type Path = {
     width: number;
     blocksLight: boolean;
     isPortal?: boolean;
+    isHiddenWall?: boolean;
 };
 
 export type Token = {
@@ -55,7 +56,7 @@ export type Token = {
     enabled: boolean;
     radius: number;
   };
-  controls?: string; // ID of the path this token controls (for portals)
+  controls?: string; // ID of the path this token controls (for portals/hidden walls)
 };
 
 export type GameState = {
@@ -139,6 +140,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     ...p,
                     id: p.id || `path-${Math.random()}`,
                     isPortal: p.isPortal || false,
+                    isHiddenWall: p.isHiddenWall || false,
                     // backwards compatibility for points structure
                     points: p.points && p.points.length > 0 && Array.isArray(p.points[0]) ? p.points : [p.points || []]
                 }));
@@ -272,18 +274,21 @@ export default function GmView({ sessionId }: { sessionId: string }) {
         }
     };
 
-    const handleNewPath = useCallback(async (path: Omit<Path, 'id' | 'isPortal'>) => {
+    const handleNewPath = useCallback(async (path: Omit<Path, 'id' | 'isPortal' | 'isHiddenWall'>) => {
         const isPortalTool = selectedTool === 'portal';
+        const isHiddenWallTool = selectedTool === 'hidden-wall';
+        
         const newPathData: Path = { 
             ...path, 
             id: `path-${Date.now()}`, 
             isPortal: isPortalTool,
-            blocksLight: isPortalTool || drawMode === 'wall'
+            isHiddenWall: isHiddenWallTool,
+            blocksLight: isPortalTool || isHiddenWallTool || drawMode === 'wall'
         };
 
         const newTokens = [...tokens];
-        if (isPortalTool && newPathData.points.length > 0 && newPathData.points[0].length > 0) {
-            // Find center of portal to place token
+        if ((isPortalTool || isHiddenWallTool) && newPathData.points.length > 0 && newPathData.points[0].length > 0) {
+            // Find center of portal/wall to place token
             const allPoints = newPathData.points[0];
             const { x: totalX, y: totalY } = allPoints.reduce((acc, p) => ({x: acc.x + p.x, y: acc.y + p.y}), {x: 0, y: 0});
             const centerX = totalX / allPoints.length;
@@ -291,7 +296,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
 
             const portalToken: Token = {
                 id: `portal-token-${Date.now()}`,
-                name: `Portal ${tokens.filter(t => t.type === 'Portal').length + 1}`,
+                name: isHiddenWallTool ? `Hidden Wall ${tokens.filter(t => t.type === 'Portal').length + 1}` : `Portal ${tokens.filter(t => t.type === 'Portal').length + 1}`,
                 x: centerX,
                 y: centerY,
                 type: 'Portal',
@@ -304,9 +309,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             newTokens.push(portalToken);
         }
     
-        if (smartMode && !isPortalTool && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'draw')) {
+        if (smartMode && !isPortalTool && !isHiddenWallTool && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'draw')) {
             const intersectingPaths = paths.filter(p =>
-                !p.isPortal && pathIntersects(p, newPathData)
+                !p.isPortal && !p.isHiddenWall && pathIntersects(p, newPathData)
             );
     
             if (intersectingPaths.length > 0) {
@@ -451,6 +456,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     width: 5,
                     blocksLight: true,
                     isPortal: false,
+                    isHiddenWall: false,
                 }));
                 
                 const portalWalls: Path[] = [];
@@ -466,6 +472,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         width: 5,
                         blocksLight: true, // Portals are closed by default
                         isPortal: true,
+                        isHiddenWall: false,
                     });
 
                     portalTokens.push({
@@ -530,6 +537,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     
     const isDrawingTool = selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle';
     const isPortalTool = selectedTool === 'portal';
+    const isHiddenWallTool = selectedTool === 'hidden-wall';
     const isLightTool = selectedTool === 'add-light';
 
     return (
@@ -568,7 +576,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         </Button>
                     </div>
 
-                    {(isDrawingTool || isPortalTool || isLightTool) && (
+                    {(isDrawingTool || isPortalTool || isHiddenWallTool || isLightTool) && (
                         <Card className="absolute top-2 left-24 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-4">
                             <CardContent className="p-2 flex items-center gap-4">
                                 {isDrawingTool && (
@@ -597,7 +605,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                                 )}
                                
 
-                                {(isDrawingTool || isPortalTool) && <div className='flex items-center gap-2'>
+                                {(isDrawingTool || isPortalTool || isHiddenWallTool) && <div className='flex items-center gap-2'>
                                     <Label className="text-sm font-medium">Size</Label>
                                     <Slider
                                         id="brush-size-slider"

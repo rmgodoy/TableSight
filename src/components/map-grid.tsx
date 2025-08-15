@@ -16,7 +16,7 @@ interface MapGridProps {
   backgroundImage: string | null;
   cellSize: number;
   onMapClick: (x: number, y: number, isPixelCoords?: boolean) => void;
-  onNewPath: (path: Omit<Path, 'id' | 'isPortal'>) => void;
+  onNewPath: (path: Omit<Path, 'id' | 'isPortal' | 'isHiddenWall'>) => void;
   onEraseLine: (point: Point) => void;
   onEraseBrush: (updatedPaths: Path[]) => void;
   onTokenTorchToggle: (tokenId: string) => void;
@@ -170,8 +170,8 @@ export function MapGrid({
     const worldPoint = getTransformedPoint(e, false); // Get world coordinates without snapping
     const point = snapToGrid ? getSnappedPoint(worldPoint) : worldPoint;
 
-    if (selectedTool === 'portal' || selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle') {
-        const drawingToolActive = selectedTool === 'portal' || selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle';
+    if (selectedTool === 'portal' || selectedTool === 'hidden-wall' || selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle') {
+        const drawingToolActive = selectedTool === 'portal' || selectedTool === 'hidden-wall' || selectedTool === 'draw' || selectedTool === 'rectangle' || selectedTool === 'circle';
         if (drawingToolActive) {
             setIsDrawing(true);
             drawingStartPoint.current = point;
@@ -214,7 +214,7 @@ export function MapGrid({
     if (isDrawing && drawingStartPoint.current) {
         if(selectedTool === 'draw') {
              setCurrentPath(prevPath => [...prevPath, point]);
-        } else if (selectedTool === 'portal') {
+        } else if (selectedTool === 'portal' || selectedTool === 'hidden-wall') {
             setCurrentPath([drawingStartPoint.current, point]);
         } else if(selectedTool === 'rectangle') {
             const start = drawingStartPoint.current;
@@ -255,7 +255,7 @@ export function MapGrid({
     if (isDrawing && currentPath.length > 1) {
       onNewPath({ 
           points: [currentPath], // Wrap points in another array for the new data structure
-          color: selectedTool === 'portal' ? '#ff00ff' : brushColor,
+          color: selectedTool === 'portal' ? '#ff00ff' : (selectedTool === 'hidden-wall' ? '#000000' : brushColor),
           width: brushSize,
           blocksLight: drawMode === 'wall'
       });
@@ -513,7 +513,7 @@ export function MapGrid({
       });
   }, [isPlayerView, showFogOfWar, tokens, wallSegments, activePan, activeZoom, cellSize]);
 
-  const isBrushToolActive = !isPlayerView && (selectedTool === 'draw' || selectedTool === 'portal' || (selectedTool === 'erase' && eraseMode === 'brush'));
+  const isBrushToolActive = !isPlayerView && (selectedTool === 'draw' || selectedTool === 'portal' || selectedTool === 'hidden-wall' || (selectedTool === 'erase' && eraseMode === 'brush'));
   const currentBrushSize = selectedTool === 'erase' ? eraseBrushSize : brushSize;
 
   const MapContent = () => {
@@ -552,21 +552,21 @@ export function MapGrid({
                             fillRule="evenodd"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            strokeDasharray={path.isPortal ? '10,10' : undefined}
-                            className={cn(path.isPortal && !path.blocksLight && "opacity-50")}
+                            strokeDasharray={(path.isPortal || path.isHiddenWall) ? '10,10' : undefined}
+                            className={cn((path.isPortal || path.isHiddenWall) && !path.blocksLight && "opacity-50")}
                         />
                     )
                 })}
                 {!isPlayerView && isDrawing && currentPath.length > 0 && (
                     <path
                         d={getSvgPathFromPoints([currentPath])}
-                        stroke={selectedTool === 'portal' ? '#ff00ff' : brushColor}
+                        stroke={selectedTool === 'portal' ? '#ff00ff' : (selectedTool === 'hidden-wall' ? '#000000' : brushColor)}
                         strokeWidth={brushSize}
                         fill={selectedTool === 'rectangle' || selectedTool === 'circle' ? 'rgba(0,0,0,0.5)' : 'none'}
                         fillRule="evenodd"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        strokeDasharray={selectedTool === 'portal' ? '10,10' : undefined}
+                        strokeDasharray={(selectedTool === 'portal' || selectedTool === 'hidden-wall') ? '10,10' : undefined}
                     />
                 )}
             </svg>
@@ -664,7 +664,7 @@ export function MapGrid({
          !isPlayerView && !isPanning && {
             'cursor-crosshair': selectedTool === 'add-pc' || selectedTool === 'add-enemy' || selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'add-light',
             'cursor-default': selectedTool === 'select',
-            'cursor-none': isBrushToolActive || selectedTool === 'draw' || selectedTool === 'portal',
+            'cursor-none': isBrushToolActive || selectedTool === 'draw' || selectedTool === 'portal' || selectedTool === 'hidden-wall',
             'cursor-not-allowed': selectedTool === 'erase' && eraseMode === 'line',
         }
       )}
