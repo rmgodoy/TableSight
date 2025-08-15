@@ -97,31 +97,6 @@ export function GmSidebar({
                 </div>
                  <Separator />
                 <div className="flex flex-col gap-2">
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                             <Button 
-                                size="icon"
-                                variant='ghost'
-                                className="w-10 h-10"
-                                onClick={handleImportClick}
-                            >
-                                <Upload />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                            <p>Import .dd2vtt Map</p>
-                        </TooltipContent>
-                    </Tooltip>
-                    <input 
-                        type="file" 
-                        ref={importInputRef} 
-                        className="hidden" 
-                        accept=".dd2vtt"
-                        onChange={handleFileChange} 
-                    />
-                </div>
-                 <Separator />
-                <div className="flex flex-col gap-2">
                     {viewTools.map(tool => (
                         <Tooltip key={tool.id}>
                             <TooltipTrigger asChild>
