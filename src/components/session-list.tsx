@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { ScrollArea } from './ui/scroll-area';
 
 type SessionInfo = {
   id: string;
@@ -106,44 +107,46 @@ export function SessionList() {
         </AlertDialog>
       </CardHeader>
       <CardContent>
-        <ul className="space-y-4">
-          {sessions.map(session => (
-            <li key={session.id} className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
-              <div>
-                <p className="font-semibold text-primary">{session.id}</p>
-                <p className="text-sm text-muted-foreground">
-                  Last updated: {new Date(session.lastModified).toLocaleString()}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                 <Button onClick={() => resumeSession(session.id)}>
-                    Resume Session
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="icon">
-                      <Trash2 className="h-4 w-4" />
+        <ScrollArea className="h-96">
+            <ul className="space-y-4 pr-6">
+            {sessions.map(session => (
+                <li key={session.id} className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+                <div>
+                    <p className="font-semibold text-primary">{session.id}</p>
+                    <p className="text-sm text-muted-foreground">
+                    Last updated: {new Date(session.lastModified).toLocaleString()}
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button onClick={() => resumeSession(session.id)}>
+                        Resume Session
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete the session "{session.id}". This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => deleteSession(session.id)}>
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </li>
-          ))}
-        </ul>
+                    <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="icon">
+                        <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete the session "{session.id}". This action cannot be undone.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => deleteSession(session.id)}>
+                            Delete
+                        </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+                </li>
+            ))}
+            </ul>
+        </ScrollArea>
       </CardContent>
     </Card>
   );
