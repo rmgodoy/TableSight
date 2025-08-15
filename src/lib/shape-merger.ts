@@ -23,18 +23,18 @@ function pathToClippingMultiPolygon(path: Path): MultiPolygon {
  * @param paths An array of Path objects to merge.
  * @returns A single Path object that is the union of the input paths, or null if merging fails.
  */
-export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id'> | null> {
+export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id'>[] | null> {
     if (paths.length === 0) {
         return null;
     }
     if (paths.length === 1) {
-        return {
+        return [{
             points: paths[0].points,
             color: paths[0].color,
             width: paths[0].width,
             blocksLight: paths[0].blocksLight,
             isPortal: false,
-        };
+        }];
     }
 
     try {
@@ -49,19 +49,22 @@ export async function mergeShapes(paths: Path[]): Promise<Omit<Path, 'id'> | nul
             return null;
         }
         
-        // We are interested in the first (and likely only) resulting polygon's outer ring.
-        const mergedPoints: Point[] = mergedMultiPolygon[0][0].map(p => ({ x: p[0], y: p[1] }));
-        
         // Find a representative path to source style properties from.
         const representativePath = paths[0];
 
-        return {
-            points: mergedPoints,
-            color: representativePath.color,
-            width: representativePath.width,
-            blocksLight: paths.some(p => p.blocksLight), // If any part blocks light, the whole thing should.
-            isPortal: false,
-        };
+        const resultingPaths = mergedMultiPolygon.map(polygon => {
+            // We are interested in the outer ring of each polygon.
+            const mergedPoints: Point[] = polygon[0].map(p => ({ x: p[0], y: p[1] }));
+            return {
+                points: mergedPoints,
+                color: representativePath.color,
+                width: representativePath.width,
+                blocksLight: paths.some(p => p.blocksLight), // If any part blocks light, the whole thing should.
+                isPortal: false,
+            };
+        });
+
+        return resultingPaths;
 
     } catch (error) {
         console.error("Failed to merge shapes:", error);

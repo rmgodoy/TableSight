@@ -296,23 +296,23 @@ export default function GmView({ sessionId }: { sessionId: string }) {
             newTokens.push(portalToken);
         }
     
-        if (smartMode && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'draw')) {
+        if (smartMode && !isPortalTool && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'draw')) {
             const intersectingPaths = paths.filter(p =>
-                p.blocksLight === newPathData.blocksLight && !p.isPortal && pathIntersects(p, newPathData)
+                !p.isPortal && pathIntersects(p, newPathData)
             );
     
             if (intersectingPaths.length > 0) {
                 const pathsToMerge = [...intersectingPaths, newPathData];
                 const mergedPathData = await mergeShapes(pathsToMerge);
     
-                if (mergedPathData) {
-                    const mergedPath = {
-                        ...mergedPathData,
-                        id: `path-${Date.now()}-merged`,
-                    };
+                if (mergedPathData && mergedPathData.length > 0) {
+                    const newMergedPaths = mergedPathData.map((mergedPath, index) => ({
+                        ...mergedPath,
+                        id: `path-${Date.now()}-merged-${index}`,
+                    }));
                     const intersectingPathIds = new Set(intersectingPaths.map(p => p.id));
                     const remainingPaths = paths.filter(p => !intersectingPathIds.has(p.id));
-                    recordHistory({ paths: [...remainingPaths, mergedPath], tokens: newTokens });
+                    recordHistory({ paths: [...remainingPaths, ...newMergedPaths], tokens: newTokens });
                 } else {
                     // Merging failed, just add the new path
                     recordHistory({ paths: [...paths, newPathData], tokens: newTokens });
