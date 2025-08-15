@@ -354,7 +354,6 @@ export function MapGrid({
         const dx = e.clientX - playerViewDragStartRef.current.mouseX;
         const dy = e.clientY - playerViewDragStartRef.current.mouseY;
 
-        // We need to adjust the pan delta by the player's zoom, not the GM's
         onPlayerPanChange({
             x: playerViewDragStartRef.current.panX + dx,
             y: playerViewDragStartRef.current.panY + dy,
