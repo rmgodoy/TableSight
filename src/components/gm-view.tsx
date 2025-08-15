@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb, Grid3x3, Waves, BrainCircuit, PanelRight, Snowflake } from 'lucide-react';
+import { Eye, Grid, EyeOff, Brush, PenLine, Eraser, Trash, Paintbrush, Lightbulb, Grid3x3, Waves, BrainCircuit, PanelRight, Snowflake, Users } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { GmSidebar } from '@/components/gm-sidebar';
 import { TokenPanel } from '@/components/token-panel';
@@ -114,6 +114,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     
     // This state is read from local storage but not part of the undo/redo history
     const [playerViewport, setPlayerViewport] = useState<{width: number, height: number} | null>(null);
+    const [showPlayerViewport, setShowPlayerViewport] = useState(true);
     
     // Derived state from history
     const currentHistoryState = history[historyIndex] || { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
@@ -557,6 +558,9 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         <Button variant={showFogOfWar ? "default" : "outline"} onClick={() => setShowFogOfWar(!showFogOfWar)} size="icon" className="w-8 h-8">
                             {showFogOfWar ? <Eye /> : <EyeOff />}
                         </Button>
+                        <Button variant={showPlayerViewport ? "default" : "outline"} onClick={() => setShowPlayerViewport(!showPlayerViewport)} size="icon" className="w-8 h-8">
+                           <Users />
+                        </Button>
                     </div>
 
                     {isPlayerViewFrozen && (
@@ -566,7 +570,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     )}
 
                     {(isDrawingTool || isPortalTool || isHiddenWallTool || isLightTool) && (
-                        <Card className="absolute top-2 left-24 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-4">
+                        <Card className="absolute top-2 left-36 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-4">
                             <CardContent className="p-2 flex items-center gap-4">
                                 {isDrawingTool && (
                                      <ToggleGroup type="single" value={drawMode} onValueChange={(value: DrawMode) => value && setDrawMode(value)}>
@@ -638,7 +642,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                     )}
 
                     {selectedTool === 'erase' && (
-                        <Card className="absolute top-2 left-24 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-4">
+                        <Card className="absolute top-2 left-36 z-10 p-2 rounded-lg bg-card border border-border flex items-center gap-4">
                             <CardContent className="p-2 flex items-center gap-4">
                             <ToggleGroup type="single" value={eraseMode} onValueChange={(value: EraseMode) => value && setEraseMode(value)}>
                                     <ToggleGroupItem value="line" aria-label="Erase whole line">
@@ -697,6 +701,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                             playerPan={playerPan}
                             playerZoom={playerZoom}
                             playerViewport={playerViewport}
+                            showPlayerViewport={showPlayerViewport}
                         />
                     </div>
                 </main>

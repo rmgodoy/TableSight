@@ -43,6 +43,7 @@ interface MapGridProps {
   playerPan?: { x: number; y: number };
   playerZoom?: number;
   playerViewport?: { width: number; height: number } | null;
+  showPlayerViewport?: boolean;
 }
 
 function getSvgPathFromPoints(rings: Point[][], scale: number = 1, shouldClose: boolean) {
@@ -87,6 +88,7 @@ export function MapGrid({
   playerPan = { x: 0, y: 0},
   playerZoom = 1,
   playerViewport = null,
+  showPlayerViewport = true,
 }: MapGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
@@ -580,7 +582,7 @@ export function MapGrid({
   const currentBrushSize = selectedTool === 'erase' ? eraseBrushSize : brushSize;
 
   const PlayerViewportRect = () => {
-    if (isPlayerView || !playerViewport) {
+    if (isPlayerView || !playerViewport || !showPlayerViewport) {
         return null;
     }
 
