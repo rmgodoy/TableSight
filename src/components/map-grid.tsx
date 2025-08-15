@@ -417,7 +417,7 @@ export function MapGrid({
 
   const renderToken = (token: Token) => {
     const portalWall = paths.find(p => p.id === token.controls);
-    const isHovered = !isPlayerView && hoveredTokenId === token.id && (token.type === 'Light' || token.type === 'Portal');
+    const isHovered = !isPlayerView && hoveredTokenId === token.id;
     
     const iconContent = () => {
         if (token.type === 'Light') {
@@ -451,6 +451,9 @@ export function MapGrid({
           height: '100%',
         }}
        >
+        {isHovered && (token.type === 'PC' || token.type === 'Enemy') && (
+            <div className="absolute inset-0 bg-primary/30 rounded-full" />
+        )}
         {iconContent()}
         {isHiddenEnemy && (
           <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
@@ -459,8 +462,8 @@ export function MapGrid({
         )}
         {isHovered && (
           <div 
-            className="absolute -inset-1 rounded-full border-2 border-primary animate-pulse"
-            style={{ animationDuration: '1.5s' }}
+            className="absolute -inset-1 rounded-full border-4 border-primary animate-pulse"
+            style={{ animationDuration: '1.2s' }}
           />
         )}
        </div>

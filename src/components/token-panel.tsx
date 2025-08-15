@@ -170,8 +170,8 @@ export function TokenPanel({
                                     <li 
                                         key={token.id} 
                                         className="flex flex-col p-2 rounded-md hover:bg-accent/50 transition-colors gap-2 text-sm"
-                                        onMouseEnter={() => (token.type === 'Light' || token.type === 'Portal') && onTokenHover(token.id)}
-                                        onMouseLeave={() => (token.type === 'Light' || token.type === 'Portal') && onTokenHover(null)}
+                                        onMouseEnter={() => onTokenHover(token.id)}
+                                        onMouseLeave={() => onTokenHover(null)}
                                     >
                                         <div className="flex items-center gap-2">
                                             <div className="flex items-center gap-2 flex-1 min-w-0">
