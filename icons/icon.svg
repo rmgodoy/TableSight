@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TableSight logo (monochrome)">
+  <defs>
+    <clipPath id="irisClip">
+      <circle cx="512" cy="512" r="210"/>
+    </clipPath>
+  </defs>
+
+  <!-- Single-color background -->
+  <rect x="64" y="64" width="896" height="896" rx="196" fill="#111827"/>
+
+  <!-- Two-display hint line -->
+  <path d="M128 512 H896" stroke="#ffffff" stroke-opacity="0.28" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Eye -->
+  <path d="M160 512c96-164 256-260 352-260s256 96 352 260c-96 164-256 260-352 260S256 676 160 512z"
+        fill="#ffffff"/>
+
+  <!-- Iris: token + vision cone -->
+  <g clip-path="url(#irisClip)">
+    <!-- Dark base -->
+    <circle cx="512" cy="512" r="210" fill="#111827"/>
+    <!-- Vision cone -->
+    <path d="M512 512 L742 460 A210 210 0 0 1 742 564 Z" fill="#ffffff" fill-opacity="0.9"/>
+    <!-- Minimal grid (four lines) -->
+    <path d="M362 512 H662 M512 362 V662" stroke="#ffffff" stroke-opacity="0.45" stroke-width="10" stroke-linecap="round"/>
+    <!-- Token -->
+    <circle cx="512" cy="512" r="44" fill="#ffffff"/>
+    <circle cx="512" cy="512" r="26" fill="#111827"/>
+  </g>
+
+  <!-- Outline ring -->
+  <circle cx="512" cy="512" r="210" fill="none" stroke="#111827" stroke-opacity="0.25" stroke-width="14"/>
+</svg>
