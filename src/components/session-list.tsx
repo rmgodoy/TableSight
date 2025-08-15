@@ -54,7 +54,6 @@ export function SessionList() {
     };
 
     fetchSessions();
-    // Also listen for storage changes to update list if a session is deleted in another tab
     window.addEventListener('storage', fetchSessions);
     return () => window.removeEventListener('storage', fetchSessions);
   }, []);
@@ -64,19 +63,47 @@ export function SessionList() {
     setSessions(currentSessions => currentSessions.filter(s => s.id !== sessionId));
   };
   
+  const clearAllSessions = () => {
+    sessions.forEach(session => {
+        localStorage.removeItem(`tabletop-alchemist-session-${session.id}`);
+    });
+    setSessions([]);
+  }
+
   const resumeSession = (sessionId: string) => {
     router.push(`/gm#${sessionId}`);
   }
 
   if (sessions.length === 0) {
-    return null; // Don't render anything if there are no sessions
+    return null;
   }
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Your Saved Sessions</CardTitle>
-        <CardDescription>Continue one of your previous adventures.</CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+            <CardTitle>Your Saved Sessions</CardTitle>
+            <CardDescription>Continue one of your previous adventures.</CardDescription>
+        </div>
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="destructive">Clear all</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will permanently delete all your saved sessions. This action cannot be undone.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={clearAllSessions}>
+                    Delete All
+                </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       </CardHeader>
       <CardContent>
         <ul className="space-y-4">
@@ -90,7 +117,7 @@ export function SessionList() {
               </div>
               <div className="flex items-center gap-2">
                  <Button onClick={() => resumeSession(session.id)}>
-                    Continue Session
+                    Resume Session
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
