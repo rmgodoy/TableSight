@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TableSight logo">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#17a2b8"/>
+      <stop offset="100%" stop-color="#6f42c1"/>
+    </linearGradient>
+
+    <!-- Grid pattern clipped to a circle -->
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0M0 32V0" stroke="#BEE3F8" stroke-opacity="0.5" stroke-width="2"/>
+    </pattern>
+
+    <clipPath id="irisClip">
+      <circle cx="512" cy="512" r="200"/>
+    </clipPath>
+
+    <!-- Soft shadow -->
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+
+    <!-- Fog of war vignette -->
+    <radialGradient id="fog" cx="50%" cy="50%" r="60%">
+      <stop offset="70%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.2"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Rounded square tile -->
+  <rect x="64" y="64" width="896" height="896" rx="196" fill="url(#bgGrad)"/>
+
+  <!-- Subtle split line to suggest "two displays" -->
+  <path d="M128 512 H896" stroke="#ffffff" stroke-opacity="0.25" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Eye outline (Table + Sight) -->
+  <g filter="url(#softShadow)">
+    <!-- Outer eye -->
+    <path d="M160 512c96-164 256-260 352-260s256 96 352 260c-96 164-256 260-352 260S256 676 160 512z"
+          fill="#ffffff" fill-opacity="0.95"/>
+  </g>
+
+  <!-- Iris with tabletop grid -->
+  <g clip-path="url(#irisClip)">
+    <circle cx="512" cy="512" r="200" fill="url(#grid)"/>
+    <!-- Subtle base for contrast -->
+    <circle cx="512" cy="512" r="200" fill="#0b1620" fill-opacity="0.35"/>
+    <!-- Grid on top -->
+    <rect x="312" y="312" width="400" height="400" fill="url(#grid)"/>
+    <!-- Vision cone (dynamic lighting) -->
+    <path d="M512 512 L740 450 A200 200 0 0 1 740 574 Z" fill="#39d98a" fill-opacity="0.75"/>
+    <!-- Token (player piece) -->
+    <circle cx="512" cy="512" r="42" fill="#ffffff"/>
+    <circle cx="512" cy="512" r="26" fill="#111827"/>
+  </g>
+
+  <!-- Eye ring -->
+  <circle cx="512" cy="512" r="200" fill="none" stroke="#111827" stroke-opacity="0.2" stroke-width="8"/>
+
+  <!-- Fog of war vignette -->
+  <rect x="64" y="64" width="896" height="896" rx="196" fill="url(#fog)"/>
+
+  <!-- Tiny stand marks to hint at a table -->
+  <g opacity="0.45">
+    <rect x="232" y="706" width="56" height="12" rx="6" fill="#111827"/>
+    <rect x="736" y="706" width="56" height="12" rx="6" fill="#111827"/>
+  </g>
+
+  <!-- Wordmark (optional; hide at small sizes) -->
+  <g aria-hidden="true">
+    <text x="512" y="870" font-family="system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif"
+          font-size="64" text-anchor="middle" fill="#ffffff" fill-opacity="0.9" style="letter-spacing:1px">TableSight</text>
+  </g>
+</svg>
