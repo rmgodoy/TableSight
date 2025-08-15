@@ -34,6 +34,7 @@ interface MapGridProps {
   onZoomChange?: (zoom: number) => void;
   onPanChange?: (pan: { x: number; y: number }) => void;
   showFogOfWar?: boolean;
+  hoveredTokenId?: string | null;
 }
 
 function getSvgPathFromPoints(rings: Point[][], scale: number = 1) {
@@ -72,6 +73,7 @@ export function MapGrid({
   onZoomChange,
   onPanChange,
   showFogOfWar = false,
+  hoveredTokenId = null,
 }: MapGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingToken, setDraggingToken] = useState<Token | null>(null);
@@ -415,7 +417,8 @@ export function MapGrid({
 
   const renderToken = (token: Token) => {
     const portalWall = paths.find(p => p.id === token.controls);
-
+    const isHovered = !isPlayerView && hoveredTokenId === token.id && (token.type === 'Light' || token.type === 'Portal');
+    
     const iconContent = () => {
         if (token.type === 'Light') {
           return <Lightbulb className={cn("text-white/80 transition-colors w-full h-full", token.torch.enabled && "text-yellow-300")}/>
@@ -453,6 +456,12 @@ export function MapGrid({
           <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
             <EyeOff className="w-1/2 h-1/2 text-white/70"/>
           </div>
+        )}
+        {isHovered && (
+          <div 
+            className="absolute -inset-1 rounded-full border-2 border-primary animate-pulse"
+            style={{ animationDuration: '1.5s' }}
+          />
         )}
        </div>
     );

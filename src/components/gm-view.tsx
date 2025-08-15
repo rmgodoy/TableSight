@@ -101,6 +101,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
     const [brushColor, setBrushColor] = useState('#000000');
     const [brushSize, setBrushSize] = useState(5);
     const [eraseBrushSize, setEraseBrushSize] = useState(20);
+    const [hoveredTokenId, setHoveredTokenId] = useState<string | null>(null);
     
     // Derived state from history
     const currentHistoryState = history[historyIndex] || { paths: [], tokens: [], backgroundImage: null, cellSize: 40 };
@@ -735,6 +736,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                             onZoomChange={setZoom}
                             onPanChange={setPan}
                             showFogOfWar={showFogOfWar}
+                            hoveredTokenId={hoveredTokenId}
                         />
                     </div>
                 </main>
@@ -753,6 +755,7 @@ export default function GmView({ sessionId }: { sessionId: string }) {
                         onTokenSizeChange={handleTokenSizeChange}
                         onTokenTorchToggle={handleTokenTorchToggle}
                         onTokenTorchRadiusChange={handleTokenTorchRadiusChange}
+                        onTokenHover={setHoveredTokenId}
                         sessionId={sessionId}
                         syncPlayerView={syncPlayerView}
                         matchPlayerView={matchPlayerView}

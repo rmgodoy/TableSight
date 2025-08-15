@@ -41,6 +41,7 @@ interface TokenPanelProps {
     onTokenSizeChange: (tokenId: string, size: number) => void;
     onTokenTorchToggle: (tokenId: string) => void;
     onTokenTorchRadiusChange: (tokenId: string, radius: number) => void;
+    onTokenHover: (tokenId: string | null) => void;
     sessionId: string;
     syncPlayerView: () => void;
     matchPlayerView: () => void;
@@ -59,6 +60,7 @@ export function TokenPanel({
     onTokenSizeChange,
     onTokenTorchToggle,
     onTokenTorchRadiusChange,
+    onTokenHover,
     sessionId,
     syncPlayerView,
     matchPlayerView,
@@ -165,7 +167,12 @@ export function TokenPanel({
                         ) : (
                             <ul className="space-y-2">
                                 {filteredTokens.map(token => (
-                                    <li key={token.id} className="flex flex-col p-2 rounded-md hover:bg-accent/50 transition-colors gap-2 text-sm">
+                                    <li 
+                                        key={token.id} 
+                                        className="flex flex-col p-2 rounded-md hover:bg-accent/50 transition-colors gap-2 text-sm"
+                                        onMouseEnter={() => (token.type === 'Light' || token.type === 'Portal') && onTokenHover(token.id)}
+                                        onMouseLeave={() => (token.type === 'Light' || token.type === 'Portal') && onTokenHover(null)}
+                                    >
                                         <div className="flex items-center gap-2">
                                             <div className="flex items-center gap-2 flex-1 min-w-0">
                                                 <Popover>
